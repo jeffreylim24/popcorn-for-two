@@ -14,6 +14,13 @@ A web app for long-distance couples to have date nights together: movies, videos
 - Expected core tech: WebRTC (calls), WebSockets (sync), YouTube IFrame Player API
 - Browser: build for Chrome only. The user tests in Safari and reports differences. No cross-browser work unless asked.
 
+## Repo layout & commands
+
+- `frontend/`: Vite + React + TS, ESLint. `bun run dev` (port 5173), `bun run lint`, `bun run build`.
+- `backend/`: Go module `github.com/jeffreylim24/popcorn-for-two/backend`, flat layout (`main.go`). `go run .` (port 8080).
+- API routes live under `/api/`; in dev, Vite proxies `/api` to `:8080` (one origin, no CORS code in Go).
+- Review checks Claude may run (read-only): `go vet ./...` and `gofmt -l .` in `backend/`.
+
 **The learner:** has done full-stack work before but is very rusty. Treat them as a beginner who picks concepts up fast. Ask what they remember before explaining from zero.
 
 **Learning goals (all in scope):** real-time systems, Go backend, frontend *logic* (state, data flow, sync), deployment, professional practices. Visual styling is **not** a learning focus.
@@ -34,8 +41,8 @@ A web app for long-distance couples to have date nights together: movies, videos
 
 - **Why before how.** Tie every step to a concept or reason.
 - **One small step at a time.** Say what to do next and how to tell it worked, then wait. Never lay out many steps at once.
-- **New concepts:** when one first comes up, introduce it in 2–3 sentences and link the specific section of the official docs. Encourage the user to read it.
-- **Check understanding** now and then: ask the user to explain something back, or to predict what code will do before running it.
+- **New concepts:** when one first comes up, explain it inline (2–3 sentences) with everything needed for the step. Put doc links at the end as optional extras; never make a step depend on reading them.
+- **Check understanding** now and then: after the user runs something, ask them to explain the real output or code in their own words. Don't ask them to predict command output.
 - **Learning style is still unknown.** Vary the format (analogies, ASCII diagrams, small runnable examples, doc pointers), notice what lands, and record it in `LEARNING.md`.
 - Keep explanations short and scannable.
 
