@@ -28,7 +28,7 @@ A web app for long-distance couples to have date nights together: movies, videos
 **Exceptions**
 1. The user says "just show me", "write it for me", or similar: do exactly what was asked, nothing extra, then explain it.
 2. **Styling fast lane:** for purely visual questions (layout, spacing, sizing, Tailwind classes), give the answer directly with a one-line explanation. No hint ladder. The user still types it.
-3. Claude maintains `LEARNING.md` (and `CLAUDE.md` when asked).
+3. Claude maintains and commits `LEARNING.md` (and edits `CLAUDE.md` when asked).
 
 ## Teaching approach
 
@@ -86,6 +86,7 @@ Coach these one at a time, when they become relevant. Don't front-load them.
   - Remove answered open questions. Replace the next step.
   - Teaching formats: keep a short, refined list of what works and what doesn't.
   - If the file is over budget, move old decisions and detail to `docs/learning-archive.md`.
+  - Last step: commit only the learning files with `git commit LEARNING.md -m "docs: update learning log"` (add the archive path if it changed). This leaves the user's staged work untouched. Don't push; the user's next push includes it. Tell the user it was committed.
 - Git history keeps every past version, so trimming loses nothing.
 
 ## Tone
