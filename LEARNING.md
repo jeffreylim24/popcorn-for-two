@@ -7,7 +7,8 @@ _Last updated: 2026-10-04 (session 1)_
 ### Shaky
 - **Git's four areas** (working dir → staging → local repo → remote): mixed up "staged" with "committed but not pushed" (`[ahead N]`).
   - Tried: ASCII flow diagram, plus a pointer to the Git Book's "Recording Changes" chapter.
-  - Next: a prediction question at each commit (what will `git status -sb` show?). If it's still unclear, try an analogy.
+  - Progress: correctly predicted `[ahead 1]` between commit and push (second attempt).
+  - Next: a harder variant (e.g. edited a file and staged it but haven't committed; or staged one file and left another modified). Move to Solid after one more correct answer.
 
 ### Solid
 - Commit messages: imperative, ~50-char subject, body for the *why*, one logical change per commit
