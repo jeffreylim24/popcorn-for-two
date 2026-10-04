@@ -11,6 +11,6 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	http.HandleFunc("GET /health", healthHandler)
+	http.HandleFunc("GET /api/health", healthHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
