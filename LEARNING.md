@@ -1,25 +1,36 @@
-# Learning Log
+# Learning Snapshot
 
-## Concepts learned
+_Last updated: 2026-10-04 (session 1)_
 
-_None yet._
+## Concepts
+
+### Shaky
+- **Git's four areas** (working dir → staging → local repo → remote): mixed up "staged" with "committed but not pushed" (`[ahead N]`).
+  - Tried: ASCII flow diagram, plus a pointer to the Git Book's "Recording Changes" chapter.
+  - Next: a prediction question at each commit (what will `git status -sb` show?). If it's still unclear, try an analogy.
+
+### Solid
+- Commit messages: imperative, ~50-char subject, body for the *why*, one logical change per commit
+- Conventional Commits: `type: lowercase description` (`feat`, `fix`, `docs`, `refactor`, `test`, `chore`)
+- Checking a push: `git status -sb`, `git log --oneline`, `git show --stat HEAD`, `git fetch`; upstream tracking
 
 ## Decisions
 
-- **2026-10-04: Frontend is React + TypeScript + Vite.** Vite is the standard dev server and bundler for a plain React app. We didn't pick Next.js because it bundles its own server, which would overlap with the Go backend.
-- **2026-10-04: UI library is shadcn/ui + Tailwind (not MUI).** shadcn copies component source into the project, so it can be read and customized. That suits the custom "date night" look and unusual UI like draggable facecams. Tradeoff: Tailwind basics have to be learned.
-- **2026-10-04: Package manager is Bun (not npm).** It's familiar from a past project and fast. Bun is only used to install packages and run scripts; Go is the backend. Tradeoff: docs show `npm`/`npx` commands, which become `bun add`/`bunx`.
-- **2026-10-04: Backend is Go.** It handles many concurrent connections well, which suits WebSockets.
+- **React + TypeScript + Vite** frontend. Vite is the standard dev server and bundler for plain React. Next.js would overlap with the Go backend.
+- **shadcn/ui + Tailwind**, not MUI. Owning the component source suits a custom look and unusual UI (draggable facecams). Cost: learning Tailwind.
+- **Bun**, not npm, as the package manager. It's familiar and fast. Docs' `npm`/`npx` commands become `bun add`/`bunx`.
+- **Go** backend. It handles many concurrent connections well, which suits WebSockets.
+- **Conventional Commits** for commit style. It keeps history consistent and scannable.
 
 ## Open questions
 
-- Which teaching formats work best (analogies, diagrams, examples, docs)? Try them and note here.
-- The bigger product vision (mini-games, movies) will be brainstormed in a separate session.
+- The bigger product vision (mini-games, movies) gets its own brainstorming session.
 
-## What worked (teaching style)
+## Teaching formats
 
-_Not yet known._
+- Works: comparison tables for choices; reviewing the user's own drafts; prediction questions (they surface gaps).
+- Untested: analogies, runnable examples.
 
 ## Next step
 
-Plan the MVP's first milestone and set up the project skeleton (frontend + backend folders).
+Plan the MVP's first milestone and set up the project skeleton. Start by discussing the repo layout (monorepo with `frontend/` and `backend/`?) and *why*, before any commands.

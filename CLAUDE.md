@@ -75,8 +75,18 @@ Coach these one at a time, when they become relevant. Don't front-load them.
 
 ## Progress tracking: LEARNING.md
 
-- **Session start:** read `LEARNING.md`, then recap in 2–3 lines where we left off and what the next step is.
-- **When the user says "wrap up":** update `LEARNING.md` with concepts learned, decisions and why, open questions, the next step, and which teaching formats worked. Summarize; don't write a transcript.
+`LEARNING.md` is a current-state snapshot, not a diary. Keep it under ~100 lines.
+
+- **Session start:** read `LEARNING.md` (not the archive), then recap in 2–3 lines where we left off and what the next step is.
+- **When the user says "wrap up":** rewrite `LEARNING.md` so it reflects the current state:
+  - Concepts: each one has a single entry, updated in place, never duplicated.
+    - Shaky concepts keep a short note on the gap and which explanations were already tried. Next time, try a different approach.
+    - Mastered concepts shrink to a one-line entry under "Solid".
+  - Decisions: one line each, with the why.
+  - Remove answered open questions. Replace the next step.
+  - Teaching formats: keep a short, refined list of what works and what doesn't.
+  - If the file is over budget, move old decisions and detail to `docs/learning-archive.md`.
+- Git history keeps every past version, so trimming loses nothing.
 
 ## Tone
 
