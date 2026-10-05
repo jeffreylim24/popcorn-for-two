@@ -6,9 +6,6 @@ _Last updated: 2026-10-04 (session 5)_
 
 ### Shaky
 - **Go (the language):** treat as new. Built a Go app before, but AI wrote most of it, so little stuck.
-- **Third-party script + ready callback (`onYouTubeIframeAPIReady`):** still confused at session end. Mixed up names YouTube chose with names we chose ("isn't it something we created?"). Also asked why TS didn't know it.
-  - Tried: showing YouTube's minified `kb && kb()` code; `button.onclick = sayHi` analogy; "pickup counter with a fixed label" analogy; a who-chose-the-name table.
-  - Next: a tiny runnable non-YouTube example: a plain HTML page with a fake "library" script that calls `window.onLibReady` if it exists. Rename it and watch nothing happen.
 
 ### Introduced (planning only, no code yet)
 - **Signaling (WebRTC):** browsers can't accept incoming connections, so a server both can reach relays setup info; then video flows browser-to-browser. Got there with a client/server diagram + phone-number analogy.
@@ -17,7 +14,7 @@ _Last updated: 2026-10-04 (session 5)_
 
 ### Learning (introduced, used or explained back once)
 - **`<script>` tags:** the browser downloads + runs the file; plain scripts run on arrival, `type="module"` is deferred. A script can inject another script (`iframe_api` → `www-widgetapi.js`).
-- **Callbacks (calling vs handing over):** `fn()` runs now; `x = fn` hands it over to be run later by someone else. Understood the syntax; the YouTube instance is still shaky (above).
+- **Callbacks (calling vs handing over):** `fn()` runs now; `x = fn` hands it over to be run later by someone else. Understood the syntax.
 - **Race between React and a loading script:** `if (YT.Player)` create now, else hand over the callback. Explained the `if` branch back; needed the `else` branch explained.
 - **Effect cleanup with a shared variable:** `let player: YT.Player | undefined` at the top, assigned (not redeclared) inside, `player?.destroy()` in one cleanup. First tried returning the player from the inner function: a good idea, but it fails when YouTube calls it and drops the return value. Fixed it after a WebSocket example.
 - **TS types for globals:** `@types/*` = community-written descriptions, no runtime code. `tsconfig` `"types"` is an allow-list. `declare global { interface Window {...} }` merges a missing property. Read it back as "creates an interface"; corrected to "adds to the existing one".
@@ -49,7 +46,7 @@ _Last updated: 2026-10-04 (session 5)_
 - **Roadmap:** M1–M7 in `ROADMAP.md`, pull-by-need. Deploy by hand after M3; CI/CD later.
 - **Docs files are Claude's** (`ROADMAP.md`, `LEARNING.md`, `CLAUDE.md`). LEARNING.md is a snapshot, committed by Claude at wrap-up.
 - **Commit messages:** Claude drafts them (from session 5); the user stages, commits, and pushes.
-- **YouTube API loaded by a static `<script>` in `index.html`**, not injected from React or an npm wrapper: the app always needs the player, and a wrapper hides the learning.
+- **Raw YouTube IFrame API, no React wrapper** (`react-youtube`, `react-player`): sync is imperative (`seekTo`, `getCurrentTime`, `onStateChange`), the echo loop needs full control over when events fire, and wrappers treat props as the source of truth when ours is WebSocket messages. Wrap it in our own hook later. Loaded by a static `<script>` in `index.html` because the app always needs the player.
 - **Reload the page after editing code inside an effect.** Verified in session 5: with React 19.3 + plugin-react 6.1, a save re-renders but does *not* rerun effects (the docs claim otherwise).
 
 ## Open questions
@@ -70,4 +67,4 @@ _Last updated: 2026-10-04 (session 5)_
 
 ## Next step
 
-**M1, step 2: your own Play / Pause buttons.** First, 5 minutes on the callback confusion with the tiny non-YouTube example (see Shaky). Then the new concept: the player lives inside the effect, but buttons outside it need it, so hold it across renders with `useRef`. Keep steps small; one new idea at a time.
+**M1, step 2: your own Play / Pause buttons.** New concept: the player lives inside the effect, but buttons outside it need it, so hold it across renders with `useRef`. Keep steps small; one new idea at a time.

@@ -13,7 +13,9 @@ Every milestone ends in something I can demo and commit.
   - Why next: it's the heart of the app, and it runs on one machine
     with no server.
   - Progress: video embedded and playing with YouTube's controls.
-  - Decided: API loaded by a static `<script>` in `index.html`; player
+  - Decided: raw IFrame API, no React wrapper (sync needs direct
+    control of player calls and events); API loaded by a static
+    `<script>` in `index.html`; player
     created when `YT.Player` exists, else via `onYouTubeIframeAPIReady`;
     destroyed in the effect's cleanup.
 
