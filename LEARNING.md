@@ -72,4 +72,4 @@ _Last updated: 2026-10-04 (session 4)_
 
 ## Next step
 
-**M1, step 1: show a YouTube video on the page using the IFrame Player API**, using only YouTube's own controls for now. Done when the video appears in the app and plays. Concepts this brings up: loading a third-party script in a React app, iframes, and holding a non-React object (the player) across renders. Start by asking whether they've ever embedded a third-party widget or script.
+**M1, step 1: show a YouTube video on the page using the IFrame Player API**, using only YouTube's own controls for now. Done when the video appears in the app and plays. Concepts this brings up: loading a third-party script in a React app, iframes, and holding a non-React object (the player) across renders. They've never embedded a third-party script or widget, so explain from zero (why a `<script>` tag, what it puts on `window`, why the API loads asynchronously).
