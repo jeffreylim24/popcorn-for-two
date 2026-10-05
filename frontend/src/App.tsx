@@ -4,6 +4,12 @@ import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
 import './App.css'
 
+declare global {
+  interface Window {
+    onYouTubeIframeAPIReady?: () => void
+  }
+}
+
 function App() {
   const [count, setCount] = useState(0)
   const [message, setMessage] = useState("Loading...")
@@ -20,16 +26,37 @@ function App() {
       .catch(error => setMessage("Error fetching health status: " + error.message));
   }, [])
 
+  useEffect(() => {
+    let player: YT.Player | undefined;
+
+    const createYouTubePlayer = () => {
+      player = new YT.Player('player', {
+        videoId: 'kzcI5F4tGiU',
+      })
+    }
+
+    if (YT.Player) {
+      createYouTubePlayer()
+    } else {
+      window.onYouTubeIframeAPIReady = createYouTubePlayer
+    }
+
+    return () => {
+      player?.destroy()
+    }
+  }, [])
+
   return (
     <>
       <section id="center">
+        <div id='player'></div>
         <div className="hero">
           <img src={heroImg} className="base" width="170" height="179" alt="" />
           <img src={reactLogo} className="framework" alt="React logo" />
           <img src={viteLogo} className="vite" alt="Vite logo" />
         </div>
         <div>
-          <h1>Get started</h1>
+          <h1>Get Ready!!</h1>
           <p>{message}</p>
           <p>
             Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
