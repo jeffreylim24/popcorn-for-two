@@ -62,6 +62,12 @@ function App() {
         >
           Pause
         </button>
+        <button
+          type="button"
+          onClick={() => playerRef.current?.seekTo(60, true)}
+        >
+          Skip to 1:00
+        </button>
         <div className="hero">
           <img src={heroImg} className="base" width="170" height="179" alt="" />
           <img src={reactLogo} className="framework" alt="React logo" />

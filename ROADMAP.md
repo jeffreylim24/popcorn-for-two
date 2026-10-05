@@ -7,17 +7,18 @@ Every milestone ends in something I can demo and commit.
 
 ## Milestones
 
-- [ ] **M1: YouTube player (solo)**
+- [x] **M1: YouTube player (solo)**
   - Done when: my own Play / Pause / Jump buttons control an embedded
     YouTube video on the page.
   - Why next: it's the heart of the app, and it runs on one machine
     with no server.
-  - Progress: video embedded and playing with YouTube's controls.
   - Decided: raw IFrame API, no React wrapper (sync needs direct
     control of player calls and events); API loaded by a static
     `<script>` in `index.html`; player
-    created when `YT.Player` exists, else via `onYouTubeIframeAPIReady`;
-    destroyed in the effect's cleanup.
+    created when `YT.Player` exists, else via `onYouTubeIframeAPIReady`.
+  - Decided: player held in a `useRef` so code outside the effect can
+    call it (M3's message handler will too); cleanup destroys it, then
+    empties the ref so nothing calls a dead player.
 
 - [ ] **M2: Rooms**
   - Done when: two browser tabs join the same room, and a message sent
@@ -31,6 +32,10 @@ Every milestone ends in something I can demo and commit.
   - Done when: play, pause, or seek in either tab, and the other tab's
     video follows within about a second, with no echo loop.
   - Why next: messages arrive after M2, but the player ignores them.
+  - Known from M1: `seekTo` keeps the play/pause state (paused stays
+    paused), except before the first play, when it starts the video.
+  - Decide at the start: what a message must carry to fully describe
+    "where we are" (asked at the end of M1, not answered yet).
 
 - [ ] **M4: First deploy (by hand)**
   - Done when: the app runs on a public HTTPS URL, and my partner and I
