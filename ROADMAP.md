@@ -12,6 +12,10 @@ Every milestone ends in something I can demo and commit.
     YouTube video on the page.
   - Why next: it's the heart of the app, and it runs on one machine
     with no server.
+  - Progress: video embedded and playing with YouTube's controls.
+  - Decided: API loaded by a static `<script>` in `index.html`; player
+    created when `YT.Player` exists, else via `onYouTubeIframeAPIReady`;
+    destroyed in the effect's cleanup.
 
 - [ ] **M2: Rooms**
   - Done when: two browser tabs join the same room, and a message sent
