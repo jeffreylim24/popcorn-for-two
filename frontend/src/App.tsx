@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import heroImg from './assets/hero.png'
 import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
@@ -13,6 +13,7 @@ declare global {
 function App() {
   const [count, setCount] = useState(0)
   const [message, setMessage] = useState("Loading...")
+  const playerRef = useRef<YT.Player | null>(null)
 
   useEffect(() => {
     fetch('/api/health')
@@ -27,10 +28,8 @@ function App() {
   }, [])
 
   useEffect(() => {
-    let player: YT.Player | undefined;
-
-    const createYouTubePlayer = () => {
-      player = new YT.Player('player', {
+  const createYouTubePlayer = () => {
+      playerRef.current = new YT.Player('player', {
         videoId: 'kzcI5F4tGiU',
       })
     }
@@ -42,7 +41,8 @@ function App() {
     }
 
     return () => {
-      player?.destroy()
+      playerRef.current?.destroy()
+      playerRef.current = null
     }
   }, [])
 
@@ -50,6 +50,18 @@ function App() {
     <>
       <section id="center">
         <div id='player'></div>
+        <button
+          type="button"
+          onClick={() => playerRef.current?.playVideo()}
+        >
+          Play
+        </button>
+        <button
+          type="button"
+          onClick={() => playerRef.current?.pauseVideo()}
+        >
+          Pause
+        </button>
         <div className="hero">
           <img src={heroImg} className="base" width="170" height="179" alt="" />
           <img src={reactLogo} className="framework" alt="React logo" />
