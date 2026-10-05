@@ -1,6 +1,6 @@
 # Learning Snapshot
 
-_Last updated: 2026-10-04 (session 3)_
+_Last updated: 2026-10-04 (session 4)_
 
 ## Concepts
 
@@ -8,6 +8,11 @@ _Last updated: 2026-10-04 (session 3)_
 - **Go (the language):** treat as new. Built a Go app before, but AI wrote most of it, so little stuck.
 - **Verifying what a commit contains:** session 3: ran `git log`, then asked for the command (`git show --stat HEAD`). Then pushed before checking. Tried: question → command table (`log --oneline` / `show --stat` / `show`). Used it correctly before the second push.
   - Next: reaches for `git show --stat HEAD` before pushing, unprompted.
+
+### Introduced (session 4, planning only, no code yet)
+- **Signaling (WebRTC):** browser tabs can't listen for incoming connections, and home routers hide them, so a server both can reach relays the setup info; then video flows browser-to-browser. First guessed "B fetches A's URL"; got "the backend server" after a client/server diagram + phone-number analogy.
+- **WebSocket vs fetch:** the server can push to a client at any time; fetch only gets an answer when it asks. Stated by Claude, not yet explained back.
+- **YouTube IFrame Player:** thought the video might stream through our server. Now: each browser streams from YouTube; Go only relays small messages like `{"type":"pause","time":42.3}`. Explained the relay back; needed the "video never touches the server" half spelled out.
 
 ### Learning (introduced, explained back correctly once)
 - **`package main` / `func main()`:** `main` package = build an executable; `func main` = entry point; program exits when it returns.
@@ -45,12 +50,14 @@ _Last updated: 2026-10-04 (session 3)_
 - **Vite dev proxy, not CORS headers:** one origin in the browser; all API routes under `/api/`. Done in session 3.
 - **Commit straight to `main`** for now; branches/PRs when there's a reason.
 - **LEARNING.md is a snapshot**, committed by Claude at wrap-up, not pushed.
+- **Milestones in `ROADMAP.md`** (M1 player → M2 rooms → M3 sync → M4 deploy → M5 camera → M6 drag → M7 call). Pull-by-need: build each piece when the previous demo makes you need it, and see results ASAP.
+- **Deploy after M3, by hand:** real lag, HTTPS, and routers only show up live, and it gives a first real date night. Local two-tab testing stays the main loop.
+- **CI/CD later**, when manual deploys get annoying (do the first deploy by hand so the pipeline makes sense).
+- **Claude writes the docs files** (`ROADMAP.md`, `LEARNING.md`, `CLAUDE.md`, and similar): no learning in typing them.
 
 ## Open questions
 
-- Bigger product vision (mini-games, movies) gets its own brainstorming session.
-- Production shape: Go serves the built frontend (one origin) vs separate hosting (needs CORS). Decide at deployment.
-- Rooms: the server must detect dead connections itself (crashed tabs never send close). Design when building rooms.
+- None here. Per-milestone design questions (room joining, dead connections, hosting shape) live in `ROADMAP.md`.
 
 ## Teaching formats
 
@@ -60,8 +67,9 @@ _Last updated: 2026-10-04 (session 3)_
 - Works: concrete scenario questions. The StrictMode scenario led to an unprompted design insight.
 - Doesn't work: abstract questions; asking to predict command output; sending to docs to learn a step.
 - The user questions the design of their tools and process and sometimes jumps ahead with "where does X go?". Engage with it.
-- Tried once, reaction unclear: analogy (StrictMode as a "fire drill").
+- Tried once, reaction unclear: analogy (StrictMode as a "fire drill"). Phone-number analogy for signaling worked alongside a diagram.
+- When deciding, asks "what do you recommend?" and pushes back on hassle ("is it worth it?"). Give an honest recommendation with a trade-off table, and flag when their stated principle points the other way (they welcomed it).
 
 ## Next step
 
-**Plan the MVP milestones** (separate session). The walking skeleton is done: page → React → `/api` proxy → Go → page, with error handling (commit `1cac4f5`).
+**M1, step 1: show a YouTube video on the page using the IFrame Player API**, using only YouTube's own controls for now. Done when the video appears in the app and plays. Concepts this brings up: loading a third-party script in a React app, iframes, and holding a non-React object (the player) across renders. Start by asking whether they've ever embedded a third-party widget or script.

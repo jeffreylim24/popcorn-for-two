@@ -19,6 +19,7 @@ A web app for long-distance couples to have date nights together: movies, videos
 - `frontend/`: Vite + React + TS, ESLint. `bun run dev` (port 5173), `bun run lint`, `bun run build`.
 - `backend/`: Go module `github.com/jeffreylim24/popcorn-for-two/backend`, flat layout (`main.go`). `go run .` (port 8080).
 - API routes live under `/api/`; in dev, Vite proxies `/api` to `:8080` (one origin, no CORS code in Go).
+- `ROADMAP.md`: MVP milestones M1–M7, each with a "done when" demo and the design questions to settle at its start.
 - Review checks Claude may run (read-only): `go vet ./...` and `gofmt -l .` in `backend/`.
 
 **The learner:** has done full-stack work before but is very rusty. Treat them as a beginner who picks concepts up fast. Ask what they remember before explaining from zero.
@@ -35,7 +36,7 @@ A web app for long-distance couples to have date nights together: movies, videos
 **Exceptions**
 1. The user says "just show me", "write it for me", or similar: do exactly what was asked, nothing extra, then explain it.
 2. **Styling fast lane:** for purely visual questions (layout, spacing, sizing, Tailwind classes), give the answer directly with a one-line explanation. No hint ladder. The user still types it.
-3. Claude maintains and commits `LEARNING.md` (and edits `CLAUDE.md` when asked).
+3. **Docs files are Claude's:** Claude writes and commits `ROADMAP.md`, `LEARNING.md`, `CLAUDE.md`, and similar planning docs. The user doesn't type these (no learning in it), but makes the decisions they record.
 
 ## Teaching approach
 
@@ -84,7 +85,7 @@ Coach these one at a time, when they become relevant. Don't front-load them.
 
 `LEARNING.md` is a current-state snapshot, not a diary. Keep it under ~100 lines.
 
-- **Session start:** read `LEARNING.md` (not the archive), then recap in 2–3 lines where we left off and what the next step is.
+- **Session start:** read `LEARNING.md` (not the archive) and the current milestone in `ROADMAP.md`, then recap in 2–3 lines where we left off and what the next step is.
 - **When the user says "wrap up":** rewrite `LEARNING.md` so it reflects the current state:
   - Concepts: each one has a single entry, updated in place, never duplicated.
     - Shaky concepts keep a short note on the gap and which explanations were already tried. Next time, try a different approach.
@@ -92,8 +93,9 @@ Coach these one at a time, when they become relevant. Don't front-load them.
   - Decisions: one line each, with the why.
   - Remove answered open questions. Replace the next step.
   - Teaching formats: keep a short, refined list of what works and what doesn't.
+  - Tick finished milestones in `ROADMAP.md`, and add any design decisions to the milestone they belong to.
   - If the file is over budget, move old decisions and detail to `docs/learning-archive.md`.
-  - Last step: commit only the learning files with `git commit LEARNING.md -m "docs: update learning log"` (add the archive path if it changed). This leaves the user's staged work untouched. Don't push; the user's next push includes it. Tell the user it was committed.
+  - Last step: commit only the learning files with `git commit LEARNING.md -m "docs: update learning log"` (add `ROADMAP.md` or the archive path if they changed). This leaves the user's staged work untouched. Don't push; the user's next push includes it. Tell the user it was committed.
 - Git history keeps every past version, so trimming loses nothing.
 
 ## Tone
