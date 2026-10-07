@@ -25,8 +25,18 @@ Every milestone ends in something I can demo and commit.
     from one shows up in the other, relayed by the Go server.
   - Why next: after M1, pausing only affects my own screen. I need a
     way to get a message to my partner.
-  - Decide at the start: how two people end up in the same room; how
-    the server notices a dead connection (crashed tabs never say goodbye).
+  - Decided: the server generates a random 6-character room code
+    (`POST /api/rooms`), regenerating while the code is already taken;
+    the server is the one place that knows every room.
+  - Decided: max 2 people per room (a stranger who guesses a code gets
+    "room full").
+  - Decided: a "Copy link" button gives `…/room/CODE`; opening the link
+    joins the room. Typing a code isn't needed.
+  - Decided: dead connections are found by WebSocket ping/pong: ping
+    every 15s, close and free the slot after 30s of silence. A clean
+    tab close is noticed at once; the heartbeat covers silent deaths
+    (battery, sleep, Wi-Fi drop).
+  - Done so far: `POST /api/rooms` creates a room and returns its code.
 
 - [ ] **M3: Sync**
   - Done when: play, pause, or seek in either tab, and the other tab's
