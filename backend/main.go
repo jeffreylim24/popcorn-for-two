@@ -5,9 +5,11 @@ import (
 	"log"
 	"math/rand/v2"
 	"net/http"
+	"sync"
 )
 
 var rooms = map[string]bool{}
+var roomsMutex sync.Mutex
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Health check: OK")
@@ -35,6 +37,8 @@ func generateRoomCode() string {
 
 func createRoom() string {
 	roomCode := generateRoomCode()
+	roomsMutex.Lock()
+	defer roomsMutex.Unlock()
 	_, ok := rooms[roomCode]
 	for ok {
 		roomCode = generateRoomCode()
