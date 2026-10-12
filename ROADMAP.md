@@ -36,7 +36,12 @@ Every milestone ends in something I can demo and commit.
     every 15s, close and free the slot after 30s of silence. A clean
     tab close is noticed at once; the heartbeat covers silent deaths
     (battery, sleep, Wi-Fi drop).
+  - Decided: WebSocket library is `coder/websocket` (actively
+    maintained; writes are safe from any goroutine, which relaying
+    needs; `Ping(ctx)` covers the heartbeat). Trade-off: fewer
+    tutorials than gorilla/websocket.
   - Done so far: `POST /api/rooms` creates a room and returns its code.
+    The `rooms` map is guarded by a mutex.
 
 - [ ] **M3: Sync**
   - Done when: play, pause, or seek in either tab, and the other tab's
