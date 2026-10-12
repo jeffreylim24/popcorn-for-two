@@ -6,6 +6,8 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"sync"
+
+	"github.com/coder/websocket"
 )
 
 var rooms = map[string]bool{}
@@ -20,9 +22,21 @@ func createRoomHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, roomCode)
 }
 
+func joinRoomHandler(w http.ResponseWriter, r *http.Request) {
+	code := r.PathValue("code")
+	conn, err := websocket.Accept(w, r, nil)
+	if err != nil {
+		log.Println("Failed to accept websocket connection:", err)
+		return
+	}
+	defer conn.CloseNow()
+	log.Println("Client joined room:", code)
+}
+
 func main() {
 	http.HandleFunc("GET /api/health", healthHandler)
 	http.HandleFunc("POST /api/rooms", createRoomHandler)
+	http.HandleFunc("GET /api/rooms/{code}/ws", joinRoomHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
