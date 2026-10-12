@@ -41,7 +41,9 @@ Every milestone ends in something I can demo and commit.
     needs; `Ping(ctx)` covers the heartbeat). Trade-off: fewer
     tutorials than gorilla/websocket.
   - Done so far: `POST /api/rooms` creates a room and returns its code.
-    The `rooms` map is guarded by a mutex.
+    The `rooms` map is guarded by a mutex. `GET /api/rooms/{code}/ws`
+    accepts a WebSocket (no room check yet; closes as soon as the
+    handler returns). Vite's `/api` proxy has `ws: true`.
 
 - [ ] **M3: Sync**
   - Done when: play, pause, or seek in either tab, and the other tab's
