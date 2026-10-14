@@ -78,4 +78,4 @@ _Last updated: 2026-10-14 (session 11)_
 
 ## Next step
 
-**M3: Sync.** M2 is done (relay committed `1786d2a`). Open with the design question from `ROADMAP.md`: what must a message carry to fully describe "where we are" in the video? Then the message contract, then the echo loop.
+**M3: Sync.** Design is settled (session 12, all in `ROADMAP.md` M3). Next: connect `App.tsx` to a room (`socketRef` + effect, code from `/room/CODE` path, `onmessage` logs). Test with two tabs; if one tab opens two sockets, ask them why before fixing (StrictMode). Session 12 notes for wrap-up: `useRef` didn't come to mind as "where to keep a note" (recalled only via Java instance-field table); one-use-ticket analogy + trace led to clearing the note to `null`.

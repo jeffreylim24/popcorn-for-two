@@ -72,8 +72,36 @@ Every milestone ends in something I can demo and commit.
   - Why next: messages arrive after M2, but the player ignores them.
   - Known from M1: `seekTo` keeps the play/pause state (paused stays
     paused), except before the first play, when it starts the video.
-  - Decide at the start: what a message must carry to fully describe
-    "where we are" (asked at the end of M1, not answered yet).
+  - Decided: message contract is `{ type: "action" | "sync", position,
+    state }` (state = playing / paused). Every message carries the full
+    state, so one message is enough to catch up. `play`/`pause`/`seek`
+    are one `action` type: the receiver does the same thing for all of
+    them, and `state` already says which.
+  - Decided: no `sentAt` / latency compensation. Two machines' clocks
+    can't be compared (skew gives negative or inflated delays), and
+    travel time (~0.2 s) is well inside the 1 s target. A round-trip
+    estimate wouldn't catch a one-off slow message anyway.
+  - Decided: `action` always sets the state; `seekTo` only if the gap
+    is over 1 s (avoids a visible twitch for tiny travel-time gaps).
+  - Decided: while playing, each side sends a `sync` every 2 s. The
+    receiver seeks only if the received position is **ahead** by more
+    than 1 s. "Ahead wins" is the tie-break both sides agree on with
+    no host; without it, crossed syncs swap positions forever. Worst
+    case after a freeze: out of sync for up to one tick (2 s).
+  - Decided: echo guard. Before applying a remote message, the
+    receiver writes a note in a ref (e.g. "paused"). The
+    `onStateChange` sender, if the event matches the note, sets the
+    note to `null` and returns without sending. One note covers one
+    echo (otherwise it swallows the user's next real pause). Needed
+    because `onStateChange` fires later as its own event and can't
+    tell a click from the code's own `pauseVideo()`.
+  - Risk to test: if YouTube fires no `onStateChange` for a no-op
+    (pausing an already-paused video), the note is never cleared.
+  - Later: playback speed; send a `sync` right when buffering ends
+    instead of waiting for the next tick.
+  - Next: connect `App.tsx` to a room: `socketRef` + effect (same
+    shape as `playerRef`), code read from `window.location.pathname`
+    (`/room/CODE`), `onmessage` logs for now. Test with two tabs.
 
 - [ ] **M4: First deploy (by hand)**
   - Done when: the app runs on a public HTTPS URL, and my partner and I
