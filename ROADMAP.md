@@ -42,15 +42,22 @@ Every milestone ends in something I can demo and commit.
     tutorials than gorilla/websocket.
   - Decided: unknown or full rooms are rejected *after* `Accept` with an
     app close code (4000–4999), so the frontend can read the reason
-    (`statusRoomNotFound` = 4004). Rejecting before `Accept` hides the
-    HTTP status from JS.
-  - Done so far: `POST /api/rooms` creates a room and returns its code.
-    The `rooms` map is guarded by a mutex. `GET /api/rooms/{code}/ws`
-    accepts a WebSocket, closes unknown codes with 4004, and stays open
-    in a read loop until the client leaves. Vite's `/api` proxy has
-    `ws: true`.
-  - Left: room-full check + join under one lock (the map value must
-    change from `bool`), free the slot on leave, relay between tabs.
+    (`statusRoomNotFound` = 4004, `statusRoomFull` = 4005). Rejecting
+    before `Accept` hides the HTTP status from JS.
+  - Decided: each room stores a set of its connections
+    (`map[string]map[*websocket.Conn]bool`): count = full check,
+    loop = relay, `delete` = leave.
+  - Decided: `joinRoom` returns sentinel errors (`errRoomNotFound`,
+    `errRoomFull`); the handler matches them with `errors.Is` and
+    closes anything else with 1011.
+  - Decided: `defer leaveRoom` goes after a successful join, so a
+    rejected client never "leaves". Empty rooms are kept (a refresh
+    before the partner joins must not kill the room); expiry is Later.
+  - Done so far: `POST /api/rooms` creates a room. `GET
+    /api/rooms/{code}/ws` joins under one lock, rejects unknown (4004)
+    and full (4005) rooms, reads until the client leaves, then frees
+    the slot. Vite's `/api` proxy has `ws: true`.
+  - Left: relay a message from one tab to the other.
 
 - [ ] **M3: Sync**
   - Done when: play, pause, or seek in either tab, and the other tab's
