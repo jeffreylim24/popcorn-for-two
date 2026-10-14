@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
 	"math/rand/v2"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/coder/websocket"
 )
@@ -58,12 +60,22 @@ func joinRoomHandler(w http.ResponseWriter, r *http.Request) {
 	defer leaveRoom(code, conn)
 
 	for {
-		_, msg, err := conn.Read(r.Context())
+		typ, msg, err := conn.Read(r.Context())
 		if err != nil {
 			log.Println("Error reading message:", err)
 			return
 		}
-		log.Println("Received message:", string(msg))
+		partner := getPartnerConn(code, conn)
+		if partner == nil {
+			continue
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		err = partner.Write(ctx, typ, msg)
+		cancel()
+		if err != nil {
+			log.Println("Error writing message to partner:", err)
+		}
 	}
 }
 
@@ -115,4 +127,15 @@ func leaveRoom(code string, conn *websocket.Conn) {
 	defer roomsMutex.Unlock()
 	delete(rooms[code], conn)
 	log.Println("Client left room:", code)
+}
+
+func getPartnerConn(code string, conn *websocket.Conn) *websocket.Conn {
+	roomsMutex.Lock()
+	defer roomsMutex.Unlock()
+	for c := range rooms[code] {
+		if c != conn {
+			return c
+		}
+	}
+	return nil
 }
