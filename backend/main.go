@@ -55,6 +55,7 @@ func joinRoomHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Println("Client joined room:", code)
+	defer leaveRoom(code, conn)
 
 	for {
 		_, msg, err := conn.Read(r.Context())
@@ -107,4 +108,11 @@ func joinRoom(code string, conn *websocket.Conn) error {
 	}
 	rooms[code][conn] = true
 	return nil
+}
+
+func leaveRoom(code string, conn *websocket.Conn) {
+	roomsMutex.Lock()
+	defer roomsMutex.Unlock()
+	delete(rooms[code], conn)
+	log.Println("Client left room:", code)
 }

@@ -88,6 +88,9 @@ Every milestone ends in something I can demo and commit.
 
 ## Later
 - CI/CD: when manual deploys get annoying
+- Room expiry: empty rooms stay in memory until restart. Delete after
+  N minutes empty (not at once: a refresh before the partner joins
+  would kill the room).
 
 ## Not in the MVP
 - Mini-games, movies beyond YouTube (separate brainstorming session)
