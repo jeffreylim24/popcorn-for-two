@@ -10,6 +10,8 @@ import (
 	"github.com/coder/websocket"
 )
 
+const statusRoomNotFound websocket.StatusCode = 4004
+
 var rooms = map[string]bool{}
 var roomsMutex sync.Mutex
 
@@ -30,7 +32,22 @@ func joinRoomHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.CloseNow()
+
+	if !roomExists(code) {
+		log.Println("Room does not exist:", code)
+		conn.Close(statusRoomNotFound, "Room not found")
+		return
+	}
+
 	log.Println("Client joined room:", code)
+	for {
+		_, msg, err := conn.Read(r.Context())
+		if err != nil {
+			log.Println("Error reading message:", err)
+			return
+		}
+		log.Println("Received message:", string(msg))
+	}
 }
 
 func main() {
@@ -60,4 +77,11 @@ func createRoom() string {
 	}
 	rooms[roomCode] = true
 	return roomCode
+}
+
+func roomExists(code string) bool {
+	roomsMutex.Lock()
+	defer roomsMutex.Unlock()
+	_, ok := rooms[code]
+	return ok
 }
