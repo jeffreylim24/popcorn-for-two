@@ -32,6 +32,26 @@ function App() {
   const createYouTubePlayer = () => {
       playerRef.current = new YT.Player('player', {
         videoId: 'kzcI5F4tGiU',
+        events: {
+          onStateChange: (e) => {
+            if (e.data === YT.PlayerState.PLAYING) {
+              const msg = JSON.stringify({
+                type: 'action',
+                position: playerRef.current?.getCurrentTime(),
+                state: 'playing',
+              })
+              socketRef.current?.send(msg)
+            }
+            if (e.data === YT.PlayerState.PAUSED) {
+              const msg = JSON.stringify({
+                type: 'action',
+                position: playerRef.current?.getCurrentTime(),
+                state: 'paused',
+              })
+              socketRef.current?.send(msg)
+            }
+          },
+        }
       })
     }
 
@@ -52,7 +72,8 @@ function App() {
     if (!code) return
 
     socketRef.current = new WebSocket(`/api/rooms/${code}/ws`)
-    socketRef.current.onmessage = (e) => console.log(e.data)
+    socketRef.current.onmessage = (e) => 
+      console.log(JSON.parse(e.data))
 
     return () => {
       socketRef.current?.close()
