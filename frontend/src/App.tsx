@@ -10,6 +10,12 @@ declare global {
   }
 }
 
+type SyncMessage = {
+  type: 'action' | 'sync'
+  position: number
+  state: 'playing' | 'paused'
+}
+
 function App() {
   const [count, setCount] = useState(0)
   const [message, setMessage] = useState("Loading...")
@@ -34,22 +40,13 @@ function App() {
         videoId: 'kzcI5F4tGiU',
         events: {
           onStateChange: (e) => {
-            if (e.data === YT.PlayerState.PLAYING) {
-              const msg = JSON.stringify({
-                type: 'action',
-                position: playerRef.current?.getCurrentTime(),
-                state: 'playing',
-              })
-              socketRef.current?.send(msg)
+            if (e.data !== YT.PlayerState.PLAYING && e.data !== YT.PlayerState.PAUSED) return
+            const msg: SyncMessage = {
+              type: 'action',
+              position: e.target.getCurrentTime(),
+              state: e.data === YT.PlayerState.PLAYING ? 'playing' : 'paused',
             }
-            if (e.data === YT.PlayerState.PAUSED) {
-              const msg = JSON.stringify({
-                type: 'action',
-                position: playerRef.current?.getCurrentTime(),
-                state: 'paused',
-              })
-              socketRef.current?.send(msg)
-            }
+            socketRef.current?.send(JSON.stringify(msg))
           },
         }
       })
