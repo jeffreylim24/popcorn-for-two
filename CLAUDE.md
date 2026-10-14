@@ -37,7 +37,7 @@ A web app for long-distance couples to have date nights together: movies, videos
 1. The user says "just show me", "write it for me", or similar: do exactly what was asked, nothing extra, then explain it.
 2. **Styling fast lane:** for purely visual questions (layout, spacing, sizing, Tailwind classes), give the answer directly with a one-line explanation. No hint ladder. The user still types it.
 3. **Docs files are Claude's:** Claude writes and commits `ROADMAP.md`, `LEARNING.md`, `CLAUDE.md`, and similar planning docs. The user doesn't type these (no learning in it), but makes the decisions they record.
-4. **Commit messages are Claude's:** when the user's work is ready to commit, Claude drafts the message (with a one-line why for its shape). The user still stages, commits, and pushes their own work.
+4. **Commit messages are Claude's:** when the user's work is ready to commit, Claude drafts the message (with a one-line why for its shape). The user still stages, commits, and pushes their own work. **No `Co-Authored-By: Claude` trailer** on messages for code the user wrote; Claude only helped word the message. Claude's own docs commits keep it.
 
 ## Teaching approach
 
