@@ -14,6 +14,7 @@ function App() {
   const [count, setCount] = useState(0)
   const [message, setMessage] = useState("Loading...")
   const playerRef = useRef<YT.Player | null>(null)
+  const socketRef = useRef<WebSocket | null>(null)
 
   useEffect(() => {
     fetch('/api/health')
@@ -43,6 +44,19 @@ function App() {
     return () => {
       playerRef.current?.destroy()
       playerRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    const code = window.location.pathname.split("/")[2]
+    if (!code) return
+
+    socketRef.current = new WebSocket(`/api/rooms/${code}/ws`)
+    socketRef.current.onmessage = (e) => console.log(e.data)
+
+    return () => {
+      socketRef.current?.close()
+      socketRef.current = null
     }
   }, [])
 
