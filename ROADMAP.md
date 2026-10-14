@@ -20,7 +20,7 @@ Every milestone ends in something I can demo and commit.
     call it (M3's message handler will too); cleanup destroys it, then
     empties the ref so nothing calls a dead player.
 
-- [ ] **M2: Rooms**
+- [x] **M2: Rooms**
   - Done when: two browser tabs join the same room, and a message sent
     from one shows up in the other, relayed by the Go server.
   - Why next: after M1, pausing only affects my own screen. I need a
@@ -57,7 +57,14 @@ Every milestone ends in something I can demo and commit.
     /api/rooms/{code}/ws` joins under one lock, rejects unknown (4004)
     and full (4005) rooms, reads until the client leaves, then frees
     the slot. Vite's `/api` proxy has `ws: true`.
-  - Left: relay a message from one tab to the other.
+  - Decided: relay looks up the partner per message (`getPartnerConn`,
+    under the lock) and writes outside the lock. Each `Write` gets a 5s
+    timeout ctx from `r.Context()`, cancelled right after (not
+    deferred: the loop outlives each message). A failed write is logged
+    and the sender stays connected; messages sent while alone are
+    dropped (M3 handles state for a late joiner).
+  - Done: a message from one tab shows up in the other, not in the
+    sender's own tab.
 
 - [ ] **M3: Sync**
   - Done when: play, pause, or seek in either tab, and the other tab's
