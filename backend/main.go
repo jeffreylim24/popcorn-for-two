@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math/rand/v2"
@@ -11,8 +12,12 @@ import (
 )
 
 const statusRoomNotFound websocket.StatusCode = 4004
+const statusRoomFull websocket.StatusCode = 4005
 
-var rooms = map[string]bool{}
+var errRoomNotFound = errors.New("room not found")
+var errRoomFull = errors.New("room full")
+
+var rooms = map[string]map[*websocket.Conn]bool{}
 var roomsMutex sync.Mutex
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -33,13 +38,24 @@ func joinRoomHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.CloseNow()
 
-	if !roomExists(code) {
-		log.Println("Room does not exist:", code)
+	err = joinRoom(code, conn)
+	if errors.Is(err, errRoomNotFound) {
+		log.Println("Room not found:", code)
 		conn.Close(statusRoomNotFound, "Room not found")
 		return
 	}
-
+	if errors.Is(err, errRoomFull) {
+		log.Println("Room is full:", code)
+		conn.Close(statusRoomFull, "Room is full")
+		return
+	}
+	if err != nil {
+		log.Println("Error joining room:", err)
+		conn.Close(websocket.StatusInternalError, "Internal error")
+		return
+	}
 	log.Println("Client joined room:", code)
+
 	for {
 		_, msg, err := conn.Read(r.Context())
 		if err != nil {
@@ -75,13 +91,20 @@ func createRoom() string {
 		roomCode = generateRoomCode()
 		_, ok = rooms[roomCode]
 	}
-	rooms[roomCode] = true
+	rooms[roomCode] = map[*websocket.Conn]bool{}
 	return roomCode
 }
 
-func roomExists(code string) bool {
+func joinRoom(code string, conn *websocket.Conn) error {
 	roomsMutex.Lock()
 	defer roomsMutex.Unlock()
 	_, ok := rooms[code]
-	return ok
+	if !ok {
+		return errRoomNotFound
+	}
+	if len(rooms[code]) > 1 {
+		return errRoomFull
+	}
+	rooms[code][conn] = true
+	return nil
 }
