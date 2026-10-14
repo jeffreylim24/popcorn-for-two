@@ -99,9 +99,20 @@ Every milestone ends in something I can demo and commit.
     (pausing an already-paused video), the note is never cleared.
   - Later: playback speed; send a `sync` right when buffering ends
     instead of waiting for the next tick.
-  - Next: connect `App.tsx` to a room: `socketRef` + effect (same
-    shape as `playerRef`), code read from `window.location.pathname`
-    (`/room/CODE`), `onmessage` logs for now. Test with two tabs.
+  - Decided: the room code is segment 2 of `window.location.pathname`
+    (`/room/CODE`); no code means no socket. The socket lives in
+    `socketRef`, opened and closed by its own effect.
+  - Decided: keep StrictMode. Its dev-only mount → cleanup → mount
+    opens a second socket; a correct cleanup (close + `null`) is the
+    fix, not turning StrictMode off.
+  - Decided: messages are typed as `SyncMessage` in `App.tsx`.
+    `onStateChange` reads the position from `e.target` (the event's
+    own player) and the socket from `socketRef.current` at fire time.
+  - Done so far: each tab connects on load; play/pause in one tab
+    sends an `action` that the other tab parses and logs.
+  - Next: the receiver applies an `action` (type the parsed message as
+    `SyncMessage`; play/pause by `state`; `seekTo` if the gap is over
+    1 s). Then the echo guard.
 
 - [ ] **M4: First deploy (by hand)**
   - Done when: the app runs on a public HTTPS URL, and my partner and I

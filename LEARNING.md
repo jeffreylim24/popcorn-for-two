@@ -1,6 +1,6 @@
 # Learning Snapshot
 
-_Last updated: 2026-10-14 (session 11)_
+_Last updated: 2026-10-14 (session 12)_
 
 ## Concepts
 
@@ -10,50 +10,55 @@ _Last updated: 2026-10-14 (session 11)_
   - Session 8: **route wildcards** `"GET /api/rooms/{code}/ws"` + `r.PathValue("code")`.
   - Session 9: **`for {}` read loop**; **closures vs top-level funcs**; **typed named constants**.
   - Session 10: **set idiom `map[K]bool` and nested maps** (same nesting with other types landed).
-  - Session 11: **`for k := range m`** over a set (didn't know how to loop a non-indexed map; a `map[int]bool` trace with state per iteration landed, wrote `getPartnerConn` correctly first try). Ranging a nil map is safe (zero iterations).
-- **`context.Context`:** Picked "cancel after a timeout" for `Write` unprompted (deadline exit ✓). Still asked "how should I think of context?" after two explanations this session:
-  - Tried: `Done()` channel + simplified `select` inside `Write` + ctx tree diagram → understood `cancel()` (cleanup: stop timer, detach from parent) but not the big picture.
-  - Landed (tentatively, "I get it for now"): **"a stop button the caller holds; the function only watches it"** + delivery-order-with-a-note table.
-  - Unanswered check: "in the stuck-B case, which exit ends the Write's ctx?" Recheck on the heartbeat `Ping(ctx)` (M2 Later / M4): have them pick the parent + timeout and say who holds the button.
+  - Session 11: **`for k := range m`** over a set (a `map[int]bool` trace landed). Ranging a nil map is safe.
+- **`context.Context`:** Picked "cancel after a timeout" for `Write` unprompted. Asked "how should I think of context?" after two explanations:
+  - Tried: `Done()` channel + simplified `select` + ctx tree diagram → understood `cancel()` but not the big picture.
+  - Landed (tentatively): **"a stop button the caller holds; the function only watches it"** + delivery-order-with-a-note table.
+  - Recheck on the heartbeat `Ping(ctx)` (M2 Later / M4): have them pick the parent + timeout and say who holds the button.
+- **`useRef`:** doesn't come to mind as "a place to keep a note"; recalled only via the **Java instance-field table**. Session 12: explained why `onStateChange` reaches the socket as "it will have run by then" (half). Completed with a **read-the-ref-at-fire-time vs copy-into-a-local** trace + Java table (lambda reading `this.socket` vs capturing a `final` local). Recheck: ask why a handler that copied `socketRef.current` early would break.
 - **HTTP methods vs URLs:** once mixed up the page URL (`/room/CODE`, Vite) with the API URL. A two-URL diagram cleared it up.
-- **`fmt.Fprint(w, …)` writes the HTTP response:** `log` = your terminal; `w` = the requester.
+- **`fmt.Fprint(w, …)` writes the HTTP response:** `log` = your terminal; `w` = the requester. (Didn't remember how to create a room; `curl -X POST` explained via this.)
 
 ### Learning (introduced, used or explained back once)
-- **Goroutine per connection + blocking `Read`:** confused why A's loop got past `Read` while B's didn't. A two-column timeline (A's goroutine vs B's, state per tick) + "browser → server → browser" diagram fixed it. Explained back correctly: each goroutine reads only its own browser; any goroutine can write to any conn it holds. Follow-ups they reasoned out: the loop runs once per message (not spinning); blocked goroutines cost no CPU (vs busy-waiting).
-- **Locals declared inside a loop are ~free** (stack slots reused); real per-message costs are `msg`'s byte slice and the ctx timer.
-- **Errors as values + sentinel errors:** `errors.New` sentinels, `errors.Is`, catch-all `err != nil` → 1011 last. Knows why `errors.Is` over `==` (wrapping).
-- **`defer`:** rule: defer the undo right after the thing succeeds. Plus: **don't `defer` inside a long loop** (runs at function return, not per iteration). One more correct placement → Solid.
-- **Goroutines + `sync.Mutex`:** helpers lock briefly; read under the lock, act (write) outside it. Locks protect the map, not the conn (B can leave between lookup and `Write`; `Write` just errors).
-- **Who logs an error:** the function that acts on the error logs it.
-- **App close codes:** 4000–4999 app-defined; 4004 not found, 4005 full; 1011 internal error.
-- **Logging in production:** log events (connect, reject, leave, errors), not traffic.
-- **WebSocket handshake:** GET + `Upgrade` → 101 → two-way. Close codes 1000 normal, 1006 abnormal.
+- **Browser `WebSocket`:** `new WebSocket(relativeUrl)`, `onmessage`, `close()` in effect cleanup. Wrote it right first try.
+- **`JSON.stringify` / `JSON.parse`** (Jackson table): put `onmessage` inside the YT player's `events` first. One guiding question ("which object fires `onmessage`?") fixed it.
+- **Reading TS overload errors:** skip overloads that never applied; the matching overload's reason is the real error; later errors can be fallout.
+- **TS literal union types** (`'playing' | 'paused'`), a `type` for the message, **guard-clause early return**: wrote them unprompted. A TS type is unchecked at runtime (unlike a Java cast); `JSON.parse` returns `any`.
+- **StrictMode double-mount:** "React shenanigans" → found `<StrictMode>` in `main.tsx` from a pointer. Reasoned that without cleanup, tab 2 gets room full (4005).
+- **Goroutine per connection + blocking `Read`:** two-column timeline fixed it; explained back correctly.
+- **Locals declared inside a loop are ~free**; real per-message costs are `msg`'s byte slice and the ctx timer.
+- **Errors as values + sentinel errors:** `errors.New`, `errors.Is` (wrapping), catch-all → 1011 last.
+- **`defer`:** defer the undo right after the thing succeeds; not inside a long loop. One more correct placement → Solid.
+- **Goroutines + `sync.Mutex`:** lock briefly; read under the lock, write outside it. Locks protect the map, not the conn.
+- **Who logs an error:** the function that acts on it. **Logging in production:** events, not traffic.
+- **App close codes:** 4000–4999 app-defined; 4004 not found, 4005 full; 1011 internal.
+- **WebSocket handshake:** GET + `Upgrade` → 101 → two-way. 1000 normal, 1006 abnormal. Vite's own HMR socket (`?token=`) is dev-only noise.
 - **Go dependencies:** `go get`, `go.mod` / `go.sum`, `// indirect`, `go mod tidy`.
-- **WebSocket heartbeat**, **signaling (WebRTC)**, **WebSocket vs fetch:** planning only, no code yet.
-- **HTTP statuses** (405 vs 404), **`useRef`**, **effect cleanup**, **`?.`**, **TS signatures**, **YouTube state vs position**, **`<script>` loading races**, **TS globals**, **deps vs devDeps / lockfiles**, **`net/http` basics**, **CORS / Vite proxy**, **`response.ok`**, **StrictMode**, **`useState`/`useEffect`**, **message contracts**.
+- **WebSocket heartbeat**, **signaling (WebRTC)**: planning only, no code yet.
+- **HTTP statuses** (405 vs 404), **effect cleanup**, **`?.`**, **TS signatures**, **YouTube state vs position**, **`<script>` loading races**, **TS globals**, **deps vs devDeps / lockfiles**, **`net/http` basics**, **CORS / Vite proxy**, **`response.ok`**, **`useState`/`useEffect`**, **message contracts**.
 
 ### Solid
 - **Callbacks, calling vs handing over** (`onClick={f}` not `onClick={f()}`).
-- **Debugging by isolation.** **Designing a test that forces the rare case** (3-tab, leave, and two-tab relay tests from the console).
+- **Debugging by isolation.** **Designing a test that forces the rare case.**
 - **Design reasoning:** collision risk, server as source of truth, the 2-person cap, false-leave risk.
-- **Errors as return values** (`x, err := f()`; `if err != nil { log; return }`); log-and-continue when the error is someone else's (partner's `Write`).
+- **Errors as return values**; log-and-continue when the error is someone else's.
 - Git: checking a commit before pushing, four areas, `status -sb`, upstream; Conventional Commits; one logical change per commit; selective staging.
 - `.gitignore` scope; lockfiles committed; `go.mod` / `go.sum`; toolchains vs project deps.
 
 ## Decisions
 
-- **Frontend:** React + TS + Vite; shadcn/ui + Tailwind; Bun; ESLint; no React Compiler.
+- **Frontend:** React + TS + Vite; shadcn/ui + Tailwind; Bun; ESLint; no React Compiler. Keep StrictMode.
 - **Backend:** Go, flat layout until there are several programs. Run `go vet ./...` before committing Go.
 - **Repo:** monorepo `frontend/` + `backend/`; Conventional Commits; commit straight to `main` for now.
 - **Toolchain:** Go 1.27.1, Bun 1.4.2, Node 26, React 19.3, Vite 8. Ports: Vite 5173, Go 8080; Vite proxies `/api` (with `ws: true`).
 - **Roadmap:** M1–M7 in `ROADMAP.md`, pull-by-need. Deploy by hand after M3; CI/CD later.
 - **Docs files and commit messages are Claude's;** the user stages, commits, pushes. LEARNING.md is committed by Claude at wrap-up. **No `Co-Authored-By: Claude` trailer on the user's own code commits.**
-- **Raw YouTube IFrame API, no React wrapper:** sync is imperative; the echo loop needs control. Player lives in `playerRef`.
+- **Raw YouTube IFrame API, no React wrapper:** sync is imperative; the echo loop needs control.
 - **Reload the page after editing code inside an effect** (React 19.3 + plugin-react 6.1).
-- **WebSocket library `coder/websocket`:** concurrent writes allowed (relay needs it), `Ping(ctx)` for the heartbeat.
-- **Rooms (M2, done):** all design calls are in `ROADMAP.md` M2 (code gen, max 2, set of conns, sentinel errors, close codes, leave, relay).
-- **Map-touching helpers are top-level funcs with `Lock()` + `defer Unlock()`** (`createRoom`, `joinRoom`, `leaveRoom`, `getPartnerConn`); the long-running handler never holds the lock.
-- **`r.Context()` after `Accept` ends only when the handler returns** (net/http stops watching a hijacked socket; checked in Go source). A client disconnect shows up as a `Read` error, not ctx. Still the right parent by convention.
+- **WebSocket library `coder/websocket`:** concurrent writes allowed, `Ping(ctx)` for the heartbeat.
+- **Rooms (M2) and Sync (M3):** all design calls are in `ROADMAP.md` under each milestone.
+- **Map-touching helpers are top-level funcs with `Lock()` + `defer Unlock()`**; the long-running handler never holds the lock.
+- **`r.Context()` after `Accept` ends only when the handler returns** (checked in Go source). A client disconnect shows up as a `Read` error.
 - **Logs:** lifecycle and error logs only; no per-message log.
 
 ## Open questions
@@ -62,20 +67,19 @@ _Last updated: 2026-10-14 (session 11)_
 
 ## Teaching formats
 
-- Works: **Java → Go comparison tables** (mutex, `defer` ≈ `finally`, exception classes vs sentinel errors, `Set<T>` vs `map[T]bool`, thread-per-socket vs goroutine-per-request). Ask "what do you remember?" first.
-- Works: **the same pattern shown with different types/domain** so they write their own version.
-- Works: **traces with the state after each line**, and **two-column timelines** for concurrent goroutines.
-- Works: **concrete everyday analogies for abstract concepts** (ctx = stop button the caller holds / delivery note) after mechanism-level explanations didn't land.
-- Works: **fill-in-the-blank** when an open question confuses; **guiding question about a concrete case** instead of naming the fix.
+- Works: **Java → Go/TS comparison tables** (mutex, `defer` ≈ `finally`, sentinel errors, `Set<T>`, Jackson vs `JSON`, fields vs captured locals). Ask "what do you remember?" first.
+- Works: **the same pattern shown with different types/domain**; **traces with the state after each line**; **two-column timelines** for concurrency.
+- Works: **concrete everyday analogies** after mechanism-level explanations don't land.
+- Works: **fill-in-the-blank**; **guiding question about a concrete case** (e.g. "which object fires `onmessage`?") instead of naming the fix.
 - **Doesn't work: compound or re-asked questions.** Ask one open thing; state settled facts as settled.
-- **They run ahead** (write beyond the step): review the full diff; flag unasked design changes with a scenario + trade-off table.
-- **They ask "why does this work?" after it works.** Good instinct; follow it before moving on.
-- Works: reviewing drafts; "explain it back" after running something; console tests that force rare cases.
-- Works: one new idea per step with syntax up front; saying production vs test-only vs dev-only.
-- **Be precise about where code goes.** **Tie a step to the end goal up front.** **Verify tool/library behavior before relying on it** (session 11: wrongly said `r.Context()` ends on client disconnect after hijack; corrected after reading net/http source).
+- **Give exact commands every time** (which terminal, what to run, what to look at). Never "the same way as in M2"; they don't remember.
+- **They run ahead** (session 12: added `SyncMessage` + `e.target` beyond the step, both good): review the full diff; flag design changes with a scenario + trade-off table.
+- **They ask "why does this work?" after it works.** Follow it before moving on.
+- Works: reviewing drafts; "explain it back"; console tests that force rare cases; one new idea per step with syntax up front; saying production vs test-only vs dev-only.
+- **Be precise about where code goes.** **Tie a step to the end goal up front.** **Verify tool/library behavior before relying on it.**
 - Doesn't work: abstract questions; predicting command output; sending to docs to learn a step.
 - When deciding, wants a recommendation + trade-off table.
 
 ## Next step
 
-**M3: Sync.** Design is settled (session 12, all in `ROADMAP.md` M3). Next: connect `App.tsx` to a room (`socketRef` + effect, code from `/room/CODE` path, `onmessage` logs). Test with two tabs; if one tab opens two sockets, ask them why before fixing (StrictMode). Session 12 notes for wrap-up: `useRef` didn't come to mind as "where to keep a note" (recalled only via Java instance-field table); one-use-ticket analogy + trace led to clearing the note to `null`.
+**M3: Sync.** Sending works (play/pause → `action`, other tab logs it). Next: the receiver **applies** an `action`: type the parsed message as `SyncMessage`, play/pause by `state`, `seekTo` only if the gap is over 1 s. Consider letting them see the echo loop happen before adding the echo guard (the step after).
