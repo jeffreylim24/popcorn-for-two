@@ -148,6 +148,11 @@ Every milestone ends in something I can demo and commit.
     The echo guard would drop nearly every `sync` (while playing, the
     projected position matches), and a `sync` is a routine report, not
     news.
+  - Decided: a tab ignores incoming `sync`s unless it is playing
+    (`getPlayerState() === PLAYING`). Why: a `sync` can cross a pause
+    `action` on the wire. Applying it would make the paused video jump
+    forward and the paused check would send a stray `action`. A `sync`
+    only describes playback; only an `action` changes state.
   - Decided: `SYNC_INTERVAL_MS = 2000`, tune after watching real
     drift. The interval is the longest a drift goes unnoticed. Faster
     adds little: the 1 s threshold means drift must build up first,
