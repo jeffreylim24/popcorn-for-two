@@ -22,6 +22,8 @@ const VIDEO_ID = 'kzcI5F4tGiU'
 const SEEK_THRESHOLD_S = 1
 // How often to check for a seek while paused (YouTube fires no event for it).
 const PAUSED_CHECK_INTERVAL_MS = 500
+// How often to send our position to the partner while playing.
+const SYNC_INTERVAL_MS = 2000
 
 function App() {
   const [count, setCount] = useState(0)
@@ -73,6 +75,12 @@ function App() {
       lastStateRef.current = { state, position, at: Date.now() }
     }
 
+    const sendSync = (position: number) => {
+      const msg: SyncMessage = { type: 'sync', position, state: 'playing' }
+      socketRef.current?.send(JSON.stringify(msg))
+      lastStateRef.current = { state: 'playing', position, at: Date.now() }
+    }
+
     const createYouTubePlayer = () => {
       playerRef.current = new YT.Player('player', {
         videoId: VIDEO_ID,
@@ -98,6 +106,12 @@ function App() {
                   previousTime = currentTime
                 }
               }, PAUSED_CHECK_INTERVAL_MS)
+            }
+
+            if (e.data === YT.PlayerState.PLAYING) {
+              timerRef.current = setInterval(() => {
+                sendSync(e.target.getCurrentTime())
+              }, SYNC_INTERVAL_MS)
             }
           },
         },
@@ -143,6 +157,20 @@ function App() {
         }
         if (msg.state === 'paused') {
           player.pauseVideo()
+        }
+      }
+
+      if (msg.type === 'sync') {
+        if (player.getPlayerState() !== YT.PlayerState.PLAYING) return
+        // How far ahead the partner is. If positive, we are behind them.
+        const gap = msg.position - player.getCurrentTime()
+        if (gap > SEEK_THRESHOLD_S) {
+          lastStateRef.current = {
+            state: 'playing',
+            position: msg.position,
+            at: Date.now(),
+          }
+          player.seekTo(msg.position, true)
         }
       }
     }
