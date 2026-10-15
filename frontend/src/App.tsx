@@ -40,6 +40,7 @@ function App() {
         videoId: 'kzcI5F4tGiU',
         events: {
           onStateChange: (e) => {
+            console.log('state change: ', e.data)
             if (e.data !== YT.PlayerState.PLAYING && e.data !== YT.PlayerState.PAUSED) return
             const msg: SyncMessage = {
               type: 'action',
@@ -65,12 +66,29 @@ function App() {
   }, [])
 
   useEffect(() => {
+    // room code is the 3rd segment of the URL path (e.g., /room/{code})
     const code = window.location.pathname.split("/")[2]
     if (!code) return
 
     socketRef.current = new WebSocket(`/api/rooms/${code}/ws`)
-    socketRef.current.onmessage = (e) => 
-      console.log(JSON.parse(e.data))
+    socketRef.current.onmessage = (e) => {
+      const msg: SyncMessage = JSON.parse(e.data)
+      const player = playerRef.current
+      if (!player) return
+
+      if (msg.type === 'action') {
+        const gap = Math.abs(player.getCurrentTime() - msg.position)
+        if (gap > 1) {
+          player.seekTo(msg.position, true)
+        }
+        if (msg.state === 'playing') {
+          player.playVideo()
+        }
+        if (msg.state === 'paused') {
+          player.pauseVideo()
+        }
+      }
+    }
 
     return () => {
       socketRef.current?.close()
