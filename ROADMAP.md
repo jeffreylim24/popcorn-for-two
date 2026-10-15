@@ -118,11 +118,23 @@ Every milestone ends in something I can demo and commit.
   - Decided: messages are typed as `SyncMessage` in `App.tsx`.
     `onStateChange` reads the position from `e.target` (the event's
     own player) and the socket from `socketRef.current` at fire time.
-  - Done so far: each tab connects on load; play/pause in one tab
-    sends an `action` that the other tab parses and logs.
-  - Next: the receiver applies an `action` (type the parsed message as
-    `SyncMessage`; play/pause by `state`; `seekTo` if the gap is over
-    1 s). Then the echo guard.
+  - Done so far: each tab connects on load; play/pause/seek in one tab
+    sends an `action`, and the other tab applies it (seek first, then
+    play/pause, because of the M1 `seekTo` quirk). Paused seeks are
+    caught by a 500 ms position check while paused (`timerRef`;
+    `stopTimer()` runs first on every state change and on unmount).
+  - Found: echoes exist but don't loop. The receiver's own `seekTo`
+    makes the paused check send once (every paused seek), and sometimes
+    buffering → paused makes `onStateChange` send. The 1 s gap rule ends
+    it after one round.
+  - Open (settle at the echo-guard step): the planned note lives in
+    `onStateChange`. Does it also cover the paused-check timer's echo?
+  - Next: the echo guard. Then the `sync` tick.
+  - End of M3 cleanup (from the code review): split `App.tsx` into
+    custom hooks, pull sync decisions into pure functions with first
+    frontend tests, remove the Vite demo leftovers.
+  - Before deploy (M4): wrap `JSON.parse` in `try/catch` and check the
+    message shape.
 
 - [ ] **M4: First deploy (by hand)**
   - Done when: the app runs on a public HTTPS URL, and my partner and I

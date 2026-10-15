@@ -1,6 +1,6 @@
 # Learning Snapshot
 
-_Last updated: 2026-10-14 (session 12)_
+_Last updated: 2026-10-14 (session 13)_
 
 ## Concepts
 
@@ -15,11 +15,17 @@ _Last updated: 2026-10-14 (session 12)_
   - Tried: `Done()` channel + simplified `select` + ctx tree diagram → understood `cancel()` but not the big picture.
   - Landed (tentatively): **"a stop button the caller holds; the function only watches it"** + delivery-order-with-a-note table.
   - Recheck on the heartbeat `Ping(ctx)` (M2 Later / M4): have them pick the parent + timeout and say who holds the button.
-- **`useRef`:** doesn't come to mind as "a place to keep a note"; recalled only via the **Java instance-field table**. Session 12: explained why `onStateChange` reaches the socket as "it will have run by then" (half). Completed with a **read-the-ref-at-fire-time vs copy-into-a-local** trace + Java table (lambda reading `this.socket` vs capturing a `final` local). Recheck: ask why a handler that copied `socketRef.current` early would break.
+- **`useRef`:** doesn't come to mind as "a place to keep a note"; recalled only via the **Java instance-field table**. Session 12: explained why `onStateChange` reaches the socket as "it will have run by then" (half). Completed with a **read-the-ref-at-fire-time vs copy-into-a-local** trace + Java table (lambda reading `this.socket` vs capturing a `final` local). Session 13: filled in `timerRef = useRef<number | null>` from a blank next to the other two refs (Java-field framing), but first suggested putting the id on the YT config object. The early-copy recheck question went unanswered. Recheck: ask why a handler that copied `socketRef.current` early would break.
+- **Echoes vs cleanup:** said timer cleanup is what keeps extra messages harmless; it's actually the 1 s gap rule. Untangle at the echo-guard step: "which line stops the bounce?"
 - **HTTP methods vs URLs:** once mixed up the page URL (`/room/CODE`, Vite) with the API URL. A two-URL diagram cleared it up.
 - **`fmt.Fprint(w, …)` writes the HTTP response:** `log` = your terminal; `w` = the requester. (Didn't remember how to create a room; `curl -X POST` explained via this.)
 
 ### Learning (introduced, used or explained back once)
+- **`setInterval` / `clearInterval`** (Java `scheduleAtFixedRate` / `cancel` table): started the paused check right. Clearing needed the timer id kept outside the call (→ `useRef`). First version re-seeked its own player instead of sending; one "who doesn't know yet?" question fixed it.
+- **Testing a hypothesis with logs:** guessed "seek fires no event", logged every `onStateChange`, found it holds only while paused. Asked "why did it buffer this time?", and then saw it doesn't always.
+- **Cross-origin iframe:** the page can't see clicks inside YouTube's player; only API events reach you.
+- **JS runs one thing at a time:** no timer tick can land in the middle of a cleanup function (like code on one Java thread).
+- **Refactor habits:** a helper inside the effect (keeps `exhaustive-deps` quiet); named constants with unit suffixes (`_S`, `_MS`); Prettier (`format`, `format:check`).
 - **Browser `WebSocket`:** `new WebSocket(relativeUrl)`, `onmessage`, `close()` in effect cleanup. Wrote it right first try.
 - **`JSON.stringify` / `JSON.parse`** (Jackson table): put `onmessage` inside the YT player's `events` first. One guiding question ("which object fires `onmessage`?") fixed it.
 - **Reading TS overload errors:** skip overloads that never applied; the matching overload's reason is the real error; later errors can be fallout.
@@ -60,6 +66,9 @@ _Last updated: 2026-10-14 (session 12)_
 - **Map-touching helpers are top-level funcs with `Lock()` + `defer Unlock()`**; the long-running handler never holds the lock.
 - **`r.Context()` after `Accept` ends only when the handler returns** (checked in Go source). A client disconnect shows up as a `Read` error.
 - **Logs:** lifecycle and error logs only; no per-message log.
+- **Keep YouTube's own controls;** paused seeks are caught by a 500 ms position check while paused. Custom controls = mostly visual work.
+- **Prettier** (pinned exact, single quotes, no semicolons) in `frontend/`. Formatting commits stay separate from logic commits.
+- **Code review backlog** (hooks split, pure functions + first tests, `JSON.parse` guard) is scheduled in `ROADMAP.md` M3/M4.
 
 ## Open questions
 
@@ -78,8 +87,10 @@ _Last updated: 2026-10-14 (session 12)_
 - Works: reviewing drafts; "explain it back"; console tests that force rare cases; one new idea per step with syntax up front; saying production vs test-only vs dev-only.
 - **Be precise about where code goes.** **Tie a step to the end goal up front.** **Verify tool/library behavior before relying on it.**
 - Doesn't work: abstract questions; predicting command output; sending to docs to learn a step.
-- When deciding, wants a recommendation + trade-off table.
+- When deciding, wants a recommendation + trade-off table. **Don't record a decision until they say so**: a "should we?" question is not a yes (session 13 slip).
+- Asks for code on mechanical work (session 13: the `stopTimer` refactor, the constants + Prettier setup). Fine under the "write it for me" exception; keep the concept steps theirs.
+- Asks for a code review against "industry standards" now and then: a ranked table (principle, why, when) landed.
 
 ## Next step
 
-**M3: Sync.** Sending works (play/pause → `action`, other tab logs it). Next: the receiver **applies** an `action`: type the parsed message as `SyncMessage`, play/pause by `state`, `seekTo` only if the gap is over 1 s. Consider letting them see the echo loop happen before adding the echo guard (the step after).
+**M3: Sync.** Play, pause, and seek (including paused seeks) now sync both ways; the code was refactored and Prettier added. Next: **the echo guard** (design in `ROADMAP.md` M3). Start with the open question: does the `onStateChange` note also cover the paused-check timer's echo? Have them trace one paused seek on both tabs first.
