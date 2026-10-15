@@ -16,6 +16,13 @@ type SyncMessage = {
   state: 'playing' | 'paused'
 }
 
+// Dummy video ID for testing.
+const VIDEO_ID = 'kzcI5F4tGiU'
+// Positions further apart than this count as a seek, and get corrected.
+const SEEK_THRESHOLD_S = 1
+// How often to check for a seek while paused (YouTube fires no event for it).
+const PAUSED_CHECK_INTERVAL_MS = 500
+
 function App() {
   const [count, setCount] = useState(0)
   const [message, setMessage] = useState("Loading...")
@@ -43,34 +50,32 @@ function App() {
       }
     }
 
+    const sendAction = (position: number, state: SyncMessage['state']) => {
+      const msg: SyncMessage = { type: 'action', position, state }
+      socketRef.current?.send(JSON.stringify(msg))
+    }
+
     const createYouTubePlayer = () => {
       playerRef.current = new YT.Player('player', {
-        videoId: 'kzcI5F4tGiU',
+        videoId: VIDEO_ID,
         events: {
           onStateChange: (e) => {
             stopTimer()
             if (e.data !== YT.PlayerState.PLAYING && e.data !== YT.PlayerState.PAUSED) return
-            const msg: SyncMessage = {
-              type: 'action',
-              position: e.target.getCurrentTime(),
-              state: e.data === YT.PlayerState.PLAYING ? 'playing' : 'paused',
-            }
-            socketRef.current?.send(JSON.stringify(msg))
+            sendAction(
+              e.target.getCurrentTime(),
+              e.data === YT.PlayerState.PLAYING ? 'playing' : 'paused',
+            )
 
             if (e.data === YT.PlayerState.PAUSED) {
               let previousTime = e.target.getCurrentTime()
               timerRef.current = setInterval(() => {
                 const currentTime = e.target.getCurrentTime()
-                if (Math.abs(currentTime - previousTime) > 1) {
-                  const msg: SyncMessage = {
-                    type: 'action',
-                    position: currentTime,
-                    state: 'paused',
-                  }
-                  socketRef.current?.send(JSON.stringify(msg))
+                if (Math.abs(currentTime - previousTime) > SEEK_THRESHOLD_S) {
+                  sendAction(currentTime, 'paused')
                   previousTime = currentTime
                 }
-              }, 500)
+              }, PAUSED_CHECK_INTERVAL_MS)
             }
           },
         }
@@ -103,7 +108,7 @@ function App() {
 
       if (msg.type === 'action') {
         const gap = Math.abs(player.getCurrentTime() - msg.position)
-        if (gap > 1) {
+        if (gap > SEEK_THRESHOLD_S) {
           player.seekTo(msg.position, true)
         }
         if (msg.state === 'playing') {
