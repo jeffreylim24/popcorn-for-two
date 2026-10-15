@@ -88,15 +88,22 @@ Every milestone ends in something I can demo and commit.
     than 1 s. "Ahead wins" is the tie-break both sides agree on with
     no host; without it, crossed syncs swap positions forever. Worst
     case after a freeze: out of sync for up to one tick (2 s).
-  - Decided: echo guard. Before applying a remote message, the
-    receiver writes a note in a ref (e.g. "paused"). The
-    `onStateChange` sender, if the event matches the note, sets the
-    note to `null` and returns without sending. One note covers one
-    echo (otherwise it swallows the user's next real pause). Needed
-    because `onStateChange` fires later as its own event and can't
-    tell a click from the code's own `pauseVideo()`.
-  - Risk to test: if YouTube fires no `onStateChange` for a no-op
-    (pausing an already-paused video), the note is never cleared.
+  - Decided: echo guard is "only send news". `lastStateRef` holds the
+    last state the room agreed on (`{ state, position, at }`), written
+    on every real send and every applied `action`. `sendAction` skips
+    when the state matches and the position is within
+    `SEEK_THRESHOLD_S` of the expected one (`position`, plus elapsed
+    seconds since `at` while playing). Why: both echo paths
+    (`onStateChange` and the paused-check timer) go through
+    `sendAction`, so one check covers both. Nothing has to be
+    "consumed", so no stale note can swallow a real action. Rejected:
+    a consume-once note in `onStateChange` (misses the timer echo;
+    goes stale on no-op calls), a quiet time window (guessed length,
+    drops real clicks), and no guard (a late echo undoes a newer
+    action).
+  - Known limit: if buffering after a remote play takes over 1 s, the
+    projection runs ahead and one echo still goes out. Harmless (the
+    gap rule ends it); the `sync` tick covers drift.
   - Found: a seek while paused fires no `onStateChange` (state stays
     paused; buffering only happens on the next play). Seeking while
     playing fires buffering → playing, so it already sends.
@@ -123,13 +130,14 @@ Every milestone ends in something I can demo and commit.
     play/pause, because of the M1 `seekTo` quirk). Paused seeks are
     caught by a 500 ms position check while paused (`timerRef`;
     `stopTimer()` runs first on every state change and on unmount).
-  - Found: echoes exist but don't loop. The receiver's own `seekTo`
-    makes the paused check send once (every paused seek), and sometimes
-    buffering → paused makes `onStateChange` send. The 1 s gap rule ends
-    it after one round.
-  - Open (settle at the echo-guard step): the planned note lives in
-    `onStateChange`. Does it also cover the paused-check timer's echo?
-  - Next: the echo guard. Then the `sync` tick.
+  - Done: echo guard. Verified in DevTools (Network → WS → Messages):
+    the receiver sends nothing back for play, pause, a paused seek, or
+    a playing seek.
+  - Open (settle at the `sync` step): how does `sync` interact with
+    `lastStateRef`? Applying a sync seek fires buffering → playing, so
+    the apply must update the note too, or that event goes out as an
+    `action`. Should sending a `sync` update it as well?
+  - Next: the `sync` tick (every 2 s while playing, "ahead wins").
   - End of M3 cleanup (from the code review): split `App.tsx` into
     custom hooks, pull sync decisions into pure functions with first
     frontend tests, remove the Vite demo leftovers.
