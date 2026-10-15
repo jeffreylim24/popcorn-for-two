@@ -12,7 +12,7 @@ A web app for long-distance couples to have date nights together: movies, videos
 - Frontend: React + TypeScript, Vite, Tailwind CSS, shadcn/ui. Package manager: Bun.
 - Backend: Go
 - Expected core tech: WebRTC (calls), WebSockets (sync), YouTube IFrame Player API
-- Browser: build for Chrome only. The user tests in Safari and reports differences. No cross-browser work unless asked.
+- Browser: build for Chrome only. No cross-browser work unless asked.
 
 ## Repo layout & commands
 
