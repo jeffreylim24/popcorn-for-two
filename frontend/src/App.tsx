@@ -1,15 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
+import { expectedPosition, type AgreedState, type SyncMessage } from './sync'
 
 declare global {
   interface Window {
     onYouTubeIframeAPIReady?: () => void
   }
-}
-
-type SyncMessage = {
-  type: 'action' | 'sync'
-  position: number
-  state: 'playing' | 'paused'
 }
 
 // Dummy video ID for testing.
@@ -26,11 +21,7 @@ function App() {
   const playerRef = useRef<YT.Player | null>(null)
   const socketRef = useRef<WebSocket | null>(null)
   const timerRef = useRef<number | null>(null)
-  const lastStateRef = useRef<{
-    state: SyncMessage['state']
-    position: number
-    at: number
-  } | null>(null)
+  const lastStateRef = useRef<AgreedState | null>(null)
 
   useEffect(() => {
     fetch('/api/health')
@@ -57,13 +48,8 @@ function App() {
     const sendAction = (position: number, state: SyncMessage['state']) => {
       const last = lastStateRef.current
       if (last && last.state === state) {
-        const expectedPosition =
-          state === 'playing'
-            ? last.position + (Date.now() - last.at) / 1000
-            : last.position
-        if (Math.abs(expectedPosition - position) <= SEEK_THRESHOLD_S) {
-          return
-        }
+        const expectedPos = expectedPosition(last, Date.now())
+        if (Math.abs(expectedPos - position) <= SEEK_THRESHOLD_S) return
       }
       const msg: SyncMessage = { type: 'action', position, state }
       socketRef.current?.send(JSON.stringify(msg))
