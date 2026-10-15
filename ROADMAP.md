@@ -133,10 +133,29 @@ Every milestone ends in something I can demo and commit.
   - Done: echo guard. Verified in DevTools (Network → WS → Messages):
     the receiver sends nothing back for play, pause, a paused seek, or
     a playing seek.
-  - Open (settle at the `sync` step): how does `sync` interact with
-    `lastStateRef`? Applying a sync seek fires buffering → playing, so
-    the apply must update the note too, or that event goes out as an
-    `action`. Should sending a `sync` update it as well?
+  - Decided: `sync` and `lastStateRef`. Every send and every apply
+    writes the note: a sent `sync` writes `{ 'playing', currentTime,
+    now }`, and an applied `sync` (partner ahead by over 1 s) writes
+    `{ 'playing', msg.position, now }`. An ignored `sync` (we're
+    ahead) leaves it alone. Why: the apply's seek fires buffering →
+    playing, which would otherwise go out as an `action`. Re-anchoring
+    on each sent `sync` keeps the note's projection within one tick
+    of the real video, so small buffer stalls can't add up past 1 s
+    and trigger a stray `action`. Cost: one object write per tick.
+    Each tab has its own note; it is not shared truth, and the two can
+    briefly differ.
+  - Decided: `sync` is sent by its own `sendSync`, not `sendAction`.
+    The echo guard would drop nearly every `sync` (while playing, the
+    projected position matches), and a `sync` is a routine report, not
+    news.
+  - Decided: `SYNC_INTERVAL_MS = 2000`, tune after watching real
+    drift. The interval is the longest a drift goes unnoticed. Faster
+    adds little: the 1 s threshold means drift must build up first,
+    and more ticks mean more `sync`s crossing an in-flight `action`.
+    Buffering (the main drift cause) gets its own `sync` later, so the
+    tick is a safety net. Chrome caps hidden-tab timers at 1/s, and
+    its 1/min throttling skips pages playing audio, so 2 s still holds
+    in a background tab.
   - Next: the `sync` tick (every 2 s while playing, "ahead wins").
   - End of M3 cleanup (from the code review): split `App.tsx` into
     custom hooks, pull sync decisions into pure functions with first
