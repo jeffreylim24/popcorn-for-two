@@ -140,7 +140,11 @@ Every milestone ends in something I can demo and commit.
   - Next: the `sync` tick (every 2 s while playing, "ahead wins").
   - End of M3 cleanup (from the code review): split `App.tsx` into
     custom hooks, pull sync decisions into pure functions with first
-    frontend tests, remove the Vite demo leftovers.
+    frontend tests, remove the Vite demo leftovers. Includes
+    `expectedPosition(last, nowMs)` as an exhaustive `switch` on
+    `state` (a `never` default), so adding a state like `'ended'`
+    makes TS flag every unhandled spot. Name the
+    `{ state, position, at }` type (e.g. `AgreedState`).
   - Before deploy (M4): wrap `JSON.parse` in `try/catch` and check the
     message shape.
 
