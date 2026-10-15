@@ -100,11 +100,10 @@ Every milestone ends in something I can demo and commit.
   - Found: a seek while paused fires no `onStateChange` (state stays
     paused; buffering only happens on the next play). Seeking while
     playing fires buffering → playing, so it already sends.
-  - Decided: keep YouTube's own controls (familiar; building equally
-    intuitive custom controls is UI work outside the learning goals).
-    The page can't see clicks inside the cross-origin iframe, so paused
-    seeks must be detected by checking the position while paused. This
-    also covers the dev-only Skip button, so it gets no send of its own.
+  - Open: keep YouTube's own controls, or hide them (`controls: 0`,
+    `disablekb: 1`) and build custom ones? The page can't see clicks
+    inside the cross-origin iframe, so keeping them means detecting
+    paused seeks by checking the position while paused.
   - Later: playback speed; send a `sync` right when buffering ends
     instead of waiting for the next tick.
   - Decided: the room code is segment 2 of `window.location.pathname`
