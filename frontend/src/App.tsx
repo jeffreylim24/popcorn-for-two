@@ -29,6 +29,11 @@ function App() {
   const playerRef = useRef<YT.Player | null>(null)
   const socketRef = useRef<WebSocket | null>(null)
   const timerRef = useRef<number | null>(null)
+  const lastStateRef = useRef<{
+    state: SyncMessage['state']
+    position: number
+    at: number
+  } | null>(null)
 
   useEffect(() => {
     fetch('/api/health')
@@ -53,8 +58,19 @@ function App() {
     }
 
     const sendAction = (position: number, state: SyncMessage['state']) => {
+      const last = lastStateRef.current
+      if (last && last.state === state) {
+        const expectedPosition =
+          state === 'playing'
+            ? last.position + (Date.now() - last.at) / 1000
+            : last.position
+        if (Math.abs(expectedPosition - position) <= SEEK_THRESHOLD_S) {
+          return
+        }
+      }
       const msg: SyncMessage = { type: 'action', position, state }
       socketRef.current?.send(JSON.stringify(msg))
+      lastStateRef.current = { state, position, at: Date.now() }
     }
 
     const createYouTubePlayer = () => {
@@ -113,6 +129,11 @@ function App() {
       if (!player) return
 
       if (msg.type === 'action') {
+        lastStateRef.current = {
+          state: msg.state,
+          position: msg.position,
+          at: Date.now(),
+        }
         const gap = Math.abs(player.getCurrentTime() - msg.position)
         if (gap > SEEK_THRESHOLD_S) {
           player.seekTo(msg.position, true)
