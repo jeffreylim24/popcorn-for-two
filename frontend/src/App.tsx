@@ -21,6 +21,7 @@ function App() {
   const [message, setMessage] = useState("Loading...")
   const playerRef = useRef<YT.Player | null>(null)
   const socketRef = useRef<WebSocket | null>(null)
+  const timerRef = useRef<number | null>(null)
 
   useEffect(() => {
     fetch('/api/health')
@@ -35,12 +36,19 @@ function App() {
   }, [])
 
   useEffect(() => {
-  const createYouTubePlayer = () => {
+    const stopTimer = () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+        timerRef.current = null
+      }
+    }
+
+    const createYouTubePlayer = () => {
       playerRef.current = new YT.Player('player', {
         videoId: 'kzcI5F4tGiU',
         events: {
           onStateChange: (e) => {
-            console.log('state change: ', e.data)
+            stopTimer()
             if (e.data !== YT.PlayerState.PLAYING && e.data !== YT.PlayerState.PAUSED) return
             const msg: SyncMessage = {
               type: 'action',
@@ -48,6 +56,22 @@ function App() {
               state: e.data === YT.PlayerState.PLAYING ? 'playing' : 'paused',
             }
             socketRef.current?.send(JSON.stringify(msg))
+
+            if (e.data === YT.PlayerState.PAUSED) {
+              let previousTime = e.target.getCurrentTime()
+              timerRef.current = setInterval(() => {
+                const currentTime = e.target.getCurrentTime()
+                if (Math.abs(currentTime - previousTime) > 1) {
+                  const msg: SyncMessage = {
+                    type: 'action',
+                    position: currentTime,
+                    state: 'paused',
+                  }
+                  socketRef.current?.send(JSON.stringify(msg))
+                  previousTime = currentTime
+                }
+              }, 500)
+            }
           },
         }
       })
@@ -60,6 +84,7 @@ function App() {
     }
 
     return () => {
+      stopTimer()
       playerRef.current?.destroy()
       playerRef.current = null
     }
