@@ -25,7 +25,7 @@ const PAUSED_CHECK_INTERVAL_MS = 500
 
 function App() {
   const [count, setCount] = useState(0)
-  const [message, setMessage] = useState("Loading...")
+  const [message, setMessage] = useState('Loading...')
   const playerRef = useRef<YT.Player | null>(null)
   const socketRef = useRef<WebSocket | null>(null)
   const timerRef = useRef<number | null>(null)
@@ -34,12 +34,14 @@ function App() {
     fetch('/api/health')
       .then((response) => {
         if (!response.ok) {
-          throw new Error("Network response was not ok: " + response.status);
+          throw new Error('Network response was not ok: ' + response.status)
         }
-        return response.text();
+        return response.text()
       })
       .then((data) => setMessage(data))
-      .catch(error => setMessage("Error fetching health status: " + error.message));
+      .catch((error) =>
+        setMessage('Error fetching health status: ' + error.message),
+      )
   }, [])
 
   useEffect(() => {
@@ -61,7 +63,11 @@ function App() {
         events: {
           onStateChange: (e) => {
             stopTimer()
-            if (e.data !== YT.PlayerState.PLAYING && e.data !== YT.PlayerState.PAUSED) return
+            if (
+              e.data !== YT.PlayerState.PLAYING &&
+              e.data !== YT.PlayerState.PAUSED
+            )
+              return
             sendAction(
               e.target.getCurrentTime(),
               e.data === YT.PlayerState.PLAYING ? 'playing' : 'paused',
@@ -78,7 +84,7 @@ function App() {
               }, PAUSED_CHECK_INTERVAL_MS)
             }
           },
-        }
+        },
       })
     }
 
@@ -97,7 +103,7 @@ function App() {
 
   useEffect(() => {
     // room code is the 3rd segment of the URL path (e.g., /room/{code})
-    const code = window.location.pathname.split("/")[2]
+    const code = window.location.pathname.split('/')[2]
     if (!code) return
 
     socketRef.current = new WebSocket(`/api/rooms/${code}/ws`)
@@ -129,17 +135,11 @@ function App() {
   return (
     <>
       <section id="center">
-        <div id='player'></div>
-        <button
-          type="button"
-          onClick={() => playerRef.current?.playVideo()}
-        >
+        <div id="player"></div>
+        <button type="button" onClick={() => playerRef.current?.playVideo()}>
           Play
         </button>
-        <button
-          type="button"
-          onClick={() => playerRef.current?.pauseVideo()}
-        >
+        <button type="button" onClick={() => playerRef.current?.pauseVideo()}>
           Pause
         </button>
         <button
