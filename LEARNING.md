@@ -1,6 +1,6 @@
 # Learning Snapshot
 
-_Last updated: 2026-10-15 (session 14)_
+_Last updated: 2026-10-15 (session 15)_
 
 ## Concepts
 
@@ -16,12 +16,13 @@ _Last updated: 2026-10-15 (session 14)_
   - Landed (tentatively): **"a stop button the caller holds; the function only watches it"** + delivery-order-with-a-note table.
   - Recheck on the heartbeat `Ping(ctx)` (M2 Later / M4): have them pick the parent + timeout and say who holds the button.
 - **`useRef`:** doesn't come to mind as "a place to keep a note"; recalled only via the **Java instance-field table**. Session 12: explained why `onStateChange` reaches the socket as "it will have run by then" (half). Completed with a **read-the-ref-at-fire-time vs copy-into-a-local** trace + Java table (lambda reading `this.socket` vs capturing a `final` local). Session 13: filled in `timerRef = useRef<number | null>` from a blank next to the other two refs (Java-field framing), but first suggested putting the id on the YT config object. The early-copy recheck question went unanswered. Recheck: ask why a handler that copied `socketRef.current` early would break.
-- **HTTP methods vs URLs:** once mixed up the page URL (`/room/CODE`, Vite) with the API URL. A two-URL diagram cleared it up.
-- **`fmt.Fprint(w, …)` writes the HTTP response:** `log` = your terminal; `w` = the requester. (Didn't remember how to create a room; `curl -X POST` explained via this.)
+- **HTTP:** once mixed up the page URL (`/room/CODE`) with the API URL (two-URL diagram fixed it); `fmt.Fprint(w, …)` writes the response, `log` writes your terminal.
 
 ### Learning (introduced, used or explained back once)
-- **`setInterval` / `clearInterval`** (Java `scheduleAtFixedRate` / `cancel` table): started the paused check right. Clearing needed the timer id kept outside the call (→ `useRef`). First version re-seeked its own player instead of sending; one "who doesn't know yet?" question fixed it.
-- **Echo guard ("only send news")**: compare an outgoing send to the last agreed state (`{state, position, at}`), projecting position while playing. First stored only `state`; a scenario table (paused seek / playing seek get dropped) showed why `position` + `at` are needed. Fixed right away.
+- **`setInterval` / `clearInterval`**: second use (the `sync` tick) written right first try, reusing `timerRef` because `stopTimer()` already runs on every state change.
+- **Echo guard ("only send news")**: compare an outgoing send to the last agreed state (`{state, position, at}`), projecting position while playing. Session 15: asked unprompted whether a `sync` should go through `sendAction` (no: the guard would drop it), i.e. reports vs news. Called `lastStateRef` "shared source of truth between the 2 browsers"; corrected: each tab has its own note, they can differ briefly.
+- **Sync design (tick frequency, "ahead wins")**: asked how to choose the interval; framing "interval = longest an undetected drift lasts" + trade-off table landed.
+- **Guards over enums:** wrote `=== PAUSED` where the decision was `!== PLAYING`; a per-state table (buffering / ended / unstarted) showed the unstarted tab would auto-start. Recheck: when writing a guard, list every state it lets through.
 - **Log placement vs what actually happened:** a log before the decision printed for skipped sends too, so it looked like B was still sending. DevTools **Network → WS → Messages** (↑ sent / ↓ received) is the real proof.
 - **Testing a hypothesis with logs:** guessed "seek fires no event", logged every `onStateChange`, found it holds only while paused. Asked "why did it buffer this time?", and then saw it doesn't always.
 - **Cross-origin iframe:** the page can't see clicks inside YouTube's player; only API events reach you.
@@ -69,7 +70,7 @@ _Last updated: 2026-10-15 (session 14)_
 - **Logs:** lifecycle and error logs only; no per-message log.
 - **Keep YouTube's own controls;** paused seeks are caught by a 500 ms position check while paused. Custom controls = mostly visual work.
 - **Prettier** (pinned exact, single quotes, no semicolons) in `frontend/`. Formatting commits stay separate from logic commits.
-- **Echo guard = "only send news"** in `sendAction` against `lastStateRef` (full design in `ROADMAP.md` M3).
+- **Echo guard = "only send news"** in `sendAction` against `lastStateRef`; **`sync` tick** = `sendSync` every 2 s while playing, apply only while playing and only if partner is >1 s ahead, every send/apply writes the note (full design in `ROADMAP.md` M3).
 - **Code review backlog** (hooks split, pure functions + first tests, `JSON.parse` guard) is scheduled in `ROADMAP.md` M3/M4.
 
 ## Open questions
@@ -93,7 +94,8 @@ _Last updated: 2026-10-15 (session 14)_
 - Asks for code on mechanical work (session 13: the `stopTimer` refactor, the constants + Prettier setup). Fine under the "write it for me" exception; keep the concept steps theirs.
 - Session 14: asked to skip small quizzes and get to the point. An options table + one recommendation + "which one?" worked well for a design choice.
 - Asks for a code review against "industry standards" now and then: a ranked table (principle, why, when) landed.
+- Session 15: pushes back with good design questions ("wasted computation?", "aren't we separating them?"). Answer directly with a small diagram; it moved fast.
 
 ## Next step
 
-**M3: Sync.** Play, pause, and seek sync both ways, and the echo guard is in (committed, not yet pushed). Next: **the `sync` tick** (every 2 s while playing, receiver seeks only if the partner is ahead by over 1 s). Start with the open question in `ROADMAP.md` M3: how `sync` sends and applies interact with `lastStateRef`.
+**M3 cleanup** (M3's "done when" is met; `sync` tick committed, not pushed). Per `ROADMAP.md` M3: remove the Vite demo leftovers, split `App.tsx` into custom hooks, pull sync decisions into pure functions (incl. `expectedPosition` with an exhaustive `switch`, named `AgreedState` type) with first frontend tests. Then tick M3.

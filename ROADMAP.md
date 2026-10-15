@@ -161,7 +161,16 @@ Every milestone ends in something I can demo and commit.
     tick is a safety net. Chrome caps hidden-tab timers at 1/s, and
     its 1/min throttling skips pages playing audio, so 2 s still holds
     in a background tab.
-  - Next: the `sync` tick (every 2 s while playing, "ahead wins").
+  - Done: `sync` tick. `sendSync` every `SYNC_INTERVAL_MS` while
+    playing (reuses `timerRef`; `stopTimer()` ends it on any state
+    change). Receiver applies only while playing and only if the
+    partner is over 1 s ahead. Verified with tab B at 1.25x speed: A
+    jumps forward every few seconds, and DevTools shows no `action`
+    after a jump. M3's "done when" is met; the cleanup below is left.
+  - Not designed yet: late-join catch-up. A tab that hasn't pressed
+    play ignores `sync`s, so a late joiner waits for a click. Check
+    Chrome's autoplay rules before designing it.
+  - Next: the end-of-M3 cleanup.
   - End of M3 cleanup (from the code review): split `App.tsx` into
     custom hooks, pull sync decisions into pure functions with first
     frontend tests, remove the Vite demo leftovers. Includes
@@ -170,7 +179,8 @@ Every milestone ends in something I can demo and commit.
     makes TS flag every unhandled spot. Name the
     `{ state, position, at }` type (e.g. `AgreedState`).
   - Before deploy (M4): wrap `JSON.parse` in `try/catch` and check the
-    message shape.
+    message shape. `WebSocket.send()` throws while the socket is still
+    connecting (`sendAction` and `sendSync`); check `readyState` first.
 
 - [ ] **M4: First deploy (by hand)**
   - Done when: the app runs on a public HTTPS URL, and my partner and I
