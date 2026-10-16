@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { isNews, SEEK_THRESHOLD_S, shouldCatchUp } from './sync'
 import type { AgreedState, SyncMessage } from './sync'
 import { useHealth } from './hooks/useHealth'
+import { useRoomSocket } from './hooks/useRoomSocket'
 
 declare global {
   interface Window {
@@ -18,8 +19,12 @@ const SYNC_INTERVAL_MS = 2000
 
 function App() {
   const message = useHealth()
+
+  // room code is the 3rd segment of the URL path (e.g., /room/{code})
+  const code = window.location.pathname.split('/')[2]
+  const socketRef = useRoomSocket(code)
+
   const playerRef = useRef<YT.Player | null>(null)
-  const socketRef = useRef<WebSocket | null>(null)
   const timerRef = useRef<number | null>(null)
   const lastStateRef = useRef<AgreedState | null>(null)
 
@@ -92,14 +97,11 @@ function App() {
       playerRef.current?.destroy()
       playerRef.current = null
     }
-  }, [])
+  }, [socketRef])
 
   useEffect(() => {
-    // room code is the 3rd segment of the URL path (e.g., /room/{code})
-    const code = window.location.pathname.split('/')[2]
-    if (!code) return
+    if (!socketRef.current) return
 
-    socketRef.current = new WebSocket(`/api/rooms/${code}/ws`)
     socketRef.current.onmessage = (e) => {
       const msg: SyncMessage = JSON.parse(e.data)
       const player = playerRef.current
@@ -136,12 +138,7 @@ function App() {
         player.seekTo(msg.position, true)
       }
     }
-
-    return () => {
-      socketRef.current?.close()
-      socketRef.current = null
-    }
-  }, [])
+  }, [socketRef])
 
   return (
     <>
