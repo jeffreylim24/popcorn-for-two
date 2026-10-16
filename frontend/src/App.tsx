@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { expectedPosition, type AgreedState, type SyncMessage } from './sync'
+import { isNews, SEEK_THRESHOLD_S } from './sync'
+import type { AgreedState, SyncMessage } from './sync'
 
 declare global {
   interface Window {
@@ -9,8 +10,6 @@ declare global {
 
 // Dummy video ID for testing.
 const VIDEO_ID = 'kzcI5F4tGiU'
-// Positions further apart than this count as a seek, and get corrected.
-const SEEK_THRESHOLD_S = 1
 // How often to check for a seek while paused (YouTube fires no event for it).
 const PAUSED_CHECK_INTERVAL_MS = 500
 // How often to send our position to the partner while playing.
@@ -46,11 +45,7 @@ function App() {
     }
 
     const sendAction = (position: number, state: SyncMessage['state']) => {
-      const last = lastStateRef.current
-      if (last && last.state === state) {
-        const expectedPos = expectedPosition(last, Date.now())
-        if (Math.abs(expectedPos - position) <= SEEK_THRESHOLD_S) return
-      }
+      if (!isNews(lastStateRef.current, state, position, Date.now())) return
       const msg: SyncMessage = { type: 'action', position, state }
       socketRef.current?.send(JSON.stringify(msg))
       lastStateRef.current = { state, position, at: Date.now() }

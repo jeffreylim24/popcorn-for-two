@@ -1,3 +1,6 @@
+// Positions further apart than this count as a seek, and get corrected.
+export const SEEK_THRESHOLD_S = 1
+
 export type SyncMessage = {
   type: 'action' | 'sync'
   position: number
@@ -21,4 +24,15 @@ export function expectedPosition(last: AgreedState, nowMs: number): number {
       throw new Error(`Unhandled state: ${unhandled}`)
     }
   }
+}
+
+export function isNews(
+  last: AgreedState | null,
+  state: SyncMessage['state'],
+  position: number,
+  nowMs: number,
+): boolean {
+  if (!last || last.state !== state) return true
+  const expectedPos = expectedPosition(last, nowMs)
+  return Math.abs(expectedPos - position) > SEEK_THRESHOLD_S
 }
