@@ -122,7 +122,7 @@ Every milestone ends in something I can demo and commit.
   - Decided: keep StrictMode. Its dev-only mount → cleanup → mount
     opens a second socket; a correct cleanup (close + `null`) is the
     fix, not turning StrictMode off.
-  - Decided: messages are typed as `SyncMessage` in `App.tsx`.
+  - Decided: messages are typed as `SyncMessage` (now in `sync.ts`).
     `onStateChange` reads the position from `e.target` (the event's
     own player) and the socket from `socketRef.current` at fire time.
   - Done so far: each tab connects on load; play/pause/seek in one tab
@@ -170,14 +170,26 @@ Every milestone ends in something I can demo and commit.
   - Not designed yet: late-join catch-up. A tab that hasn't pressed
     play ignores `sync`s, so a late joiner waits for a click. Check
     Chrome's autoplay rules before designing it.
-  - Next: the end-of-M3 cleanup.
-  - End of M3 cleanup (from the code review): split `App.tsx` into
-    custom hooks, pull sync decisions into pure functions with first
-    frontend tests, remove the Vite demo leftovers. Includes
-    `expectedPosition(last, nowMs)` as an exhaustive `switch` on
-    `state` (a `never` default), so adding a state like `'ended'`
-    makes TS flag every unhandled spot. Name the
-    `{ state, position, at }` type (e.g. `AgreedState`).
+  - Found: Chrome's autoplay policy blocks `playVideo()` from a
+    received `action` in a tab nobody has clicked yet; the message
+    arrives but the video stays unstarted. One click anywhere on the
+    page unblocks it (confirmed: reload, no click → stuck; one click on
+    blank page → follows). Feeds the late-join design.
+  - End of M3 cleanup (from the code review), in this order:
+    1. Done: removed the Vite demo leftovers.
+    2. Done: sync decisions are pure functions in `src/sync.ts`, with
+       `SyncMessage`, `AgreedState`, and `SEEK_THRESHOLD_S`:
+       `expectedPosition(last, nowMs)` (exhaustive `switch` with a
+       `never` default), `isNews(last, state, position, nowMs)` (echo
+       guard), `shouldCatchUp(isPlaying, myPosition, partnerPosition)`
+       (applying a `sync`). Time comes in as `nowMs` and YouTube state
+       as a boolean, so `sync.ts` never touches the clock or `YT` and
+       tests need no fakes. Tested in `src/sync.test.ts` (17 tests).
+    3. Next: split `App.tsx` into custom hooks.
+  - Decided: Vitest for frontend tests (`bun run test` = `vitest run`).
+    Reuses the Vite config, the standard runner for Vite projects, and
+    fits later hook/component tests. Rejected: `bun test` (no install,
+    but separate config and less common for React tests).
   - Before deploy (M4): wrap `JSON.parse` in `try/catch` and check the
     message shape. `WebSocket.send()` throws while the socket is still
     connecting (`sendAction` and `sendSync`); check `readyState` first.

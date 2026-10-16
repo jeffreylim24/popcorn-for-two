@@ -1,6 +1,6 @@
 # Learning Snapshot
 
-_Last updated: 2026-10-15 (session 15)_
+_Last updated: 2026-10-15 (session 16)_
 
 ## Concepts
 
@@ -19,6 +19,12 @@ _Last updated: 2026-10-15 (session 15)_
 - **HTTP:** once mixed up the page URL (`/room/CODE`) with the API URL (two-URL diagram fixed it); `fmt.Fprint(w, …)` writes the response, `log` writes your terminal.
 
 ### Learning (introduced, used or explained back once)
+- **Unit tests with Vitest** (session 16): `describe` / `test` / `expect().toBe()`, `*.test.ts`, test-only code in devDeps. Wrote 17 tests across 3 pure functions. Gaps found in review: no test exactly at the threshold, no rewind (`Math.abs`) case, no paused case through `isNews`. "Break it on purpose" (mutation check) exposed each one. By `shouldCatchUp` they covered the boundary, the opposite sign, and the guard unprompted. Test names: moved from "should return true" to `situation: outcome` in domain words.
+- **Pure functions for testability:** pass time in (`nowMs`) and pass YouTube state as a boolean, so the function never reads the clock or `YT`.
+- **`never` exhaustive switch:** saw `tsc` flag the `default` after temporarily adding `'ended'`.
+- **YouTube replaces the target element:** put the buttons inside `<div id="player">`, and the iframe swap wiped them. Found it from the diff and a guiding question.
+- **Chrome autoplay policy:** a `playVideo()` from a received message is blocked until the tab has had one click. Confirmed it with a with/without-click test.
+- **`git commit --amend`** for an unpushed commit that missed files; every commit should build on its own.
 - **`setInterval` / `clearInterval`**: second use (the `sync` tick) written right first try, reusing `timerRef` because `stopTimer()` already runs on every state change.
 - **Echo guard ("only send news")**: compare an outgoing send to the last agreed state (`{state, position, at}`), projecting position while playing. Session 15: asked unprompted whether a `sync` should go through `sendAction` (no: the guard would drop it), i.e. reports vs news. Called `lastStateRef` "shared source of truth between the 2 browsers"; corrected: each tab has its own note, they can differ briefly.
 - **Sync design (tick frequency, "ahead wins")**: asked how to choose the interval; framing "interval = longest an undetected drift lasts" + trade-off table landed.
@@ -71,7 +77,9 @@ _Last updated: 2026-10-15 (session 15)_
 - **Keep YouTube's own controls;** paused seeks are caught by a 500 ms position check while paused. Custom controls = mostly visual work.
 - **Prettier** (pinned exact, single quotes, no semicolons) in `frontend/`. Formatting commits stay separate from logic commits.
 - **Echo guard = "only send news"** in `sendAction` against `lastStateRef`; **`sync` tick** = `sendSync` every 2 s while playing, apply only while playing and only if partner is >1 s ahead, every send/apply writes the note (full design in `ROADMAP.md` M3).
-- **Code review backlog** (hooks split, pure functions + first tests, `JSON.parse` guard) is scheduled in `ROADMAP.md` M3/M4.
+- **Sync decisions live in `src/sync.ts`** as pure functions (`expectedPosition`, `isNews`, `shouldCatchUp`), tested in `src/sync.test.ts`.
+- **Vitest** for frontend tests: `bun run test` (`vitest run`).
+- **Code review backlog** (hooks split, `JSON.parse` guard) is scheduled in `ROADMAP.md` M3/M4.
 
 ## Open questions
 
@@ -95,7 +103,9 @@ _Last updated: 2026-10-15 (session 15)_
 - Session 14: asked to skip small quizzes and get to the point. An options table + one recommendation + "which one?" worked well for a design choice.
 - Asks for a code review against "industry standards" now and then: a ranked table (principle, why, when) landed.
 - Session 15: pushes back with good design questions ("wasted computation?", "aren't we separating them?"). Answer directly with a small diagram; it moved fast.
+- Session 16: a **"break it on purpose" mutation list** after each test step worked well: it showed concrete missing tests better than describing them. When they ask for help finishing tests, writing the rest is fine (test-only, they wrote the first ones).
+- Bugs this session came from **things outside the diff** (iframe replacing its element, autoplay policy). "Your diff only touches X, the symptom is in Y" plus a with/without test landed fast.
 
 ## Next step
 
-**M3 cleanup** (M3's "done when" is met; `sync` tick committed, not pushed). Per `ROADMAP.md` M3: remove the Vite demo leftovers, split `App.tsx` into custom hooks, pull sync decisions into pure functions (incl. `expectedPosition` with an exhaustive `switch`, named `AgreedState` type) with first frontend tests. Then tick M3.
+**M3 cleanup step 3: split `App.tsx` into custom hooks** (steps 1–2 done, 5 commits not pushed). Leftover from review: add a one-line "why" comment above `shouldCatchUp` (the sign *is* "ahead wins") and `isNews`. Then tick M3.
