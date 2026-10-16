@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { expectedPosition, isNews } from './sync'
+import { expectedPosition, isNews, shouldCatchUp } from './sync'
 import type { AgreedState } from './sync'
 
 describe('expectedPosition', () => {
@@ -74,5 +74,32 @@ describe('isNews', () => {
     const last: AgreedState = { state: 'paused', position: 10, at: 1000 }
     const result = isNews(last, 'paused', 30, 11000)
     expect(result).toBe(true)
+  })
+})
+
+describe('shouldCatchUp', () => {
+  test('not playing: should not catch up', () => {
+    const result = shouldCatchUp(false, 10, 20)
+    expect(result).toBe(false)
+  })
+
+  test('playing, behind by more than 1s: should catch up', () => {
+    const result = shouldCatchUp(true, 10, 20)
+    expect(result).toBe(true)
+  })
+
+  test('playing, behind by exactly 1s: should not catch up', () => {
+    const result = shouldCatchUp(true, 10, 11)
+    expect(result).toBe(false)
+  })
+
+  test('playing, behind by less than 1s: should not catch up', () => {
+    const result = shouldCatchUp(true, 10, 10.5)
+    expect(result).toBe(false)
+  })
+
+  test('playing, ahead: should not catch up', () => {
+    const result = shouldCatchUp(true, 20, 10)
+    expect(result).toBe(false)
   })
 })

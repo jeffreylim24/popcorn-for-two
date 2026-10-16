@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { isNews, SEEK_THRESHOLD_S } from './sync'
+import { isNews, SEEK_THRESHOLD_S, shouldCatchUp } from './sync'
 import type { AgreedState, SyncMessage } from './sync'
 
 declare global {
@@ -137,17 +137,16 @@ function App() {
       }
 
       if (msg.type === 'sync') {
-        if (player.getPlayerState() !== YT.PlayerState.PLAYING) return
-        // How far ahead the partner is. If positive, we are behind them.
-        const gap = msg.position - player.getCurrentTime()
-        if (gap > SEEK_THRESHOLD_S) {
-          lastStateRef.current = {
-            state: 'playing',
-            position: msg.position,
-            at: Date.now(),
-          }
-          player.seekTo(msg.position, true)
+        const isPlaying = player.getPlayerState() === YT.PlayerState.PLAYING
+        if (!shouldCatchUp(isPlaying, player.getCurrentTime(), msg.position))
+          return
+
+        lastStateRef.current = {
+          state: 'playing',
+          position: msg.position,
+          at: Date.now(),
         }
+        player.seekTo(msg.position, true)
       }
     }
 

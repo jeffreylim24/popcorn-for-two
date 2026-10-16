@@ -36,3 +36,13 @@ export function isNews(
   const expectedPos = expectedPosition(last, nowMs)
   return Math.abs(expectedPos - position) > SEEK_THRESHOLD_S
 }
+
+export function shouldCatchUp(
+  isPlaying: boolean,
+  myPosition: number,
+  partnerPosition: number,
+): boolean {
+  if (!isPlaying) return false
+  const gap = partnerPosition - myPosition
+  return gap > SEEK_THRESHOLD_S
+}
