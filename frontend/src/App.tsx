@@ -1,25 +1,15 @@
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
 import { isNews, SEEK_THRESHOLD_S, shouldCatchUp } from './sync'
 import type { AgreedState, SyncMessage } from './sync'
 import { useHealth } from './hooks/useHealth'
 import { useRoomSocket } from './hooks/useRoomSocket'
-
-declare global {
-  interface Window {
-    onYouTubeIframeAPIReady?: () => void
-  }
-}
+import { useYouTubePlayer } from './hooks/useYouTubePlayer'
 
 // Dummy video ID for testing.
 const VIDEO_ID = 'kzcI5F4tGiU'
-// How often to check for a seek while paused (YouTube fires no event for it).
-const PAUSED_CHECK_INTERVAL_MS = 500
-// How often to send our position to the partner while playing.
-const SYNC_INTERVAL_MS = 2000
 
 function App() {
   const playerRef = useRef<YT.Player | null>(null)
-  const timerRef = useRef<number | null>(null)
   const lastStateRef = useRef<AgreedState | null>(null)
 
   const message = useHealth()
@@ -63,76 +53,23 @@ function App() {
     }
   })
 
-  useEffect(() => {
-    const stopTimer = () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current)
-        timerRef.current = null
-      }
-    }
+  const sendAction = (position: number, state: SyncMessage['state']) => {
+    if (!isNews(lastStateRef.current, state, position, Date.now())) return
+    const msg: SyncMessage = { type: 'action', position, state }
+    send(JSON.stringify(msg))
+    lastStateRef.current = { state, position, at: Date.now() }
+  }
 
-    const sendAction = (position: number, state: SyncMessage['state']) => {
-      if (!isNews(lastStateRef.current, state, position, Date.now())) return
-      const msg: SyncMessage = { type: 'action', position, state }
-      send(JSON.stringify(msg))
-      lastStateRef.current = { state, position, at: Date.now() }
-    }
+  const sendSync = (position: number) => {
+    const msg: SyncMessage = { type: 'sync', position, state: 'playing' }
+    send(JSON.stringify(msg))
+    lastStateRef.current = { state: 'playing', position, at: Date.now() }
+  }
 
-    const sendSync = (position: number) => {
-      const msg: SyncMessage = { type: 'sync', position, state: 'playing' }
-      send(JSON.stringify(msg))
-      lastStateRef.current = { state: 'playing', position, at: Date.now() }
-    }
-
-    const createYouTubePlayer = () => {
-      playerRef.current = new YT.Player('player', {
-        videoId: VIDEO_ID,
-        events: {
-          onStateChange: (e) => {
-            stopTimer()
-            if (
-              e.data !== YT.PlayerState.PLAYING &&
-              e.data !== YT.PlayerState.PAUSED
-            )
-              return
-            sendAction(
-              e.target.getCurrentTime(),
-              e.data === YT.PlayerState.PLAYING ? 'playing' : 'paused',
-            )
-
-            if (e.data === YT.PlayerState.PAUSED) {
-              let previousTime = e.target.getCurrentTime()
-              timerRef.current = setInterval(() => {
-                const currentTime = e.target.getCurrentTime()
-                if (Math.abs(currentTime - previousTime) > SEEK_THRESHOLD_S) {
-                  sendAction(currentTime, 'paused')
-                  previousTime = currentTime
-                }
-              }, PAUSED_CHECK_INTERVAL_MS)
-            }
-
-            if (e.data === YT.PlayerState.PLAYING) {
-              timerRef.current = setInterval(() => {
-                sendSync(e.target.getCurrentTime())
-              }, SYNC_INTERVAL_MS)
-            }
-          },
-        },
-      })
-    }
-
-    if (YT.Player) {
-      createYouTubePlayer()
-    } else {
-      window.onYouTubeIframeAPIReady = createYouTubePlayer
-    }
-
-    return () => {
-      stopTimer()
-      playerRef.current?.destroy()
-      playerRef.current = null
-    }
-  }, [send])
+  useYouTubePlayer(playerRef, 'player', VIDEO_ID, {
+    onLocalChange: sendAction,
+    onPlayingTick: sendSync,
+  })
 
   return (
     <>
