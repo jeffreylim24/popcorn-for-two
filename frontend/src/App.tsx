@@ -1,5 +1,6 @@
 import { useHealth } from './hooks/useHealth'
 import { useSync } from './hooks/useSync'
+import { Button } from '@/components/ui/button'
 
 // Dummy video ID for testing.
 const VIDEO_ID = 'kzcI5F4tGiU'
@@ -23,9 +24,27 @@ function App() {
 
   if (!code) {
     return (
-      <button type="button" onClick={createAndJoinRoom}>
-        Create room
-      </button>
+      <main className="flex min-h-svh flex-col items-center justify-center gap-6 p-6 text-center">
+        <div className="text-7xl" aria-hidden="true">
+          🍿
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-4xl font-semibold tracking-tight">
+            Popcorn for Two
+          </h1>
+          <p className="max-w-sm text-muted-foreground">
+            Watch YouTube together, in sync, from anywhere.
+          </p>
+        </div>
+        <Button
+          type="button"
+          size="lg"
+          className="h-11 px-6 text-base"
+          onClick={createAndJoinRoom}
+        >
+          Create room
+        </Button>
+      </main>
     )
   }
 
