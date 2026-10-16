@@ -26,7 +26,7 @@ function App() {
 
   // room code is the 3rd segment of the URL path (e.g., /room/{code})
   const code = window.location.pathname.split('/')[2]
-  const socketRef = useRoomSocket(code, (data) => {
+  const send = useRoomSocket(code, (data) => {
     const msg: SyncMessage = JSON.parse(data)
     const player = playerRef.current
     if (!player) return
@@ -74,13 +74,13 @@ function App() {
     const sendAction = (position: number, state: SyncMessage['state']) => {
       if (!isNews(lastStateRef.current, state, position, Date.now())) return
       const msg: SyncMessage = { type: 'action', position, state }
-      socketRef.current?.send(JSON.stringify(msg))
+      send(JSON.stringify(msg))
       lastStateRef.current = { state, position, at: Date.now() }
     }
 
     const sendSync = (position: number) => {
       const msg: SyncMessage = { type: 'sync', position, state: 'playing' }
-      socketRef.current?.send(JSON.stringify(msg))
+      send(JSON.stringify(msg))
       lastStateRef.current = { state: 'playing', position, at: Date.now() }
     }
 
@@ -132,7 +132,7 @@ function App() {
       playerRef.current?.destroy()
       playerRef.current = null
     }
-  }, [socketRef])
+  }, [send])
 
   return (
     <>

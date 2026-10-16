@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef } from 'react'
+import { useCallback, useEffect, useEffectEvent, useRef } from 'react'
 
 export function useRoomSocket(
   code: string | undefined,
@@ -21,5 +21,9 @@ export function useRoomSocket(
     }
   }, [code])
 
-  return socketRef
+  const send = useCallback((data: string) => {
+    socketRef.current?.send(data)
+  }, [])
+
+  return send
 }
