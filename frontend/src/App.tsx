@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { isNews, SEEK_THRESHOLD_S, shouldCatchUp } from './sync'
 import type { AgreedState, SyncMessage } from './sync'
+import { useHealth } from './hooks/useHealth'
 
 declare global {
   interface Window {
@@ -16,25 +17,11 @@ const PAUSED_CHECK_INTERVAL_MS = 500
 const SYNC_INTERVAL_MS = 2000
 
 function App() {
-  const [message, setMessage] = useState('Loading...')
+  const message = useHealth()
   const playerRef = useRef<YT.Player | null>(null)
   const socketRef = useRef<WebSocket | null>(null)
   const timerRef = useRef<number | null>(null)
   const lastStateRef = useRef<AgreedState | null>(null)
-
-  useEffect(() => {
-    fetch('/api/health')
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Network response was not ok: ' + response.status)
-        }
-        return response.text()
-      })
-      .then((data) => setMessage(data))
-      .catch((error) =>
-        setMessage('Error fetching health status: ' + error.message),
-      )
-  }, [])
 
   useEffect(() => {
     const stopTimer = () => {
