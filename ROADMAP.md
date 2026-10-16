@@ -294,7 +294,9 @@ Every milestone ends in something I can demo and commit.
       controls live inside the iframe, so anything on top of the
       video hides them; the top corners keep the control bar clear.
       The two facecams start in opposite top corners so they never
-      overlap at the start.
+      overlap at the start: room creator top-left, partner top-right,
+      the same on both screens. M7 needs the server to tell each tab
+      which seat it holds.
     - Permission denied: the video still works and the self-view box
       says how to unblock (address bar). No camera: no box at all.
     - Video only. The mic comes with M7.
