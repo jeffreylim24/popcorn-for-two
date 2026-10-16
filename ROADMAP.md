@@ -253,16 +253,16 @@ Every milestone ends in something I can demo and commit.
   - Decided: `parseSyncMessage` in `sync.ts` (try/catch + shape check,
     `position >= 0`), with allowed values as `as const` arrays and the
     types derived from them. Why: version skew after a deploy.
-  - Done so far: live at https://popcorn-for-two.fly.dev; laptop +
-    phone on cellular sync. Rooms are created with
-    `curl -X POST https://popcorn-for-two.fly.dev/api/rooms` until the
-    "Copy link" button exists.
-  - Done: `readyState` check before `send` (drop the message if the
-    socket isn't open; the position check catches up).
-  - Left: "Create room" button on the home page (full page load to
-    `/room/CODE`), then "Copy link" in its place inside a room,
-    redeploy, then a real session with my partner from our own
-    networks.
+  - Decided: `send` drops the message if the socket isn't open
+    (`readyState` check); the position check catches up.
+  - Decided: "Create room" button on the home page does a full page
+    load to `/room/CODE`. Why: `App` reads the code from the URL at
+    render, so `pushState` wouldn't re-render; a router can come when
+    there are real pages. Skipped: a "Copy link" button (the address
+    bar does it).
+  - Done so far: live at https://popcorn-for-two.fly.dev (deploy v2);
+    phone on cellular + laptop on school wifi sync.
+  - Left: a real session with my partner (Montreal ↔ Toronto).
 
 - [ ] **M5: Camera**
   - Done when: my own webcam shows on the page, locally and on the
