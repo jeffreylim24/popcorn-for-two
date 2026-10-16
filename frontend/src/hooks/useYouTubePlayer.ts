@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react'
+import { useEffect, useEffectEvent, useRef, type RefObject } from 'react'
 import { SEEK_THRESHOLD_S } from '../sync'
 import type { SyncMessage } from '../sync'
 
@@ -27,6 +27,8 @@ export function useYouTubePlayer(
   },
 ) {
   const timerRef = useRef<number | null>(null)
+  const onLocalChange = useEffectEvent(callbacks.onLocalChange)
+  const onPlayingTick = useEffectEvent(callbacks.onPlayingTick)
 
   useEffect(() => {
     const stopTimer = () => {
@@ -47,7 +49,7 @@ export function useYouTubePlayer(
               e.data !== YT.PlayerState.PAUSED
             )
               return
-            callbacks.onLocalChange(
+            onLocalChange(
               e.target.getCurrentTime(),
               e.data === YT.PlayerState.PLAYING ? 'playing' : 'paused',
             )
@@ -57,7 +59,7 @@ export function useYouTubePlayer(
               timerRef.current = setInterval(() => {
                 const currentTime = e.target.getCurrentTime()
                 if (Math.abs(currentTime - previousTime) > SEEK_THRESHOLD_S) {
-                  callbacks.onLocalChange(currentTime, 'paused')
+                  onLocalChange(currentTime, 'paused')
                   previousTime = currentTime
                 }
               }, PAUSED_CHECK_INTERVAL_MS)
@@ -65,7 +67,7 @@ export function useYouTubePlayer(
 
             if (e.data === YT.PlayerState.PLAYING) {
               timerRef.current = setInterval(() => {
-                callbacks.onPlayingTick(e.target.getCurrentTime())
+                onPlayingTick(e.target.getCurrentTime())
               }, SYNC_INTERVAL_MS)
             }
           },
