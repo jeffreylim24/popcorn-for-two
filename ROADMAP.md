@@ -220,7 +220,7 @@ Every milestone ends in something I can demo and commit.
     fits later hook/component tests. Rejected: `bun test` (no install,
     but separate config and less common for React tests).
   - Before deploy (M4): wrap `JSON.parse` in `try/catch` and check the
-    message shape. `WebSocket.send()` throws while the socket is still
+    message shape (done). `WebSocket.send()` throws while the socket is still
     connecting (`sendAction` and `sendSync`); check `readyState` first.
 
 - [ ] **M4: First deploy (by hand)**
@@ -228,8 +228,37 @@ Every milestone ends in something I can demo and commit.
     watch a video in sync from our own networks (call on FaceTime).
   - Why next: two tabs on one laptop hide real lag, HTTPS, and home
     routers. Also: first real date night.
-  - Decide at the start: hosting; Go serves the built frontend (one
-    origin) vs separate hosting (needs CORS).
+  - Decided: Fly.io, one always-on machine in `yyz` (Toronto, between
+    Montreal and Toronto), 256 MB, ~$2.19/mo. Why: WebSockets last a
+    whole movie and rooms live in memory, so it must be one long-running
+    process. Rejected: Vercel (serverless; sockets pinned per instance
+    and time-capped), Render free (sleeps, may restart any time),
+    Railway (works, but deploy-on-push skips the by-hand step), a VPS
+    (too much for a first deploy).
+  - Decided: `fly.toml` has `auto_stop_machines = 'off'`,
+    `min_machines_running = 1`, and deploys use `--ha=false` (one
+    machine = one `rooms` map). Auto-stop may be fine (open sockets
+    count as traffic) but is unverified; revisit for cost later.
+  - Decided: one origin. Go serves `frontend/dist` with an SPA fallback
+    (unknown path → `index.html`); the frontend's relative URLs need no
+    change and there's no CORS code. Rejected for now: separate
+    frontend hosting. Its real upside is that frontend deploys don't
+    restart Go (every deploy wipes live rooms), so don't deploy during
+    a date night. Switching later is about an afternoon.
+  - Decided: multi-stage `Dockerfile` (Bun build → Go static build with
+    `CGO_ENABLED=0` → `alpine:3.24`). The final image mirrors the repo
+    (`/app/backend/server`, `/app/frontend/dist`) so `../frontend/dist`
+    works in dev and prod. Fly's generated GitHub deploy workflow was
+    deleted (CI/CD comes later).
+  - Decided: `parseSyncMessage` in `sync.ts` (try/catch + shape check,
+    `position >= 0`), with allowed values as `as const` arrays and the
+    types derived from them. Why: version skew after a deploy.
+  - Done so far: live at https://popcorn-for-two.fly.dev; laptop +
+    phone on cellular sync. Rooms are created with
+    `curl -X POST https://popcorn-for-two.fly.dev/api/rooms` until the
+    "Copy link" button exists.
+  - Left: `readyState` check before `send`, redeploy, then a real
+    session with my partner from our own networks.
 
 - [ ] **M5: Camera**
   - Done when: my own webcam shows on the page, locally and on the

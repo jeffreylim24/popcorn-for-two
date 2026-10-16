@@ -29,3 +29,11 @@ Older detail moved out of `LEARNING.md` to keep it under budget.
 - **YouTube replaces the target element:** put the buttons inside `<div id="player">`, and the iframe swap wiped them. Found it from the diff and a guiding question.
 - **`git commit --amend`** for an unpushed commit that missed files; every commit should build on its own.
 - **Testing a hypothesis with logs:** guessed "seek fires no event", logged every `onStateChange`, found it holds only while paused. Asked "why did it buffer this time?", and then saw it doesn't always.
+
+## Moved from LEARNING.md (session 21)
+
+- **Hook-split review (session 20):** reviewed `7efa953`, `8fba79e`, `666bb94`. A `code` change would leave the new socket without a handler (said "old onmessage"; it's on the closed socket). Not reviewed (Claude wrote them): `4e4f268` option A, `83145be`, `b4ac9cd`.
+- **Circular hooks + React Compiler lint (s. 19–20):** the loop (socket handler needs the player, player callbacks need `send`) and option A; options table landed (A, late-bound holder ref, one combined hook, controls before declaration).
+- **File name case:** macOS ignores case, Linux (deploy) doesn't. Fixed `useYoutubePlayer.ts` with `mv`.
+- **Pure functions for testability:** pass time in (`nowMs`) and YouTube state as a boolean.
+- **Chrome autoplay policy:** a received `playVideo()` is blocked until the tab has had one click.
