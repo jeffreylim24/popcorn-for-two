@@ -262,6 +262,13 @@ Every milestone ends in something I can demo and commit.
     bar does it).
   - Done so far: live at https://popcorn-for-two.fly.dev (deploy v2);
     phone on cellular + laptop on school wifi sync.
+  - Done: root `README.md` (what it is, run locally, how sync works,
+    checks, deploy with why `--ha=false`, limits); the Vite template
+    README is gone. Go tests for room join / full / leave / partner
+    lookup (`backend/main_test.go`).
+  - Decided: tests before splitting `main.go`. Why: tests passing
+    before and after prove the move changed nothing. Next: split into
+    `rooms.go`, `handlers.go`, `spa.go`, short `main.go` (same package).
   - Left: a real session with my partner (Montreal ↔ Toronto).
 
 - [ ] **M5: Camera**

@@ -1,6 +1,6 @@
 # Learning Snapshot
 
-_Last updated: 2026-10-16 (session 22)_
+_Last updated: 2026-10-16 (session 23)_
 
 ## Concepts
 
@@ -19,6 +19,8 @@ _Last updated: 2026-10-16 (session 22)_
 - **HTTP:** once mixed up the page URL (`/room/CODE`) with the API URL; `fmt.Fprint(w, …)` writes the response, `log` writes your terminal.
 
 ### Learning (introduced, used or explained back once)
+- **Go `testing` package (session 23):** wrote 6 room tests in `backend/main_test.go` from comment skeletons: `TestXxx(t *testing.T)`, `go test ./...` / `-v`, `errors.Is` in asserts, `&websocket.Conn{}` as a fake map-key conn, fresh `createRoom()` per test for isolation. First discarded setup errors with `_` (shown: a broken cap could pass falsely); fixed. Asked what `t.Fatalf` is: explained with a 3-line failure trace (setup → `Fatalf`, real checks → `Errorf`). Checked both directions in the partner test unprompted.
+- **Tests before refactor (session 23):** asked whether to split `main.go` first; answered tests first (they make the move safe), and a function that's already top-level is already testable.
 - **Debugging a server-side ghost (session 22):** found the bfcache bug themselves (edit URL in a room tab → room stuck "full"). Followed the process: Go log showed no `left` line → Go never saw a close → tested the bfcache theory by closing the tab (confirmed). Good habit: reported exact repro steps.
 - **Dev vs prod serving (session 22):** asked to test on `:8080` instead of `:5173`, unprompted. Told: 8080 serves the last `bun run build`, matches production; 5173 for editing.
 - **Hosting constraints (session 21):** half-got serverless (missed: several copies = several `rooms` maps). Applied `--ha=false` themselves. Go is the single point of failure either way.
@@ -61,7 +63,9 @@ _Last updated: 2026-10-16 (session 22)_
 - **Keep YouTube's own controls;** paused seeks caught by a 500 ms position check.
 - **Prettier** (pinned exact, single quotes, no semicolons). Formatting commits stay separate.
 - **Sync rules and message parsing live in `src/sync.ts`** as pure functions, tested with Vitest.
-- **Deferred to "Later" in `ROADMAP.md`:** room expiry, the bfcache ghost seat (`pagehide`), CI/CD. Code-quality pass deferred; Go tests for join/leave/full during or after M4.
+- **Deferred to "Later" in `ROADMAP.md`:** room expiry, the bfcache ghost seat (`pagehide`), CI/CD. Code-quality pass deferred.
+- **Go room tests** (`main_test.go`, 6 tests) cover join / full / leave / partner; tests-first, then split files.
+- **Root `README.md` is Claude's to write** (session 23): the user wants the what and why, not to draft prose.
 
 ## Open questions
 
@@ -81,10 +85,12 @@ _Last updated: 2026-10-16 (session 22)_
 - **They run ahead:** review the full diff; flag design changes with a scenario + trade-off table.
 - Doesn't work: abstract questions; predicting command output; sending to docs to learn a step.
 - **Don't record a decision until they say so.**
+- **Docs prose: they don't want to write it.** Write it, then explain each section's what + why in one line.
 - Asks Claude to write unfamiliar-syntax parts ("can you do this part"); fine under the exception; keep concept steps theirs.
 - When tired, stops answering rechecks; put rechecks inside real feature steps.
 - **"Break it on purpose" only after Vitest test steps.**
 
 ## Next step
 
-**M4: only the partner session is left** (Montreal ↔ Toronto, on FaceTime). Phone on cellular + laptop on school wifi already sync on deploy v2. When it's done, tick M4. Meanwhile: **root README** (comes out of M4). Push the 6+ local commits when ready.
+**Split `backend/main.go` into files, same `package main`:** `rooms.go` (map, mutex, create/join/leave/partner, sentinel errors), `handlers.go`, `spa.go`, and a short `main.go` (routes only). Run `go test ./...` before and after, then a `refactor:` commit.
+**M4 still needs the partner session** (Montreal ↔ Toronto, on FaceTime); tick M4 when they report it.
