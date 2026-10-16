@@ -267,8 +267,9 @@ Every milestone ends in something I can demo and commit.
     README is gone. Go tests for room join / full / leave / partner
     lookup (`backend/main_test.go`).
   - Decided: tests before splitting `main.go`. Why: tests passing
-    before and after prove the move changed nothing. Next: split into
-    `rooms.go`, `handlers.go`, `spa.go`, short `main.go` (same package).
+    before and after prove the move changed nothing. Done: split into
+    `rooms.go`, `handlers.go`, `spa.go`, short `main.go` (same package);
+    tests renamed to `rooms_test.go`.
   - Left: a real session with my partner (Montreal ↔ Toronto).
 
 - [ ] **M5: Camera**

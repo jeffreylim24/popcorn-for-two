@@ -1,6 +1,6 @@
 # Learning Snapshot
 
-_Last updated: 2026-10-16 (session 23)_
+_Last updated: 2026-10-16 (session 24)_
 
 ## Concepts
 
@@ -11,6 +11,7 @@ _Last updated: 2026-10-16 (session 23)_
   - Session 9: **`for {}` read loop**; **closures vs top-level funcs**; **typed named constants**.
   - Sessions 10–11: **set idiom `map[K]bool`**, nested maps, **`for k := range m`**. Ranging a nil map is safe.
   - Session 21: **returning an `http.Handler` from a func** (closure over `files` / `fileServer`), `http.HandlerFunc(...)`: filled the blanks unaided.
+  - Session 24: **one package across several files** (no imports between them), unused imports are compile errors, `go test -count=1` skips the test cache, `foo_test.go` sits next to `foo.go`. Told while doing the split; not checked back.
 - **`context.Context`:** landed (tentatively) as **"a stop button the caller holds; the function only watches it"**. Earlier tries: `Done()` channel + `select` + ctx tree (got `cancel()`, not the big picture). Recheck on the heartbeat `Ping(ctx)`: have them pick the parent + timeout and say who holds the button.
 - **`useRef` (read at call time vs copy early):** weakest React idea. Tried: Java instance-field table, read-at-fire-time trace, **"`send` holds the box, not what's in it"** + timeline (box: A → null → B). Session 22: wrote the `readyState` guard on `socketRef.current` correctly, but the recheck ("`send` is made once; how does it see the later socket?") went unanswered. Don't re-ask it; fold it into the `pagehide` fix (the listener closes `socketRef.current`).
 - **Effect cleanup vs page lifecycle (session 22):** said "idk" to why cleanup didn't run when the page went into the bfcache. Given: cleanup runs only on unmount / deps change; a frozen page is "paused movie, not TV off"; `pagehide` comes from the browser, not React. Plus the `addEventListener` / `removeEventListener` (same function) syntax on a `resize` example. Fix deferred; check it when they do it.
@@ -19,8 +20,8 @@ _Last updated: 2026-10-16 (session 23)_
 - **HTTP:** once mixed up the page URL (`/room/CODE`) with the API URL; `fmt.Fprint(w, …)` writes the response, `log` writes your terminal.
 
 ### Learning (introduced, used or explained back once)
-- **Go `testing` package (session 23):** wrote 6 room tests in `backend/main_test.go` from comment skeletons: `TestXxx(t *testing.T)`, `go test ./...` / `-v`, `errors.Is` in asserts, `&websocket.Conn{}` as a fake map-key conn, fresh `createRoom()` per test for isolation. First discarded setup errors with `_` (shown: a broken cap could pass falsely); fixed. Asked what `t.Fatalf` is: explained with a 3-line failure trace (setup → `Fatalf`, real checks → `Errorf`). Checked both directions in the partner test unprompted.
-- **Tests before refactor (session 23):** asked whether to split `main.go` first; answered tests first (they make the move safe), and a function that's already top-level is already testable.
+- **Go `testing` package (session 23):** wrote 6 room tests (now `backend/rooms_test.go`) from comment skeletons: `TestXxx(t *testing.T)`, `go test ./...` / `-v`, `errors.Is` in asserts, `&websocket.Conn{}` as a fake map-key conn, fresh `createRoom()` per test for isolation. First discarded setup errors with `_` (shown: a broken cap could pass falsely); fixed. Asked what `t.Fatalf` is: explained with a 3-line failure trace (setup → `Fatalf`, real checks → `Errorf`). Checked both directions in the partner test unprompted.
+- **Safe refactor loop (sessions 23–24):** tests first, then the split, one file per step: baseline `go test` → cut/paste → `go vet` + `go test -count=1` + `gofmt -l` → `curl` smoke test of the routes (tests don't cover `main.go` wiring) → `git mv` for the test rename → one `refactor:` commit. Did all of it smoothly; hasn't said back *why* the smoke test was needed.
 - **Debugging a server-side ghost (session 22):** found the bfcache bug themselves (edit URL in a room tab → room stuck "full"). Followed the process: Go log showed no `left` line → Go never saw a close → tested the bfcache theory by closing the tab (confirmed). Good habit: reported exact repro steps.
 - **Dev vs prod serving (session 22):** asked to test on `:8080` instead of `:5173`, unprompted. Told: 8080 serves the last `bun run build`, matches production; 5173 for editing.
 - **Hosting constraints (session 21):** half-got serverless (missed: several copies = several `rooms` maps). Applied `--ha=false` themselves. Go is the single point of failure either way.
@@ -64,7 +65,7 @@ _Last updated: 2026-10-16 (session 23)_
 - **Prettier** (pinned exact, single quotes, no semicolons). Formatting commits stay separate.
 - **Sync rules and message parsing live in `src/sync.ts`** as pure functions, tested with Vitest.
 - **Deferred to "Later" in `ROADMAP.md`:** room expiry, the bfcache ghost seat (`pagehide`), CI/CD. Code-quality pass deferred.
-- **Go room tests** (`main_test.go`, 6 tests) cover join / full / leave / partner; tests-first, then split files.
+- **Backend files (session 24):** `main.go` (routes only), `rooms.go` (map, lock, room logic), `handlers.go` (HTTP + WebSocket), `spa.go`, `rooms_test.go` (6 tests). Same `package main`. Why: room logic and its lock rules in one place; handlers only call into it.
 - **Root `README.md` is Claude's to write** (session 23): the user wants the what and why, not to draft prose.
 
 ## Open questions
@@ -76,11 +77,11 @@ _Last updated: 2026-10-16 (session 23)_
 
 - Works: **comparison tables**, **traces with state after each line**, **two-column timelines**, **slot/box diagrams**, **ASCII flow diagrams**, **concrete everyday analogies** after mechanism explanations don't land. Ask "what do you remember?" first.
 - Works: **fill-in-the-blank skeletons**; **guiding question about a concrete case**; **options table + one recommendation + "which one?"**.
-- **Fast pace works (sessions 21–22):** one step per turn, why (2–3 lines) → exact commands → "it worked if…". They ask good design questions on their own; answer those fully.
+- **Fast pace works (sessions 21–24):** one step per turn, why (2–3 lines) → exact commands → "it worked if…". They ask good design questions on their own; answer those fully. When they reply just "done", verify with read-only checks (`git status`, `go vet`, `go test`) instead of asking for output.
 - **Debugging by "paste the log":** asking for the whole server log after a clean repro worked well; the log answered the first question by itself.
 - **They prune scope:** skipped "Copy link" (address bar works), deferred the bfcache fix. Respect it; log the deferral in `ROADMAP.md`.
 - **"idk" to a guiding question:** go to a conceptual hint + the syntax shown on a *different* example. Unknown syntax is often the real blocker.
-- **Check facts before asserting:** looked up the Chrome 149 bfcache change before claiming it. Say "unverified" when it is.
+- **Check facts before asserting:** looked up the Chrome 149 bfcache change before claiming it. Say "unverified" when it is. (Session 24 slip: claimed `(cached)` meant a failed move; it doesn't. Corrected next turn.)
 - **Doesn't work: compound or re-asked questions.** One open thing; state settled facts as settled.
 - **They run ahead:** review the full diff; flag design changes with a scenario + trade-off table.
 - Doesn't work: abstract questions; predicting command output; sending to docs to learn a step.
@@ -92,5 +93,8 @@ _Last updated: 2026-10-16 (session 23)_
 
 ## Next step
 
-**Split `backend/main.go` into files, same `package main`:** `rooms.go` (map, mutex, create/join/leave/partner, sentinel errors), `handlers.go`, `spa.go`, and a short `main.go` (routes only). Run `go test ./...` before and after, then a `refactor:` commit.
+**Tailwind + shadcn/ui setup, then make the home page look nicer** (styling fast lane: give classes directly; setup commands are still theirs). Already explained: Tailwind = utility classes in JSX; shadcn copies component source into the repo. Three steps, from the shadcn Vite "existing project" docs:
+1. `bun add tailwindcss @tailwindcss/vite`, add `tailwindcss()` to `plugins` in `vite.config.ts`, replace all of `src/index.css` with `@import 'tailwindcss';`. Check: a temporary `text-red-500` turns a heading red. (Given in session 24, not started.)
+2. `@/*` alias: `paths` in `tsconfig.json` + `tsconfig.app.json`, `resolve.alias` in `vite.config.ts`. **TS 6 errors on `baseUrl`** (TS5101): use `"@/*": ["./src/*"]` without `baseUrl`, unlike the shadcn docs.
+3. `bunx --bun shadcn@latest init`, then `add button`; restyle the home page.
 **M4 still needs the partner session** (Montreal ↔ Toronto, on FaceTime); tick M4 when they report it.
