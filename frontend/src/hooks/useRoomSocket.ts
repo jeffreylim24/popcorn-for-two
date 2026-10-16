@@ -22,8 +22,7 @@ export function useRoomSocket(
   }, [code])
 
   const send = useCallback((data: string) => {
-    if (socketRef.current?.readyState !== WebSocket.OPEN)
-      return
+    if (socketRef.current?.readyState !== WebSocket.OPEN) return
     socketRef.current.send(data)
   }, [])
 
