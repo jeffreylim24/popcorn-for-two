@@ -1,6 +1,6 @@
 # Learning Snapshot
 
-_Last updated: 2026-10-15 (session 19)_
+_Last updated: 2026-10-16 (session 20)_
 
 ## Concepts
 
@@ -14,35 +14,29 @@ _Last updated: 2026-10-15 (session 19)_
 - **`context.Context`:** Picked "cancel after a timeout" for `Write` unprompted. Asked "how should I think of context?" after two explanations:
   - Tried: `Done()` channel + simplified `select` + ctx tree diagram → understood `cancel()` but not the big picture.
   - Landed (tentatively): **"a stop button the caller holds; the function only watches it"** + delivery-order-with-a-note table.
-  - Recheck on the heartbeat `Ping(ctx)` (M2 Later / M4): have them pick the parent + timeout and say who holds the button.
-- **`useRef`:** doesn't come to mind as "a place to keep a note"; recalled only via the **Java instance-field table**. Session 12: explained why `onStateChange` reaches the socket as "it will have run by then" (half). Completed with a **read-the-ref-at-fire-time vs copy-into-a-local** trace + Java table (lambda reading `this.socket` vs capturing a `final` local). Session 13: filled in `timerRef = useRef<number | null>` from a blank next to the other two refs (Java-field framing), but first suggested putting the id on the YT config object. The early-copy recheck question went unanswered. Recheck: ask why a handler that copied `socketRef.current` early would break.
+  - Recheck on the heartbeat `Ping(ctx)` (M4 or later): have them pick the parent + timeout and say who holds the button.
+- **`useRef` (read at call time vs copy early):** still the weakest React idea. Tried: Java instance-field table (s. 12–13), read-at-fire-time vs copy-into-a-local trace (s. 12). Session 20: asked why `send` (`useCallback`, empty deps) still hits the *new* socket → "idk". Explained with **"`send` holds the box, not what's in it"** + a timeline (box: A → null → B) + the broken copy-early version side by side; no explain-back (they stopped the review). Next time: don't quiz it cold; let it come up in real code (e.g. the M4 `readyState` check reads `socketRef.current` at call time) and ask then.
 - **HTTP:** once mixed up the page URL (`/room/CODE`) with the API URL (two-URL diagram fixed it); `fmt.Fprint(w, …)` writes the response, `log` writes your terminal.
 
 ### Learning (introduced, used or explained back once)
-- **Unit tests with Vitest** (session 16): `describe` / `test` / `expect().toBe()`, `*.test.ts`, test-only code in devDeps. Wrote 17 tests across 3 pure functions. Gaps found in review: no test exactly at the threshold, no rewind (`Math.abs`) case, no paused case through `isNews`. "Break it on purpose" (mutation check) exposed each one. By `shouldCatchUp` they covered the boundary, the opposite sign, and the guard unprompted. Test names: moved from "should return true" to `situation: outcome` in domain words.
-- **Custom hooks** (sessions 17–19): a `use…` function that calls hooks; moving code into one changes nothing at runtime. Wrote `useHealth`, `useRoomSocket`, and the `useYouTubePlayer` move + App wiring themselves. Session 19, tired, asked Claude to write the rest: the option-A fix (App passes `playerRef` in), the `useEffectEvent` wrap in `useYouTubePlayer`, and all of `useSync`. **Not reviewed by them yet**; next session goes through it bit by bit. Effects run in call order.
-- **Function identity per render / `useEffectEvent` / `useCallback`** (shaky): an inline arrow is a new object each render (same text, new object); "today vs later" table landed. Call-forwarding picture ("the effect keeps one phone number; React rewires where it forwards each render") given twice; the recheck question went unanswered in session 19. Recheck in the review session on `useYouTubePlayer`: "once `sendAction` reads a changing value, what does the player call without vs with `useEffectEvent`?"
-- **Circular hooks + React Compiler lint** (session 19): `useYouTubePlayer` *returning* `playerRef` made a loop (socket handler needs `playerRef`, player callbacks need `send`). Either order uses something before it's declared. Lint said "cannot call impure function `Date.now`" (misleading) one way and "accessed before it is declared" the other. Asked "is it because we went step by step?" (no: the loop was hidden inside one effect before; step-by-step showed it in a small diff). Fix: the caller creates the ref and passes it in, so each line only uses things above it.
-- **File name case:** macOS ignores case, Linux (deploy) doesn't, so `useYoutubePlayer.ts` vs the `useYouTubePlayer` import would break only in production. Fixed with `mv`.
-- **JSDoc and comment content:** asked unprompted whether comments should be `/** */` for hover. First drafts restated the function name; a good comment says *why* or the non-obvious part (units, signed gap). Claude wrote the final wording on request.
-- **Pure functions for testability:** pass time in (`nowMs`) and pass YouTube state as a boolean, so the function never reads the clock or `YT`.
-- **Chrome autoplay policy:** a `playVideo()` from a received message is blocked until the tab has had one click. Confirmed it with a with/without-click test.
-- **`setInterval` / `clearInterval`**: second use (the `sync` tick) written right first try, reusing `timerRef` because `stopTimer()` already runs on every state change.
-- **Echo guard ("only send news")**: compare an outgoing send to the last agreed state (`{state, position, at}`), projecting position while playing. Session 15: asked unprompted whether a `sync` should go through `sendAction` (no: the guard would drop it), i.e. reports vs news. Called `lastStateRef` "shared source of truth between the 2 browsers"; corrected: each tab has its own note, they can differ briefly.
-- **Sync design (tick frequency, "ahead wins")**: asked how to choose the interval; framing "interval = longest an undetected drift lasts" + trade-off table landed.
-- **Guards over enums:** wrote `=== PAUSED` where the decision was `!== PLAYING`; a per-state table (buffering / ended / unstarted) showed the unstarted tab would auto-start. Recheck: when writing a guard, list every state it lets through.
-- **Refactor habits:** a helper inside the effect (keeps `exhaustive-deps` quiet); named constants with unit suffixes (`_S`, `_MS`); Prettier (`format`, `format:check`).
-- **Browser `WebSocket`:** `new WebSocket(relativeUrl)`, `onmessage`, `close()` in effect cleanup. Wrote it right first try.
-- **`JSON.stringify` / `JSON.parse`** (Jackson table): put `onmessage` inside the YT player's `events` first. One guiding question ("which object fires `onmessage`?") fixed it.
-- **TS literal union types** (`'playing' | 'paused'`), a `type` for the message, **guard-clause early return**: wrote them unprompted. A TS type is unchecked at runtime (unlike a Java cast); `JSON.parse` returns `any`.
-- **StrictMode double-mount:** "React shenanigans" → found `<StrictMode>` in `main.tsx` from a pointer. Reasoned that without cleanup, tab 2 gets room full (4005).
-- **Backend (M2), details in `docs/learning-archive.md`:** goroutine per connection, sentinel errors, `defer`, `sync.Mutex`, who logs an error, close codes, WebSocket handshake, Go deps; heartbeat and WebRTC signaling planned only.
+- **Custom hooks + rules of hooks** (sessions 17–20): explained call order unprompted ("React reruns the function top to bottom, order must match"). Gap fixed: React matches hooks by **slot position, not name** (slot-mismatch diagram). They mixed it up with the `playerRef` loop; corrected: that was JS declaration order in one render (table: React's rule vs JS's rule). Why hooks: said "less code"; the real points (one feature split across lifecycle methods; no reuse of stateful logic) were explained, not checked. Wrote `useHealth`, `useRoomSocket`, the `useYouTubePlayer` move. Reasoned well why the echo guard belongs in `useSync` (coupling, single responsibility).
+- **Hook-split review** (session 20): reviewed `7efa953`, `8fba79e`, `666bb94` (their own). Got: a `code` change would leave the new socket without a handler (half: said "old onmessage"; it's on the closed socket). **Not reviewed** (Claude wrote them): `4e4f268` option A, `83145be`, `b4ac9cd`. They chose to move on to M4; revisit only when touching those hooks.
+- **Function identity / `useEffectEvent` / `useCallback`:** session 20 answered right: a new inline arrow in the deps would close and reopen the socket every render. `useCallback` vs `useEffectEvent` table given (hand out + allowed in deps vs called inside your own effect, never in deps). The `83145be` recheck ("once `sendAction` reads a changing value, what does the player call without vs with `useEffectEvent`?") still not done.
+- **Circular hooks + React Compiler lint** (s. 19–20): the loop (socket handler needs the player, player callbacks need `send`) and option A. Session 20: asked "what's the decision here, what were the alternatives?" → options table (A, late-bound holder ref, one combined hook, controls referenced before declaration). Chose A.
+- **Unit tests with Vitest** (session 16): `describe` / `test` / `expect().toBe()`, `*.test.ts`. 17 tests across 3 pure functions. Mutation checks exposed missing boundary/rewind/paused cases; later covered them unprompted. Test names: `situation: outcome`.
+- **File name case:** macOS ignores case, Linux (deploy) doesn't. Fixed `useYoutubePlayer.ts` with `mv`.
+- **JSDoc and comment content:** a good comment says *why* or the non-obvious part (units, signed gap), not the function name.
+- **Pure functions for testability:** pass time in (`nowMs`) and YouTube state as a boolean.
+- **Chrome autoplay policy:** a received `playVideo()` is blocked until the tab has had one click (confirmed by test).
+- **`setInterval` / `clearInterval`**, **echo guard ("only send news")**, **sync design ("ahead wins", interval = longest undetected drift)**, **guards over enums** (recheck: list every state a guard lets through), **refactor habits** (named constants with unit suffixes, Prettier).
+- **Browser `WebSocket`**, **`JSON.stringify` / `JSON.parse`**, **TS literal unions / guard clauses** (TS types are unchecked at runtime), **StrictMode double-mount**.
+- **Backend (M2), details in `docs/learning-archive.md`:** goroutine per connection, sentinel errors, `defer`, `sync.Mutex`, close codes, WebSocket handshake, Go deps.
 - **HTTP statuses** (405 vs 404), **effect cleanup**, **`?.`**, **TS signatures**, **YouTube state vs position**, **`<script>` loading races**, **TS globals**, **deps vs devDeps / lockfiles**, **`net/http` basics**, **CORS / Vite proxy**, **`response.ok`**, **`useState`/`useEffect`**, **message contracts**.
 
 ### Solid
 - **Callbacks, calling vs handing over** (`onClick={f}` not `onClick={f()}`).
 - **Debugging by isolation.** **Designing a test that forces the rare case.**
-- **Design reasoning:** collision risk, server as source of truth, the 2-person cap, false-leave risk.
+- **Design reasoning:** collision risk, server as source of truth, the 2-person cap, false-leave risk, single responsibility when placing logic.
 - **Errors as return values**; log-and-continue when the error is someone else's.
 - Git: checking a commit before pushing, four areas, `status -sb`, upstream; Conventional Commits; one logical change per commit; selective staging.
 - `.gitignore` scope; lockfiles committed; `go.mod` / `go.sum`; toolchains vs project deps.
@@ -53,50 +47,42 @@ _Last updated: 2026-10-15 (session 19)_
 - **Backend:** Go, flat layout until there are several programs. Run `go vet ./...` before committing Go.
 - **Repo:** monorepo `frontend/` + `backend/`; Conventional Commits; commit straight to `main` for now.
 - **Toolchain:** Go 1.27.1, Bun 1.4.2, Node 26, React 19.3, Vite 8. Ports: Vite 5173, Go 8080; Vite proxies `/api` (with `ws: true`).
-- **Roadmap:** M1–M7 in `ROADMAP.md`, pull-by-need. Deploy by hand after M3; CI/CD later.
-- **Docs files and commit messages are Claude's;** the user stages, commits, pushes. LEARNING.md is committed by Claude at wrap-up. **No `Co-Authored-By: Claude` trailer on the user's own code commits.**
+- **Roadmap:** M1–M7 in `ROADMAP.md`, pull-by-need. Deploy by hand (M4); CI/CD later.
+- **Docs files and commit messages are Claude's;** the user stages, commits, pushes. No `Co-Authored-By: Claude` on the user's own code commits.
 - **Raw YouTube IFrame API, no React wrapper:** sync is imperative; the echo loop needs control.
 - **Reload the page after editing code inside an effect** (React 19.3 + plugin-react 6.1).
 - **WebSocket library `coder/websocket`:** concurrent writes allowed, `Ping(ctx)` for the heartbeat.
-- **Rooms (M2) and Sync (M3):** all design calls are in `ROADMAP.md` under each milestone.
+- **Rooms (M2) and Sync (M3):** all design calls are in `ROADMAP.md` under each milestone. **M3 ticked** (session 20).
 - **Map-touching helpers are top-level funcs with `Lock()` + `defer Unlock()`**; the long-running handler never holds the lock.
-- **`r.Context()` after `Accept` ends only when the handler returns** (checked in Go source). A client disconnect shows up as a `Read` error.
 - **Logs:** lifecycle and error logs only; no per-message log.
-- **Keep YouTube's own controls;** paused seeks are caught by a 500 ms position check while paused. Custom controls = mostly visual work.
-- **Prettier** (pinned exact, single quotes, no semicolons) in `frontend/`. Formatting commits stay separate from logic commits.
-- **Echo guard = "only send news"** in `sendAction` against `lastStateRef`; **`sync` tick** = `sendSync` every 2 s while playing, apply only while playing and only if partner is >1 s ahead, every send/apply writes the note (full design in `ROADMAP.md` M3).
-- **Sync decisions live in `src/sync.ts`** as pure functions (`expectedPosition`, `isNews`, `shouldCatchUp`), tested in `src/sync.test.ts`.
-- **Vitest** for frontend tests: `bun run test` (`vitest run`).
-- **4-hook split of `App.tsx`:** `useHealth`, `useRoomSocket` (socket only, returns stable `send`), `useYouTubePlayer` (player + timers, emits callbacks), `useSync` (owns `lastStateRef` and the sync policy, composes the other two). One file each in `src/hooks/`. Why: each hook has one reason to change; player and socket never see each other. Rejected: 2 hooks passing refs to each other (coupled, sync rules split).
-- **`JSON.parse` guard + `send` readyState check** scheduled in `ROADMAP.md` M4.
+- **Keep YouTube's own controls;** paused seeks caught by a 500 ms position check.
+- **Prettier** (pinned exact, single quotes, no semicolons). Formatting commits stay separate from logic commits.
+- **Sync rules live in `src/sync.ts`** as pure functions, tested with Vitest (`bun run test`).
+- **4-hook split:** `useHealth`, `useRoomSocket` (stable `send`), `useYouTubePlayer` (player + timers, callbacks out), `useSync` (owns `playerRef`, `lastStateRef`, the policy; composes the other two). Why: one reason to change each.
+- **Option A:** `useSync` creates `playerRef` and passes it into `useYouTubePlayer`. Why: breaks the hook loop, lint-clean, hooks stay apart. Alternatives rejected in `ROADMAP.md` M3.
+- **`useSync(code, elementId, videoId)`:** the page picks element and video; only App changes when video choice arrives.
+- **Move to M4 now; code-quality pass deferred** (session 20). Why: refactor fatigue, code works. Root README comes out of M4; Go tests for join/leave/full during or after M4.
+- **`JSON.parse` guard + `send` readyState check** are the first M4 code steps.
 
 ## Open questions
 
-- **Waiting on the user's OK to record in `ROADMAP.md` M3** (not recorded yet, on purpose): option A (App/`useSync` creates `playerRef` and passes it into `useYouTubePlayer`, which returns nothing; why: breaks the hook loop) and `useSync(code, elementId, videoId)` instead of `useSync(code)` (why: the page picks the video, ready for M5).
 - Per-milestone design questions live in `ROADMAP.md`.
 
 ## Teaching formats
 
-- Works: **Java → Go/TS comparison tables** (mutex, `defer` ≈ `finally`, sentinel errors, `Set<T>`, Jackson vs `JSON`, fields vs captured locals). Ask "what do you remember?" first.
-- Works: **the same pattern shown with different types/domain**; **traces with the state after each line**; **two-column timelines** for concurrency.
-- Works: **concrete everyday analogies** after mechanism-level explanations don't land.
-- Works: **fill-in-the-blank**; **guiding question about a concrete case** (e.g. "which object fires `onmessage`?") instead of naming the fix.
-- **Doesn't work: compound or re-asked questions.** Ask one open thing; state settled facts as settled.
-- **Give exact commands every time** (which terminal, what to run, what to look at). Never "the same way as in M2"; they don't remember.
-- **They run ahead** (session 12: added `SyncMessage` + `e.target` beyond the step, both good): review the full diff; flag design changes with a scenario + trade-off table.
+- Works: **comparison tables** (Java → Go/TS only when asked), **traces with state after each line**, **two-column timelines**, **slot/box diagrams**, **concrete everyday analogies** after mechanism explanations don't land. Ask "what do you remember?" first.
+- Works: **fill-in-the-blank**; **guiding question about a concrete case**; **options table + one recommendation + "which one?"** for decisions. When a "decision" looks like no choice, show the rejected alternatives (session 20).
+- **Doesn't work: compound or re-asked questions.** One open thing; state settled facts as settled.
+- **Give exact commands every time** (which terminal, what to run, what to look at).
+- **They run ahead:** review the full diff; flag design changes with a scenario + trade-off table.
 - **They ask "why does this work?" after it works.** Follow it before moving on.
-- Works: reviewing drafts; "explain it back"; console tests that force rare cases; one new idea per step with syntax up front; saying production vs test-only vs dev-only.
-- **Be precise about where code goes.** **Tie a step to the end goal up front.** **Verify tool/library behavior before relying on it.**
 - Doesn't work: abstract questions; predicting command output; sending to docs to learn a step.
-- When deciding, wants a recommendation + trade-off table. **Don't record a decision until they say so**: a "should we?" question is not a yes (session 13 slip).
-- Asks for code on mechanical work (session 13: the `stopTimer` refactor, the constants + Prettier setup). Fine under the "write it for me" exception; keep the concept steps theirs.
-- Session 14: asked to skip small quizzes and get to the point. An options table + one recommendation + "which one?" worked well for a design choice.
-- Session 15: pushes back with good design questions. Answer directly with a small diagram. Bugs from **things outside the diff**: "your diff only touches X, the symptom is in Y" plus a with/without test landed fast.
-- Session 16: a **"break it on purpose" mutation list** after each test step worked well: it showed concrete missing tests better than describing them. When they ask for help finishing tests, writing the rest is fine (test-only, they wrote the first ones).
-- **Hook work in small turns works** (session 18 fixed the session-17 overload): (1) move code into the hook, (2) wire into App + verify, (3) add one concept alone, each with the syntax skeleton and exact line edits. Each turn ends with check + commit message.
-- Session 19: when tired, stops answering rechecks and asks Claude to finish ("I'll review later"). Fine under the exception; schedule the review as its own session and do the skipped rechecks there.
-- **"Break it on purpose" only after Vitest test steps.** Session 18: asked to stop them on manual verify steps while struggling with a concept. Also: design break-its so they can actually run (one hit a TDZ error before testing anything).
+- **Don't record a decision until they say so**: a "should we?" question is not a yes.
+- Asks for code on mechanical work; fine under the exception; keep concept steps theirs.
+- **Hook work in small turns works:** move code → wire + verify → one new concept, each with a syntax skeleton and exact edits.
+- When tired, stops answering rechecks. **Session 20: a quiz-per-commit review wore them out** ("ok whatever let's skip") after an "idk" on a recheck, and they said they're tired of refactoring with no real progress. Prefer forward progress; put rechecks inside real feature steps instead of review sessions. If reviewing, summary + one key point per commit, quiz only if unclear.
+- **"Break it on purpose" only after Vitest test steps,** and make sure they can actually run.
 
 ## Next step
 
-**Review session for the 4-hook split** (all committed, 3 commits not pushed: `4e4f268`, `83145be`, `b4ac9cd`). Go through it bit by bit, in commit order: option A in `useYouTubePlayer` + App, then `useEffectEvent` (do the recheck), then `useSync`. Run the two-tab check if it wasn't done. Then ask whether to record the two pending decisions (Open questions) and tick M3.
+**Start M4: First deploy.** Open with the pending question: the Go server keeps one WebSocket open per person for the whole movie and keeps rooms in an in-memory map; what must a host allow? (Points toward a long-running process, not serverless; one instance.) Then decide hosting and one origin (Go serves the built frontend) vs separate hosting (CORS). First code steps: `JSON.parse` `try/catch` + shape check, and a `readyState` check before `send`.
