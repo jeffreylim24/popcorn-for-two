@@ -39,16 +39,7 @@ _Last updated: 2026-10-15 (session 16)_
 - **Reading TS overload errors:** skip overloads that never applied; the matching overload's reason is the real error; later errors can be fallout.
 - **TS literal union types** (`'playing' | 'paused'`), a `type` for the message, **guard-clause early return**: wrote them unprompted. A TS type is unchecked at runtime (unlike a Java cast); `JSON.parse` returns `any`.
 - **StrictMode double-mount:** "React shenanigans" → found `<StrictMode>` in `main.tsx` from a pointer. Reasoned that without cleanup, tab 2 gets room full (4005).
-- **Goroutine per connection + blocking `Read`:** two-column timeline fixed it; explained back correctly.
-- **Locals declared inside a loop are ~free**; real per-message costs are `msg`'s byte slice and the ctx timer.
-- **Errors as values + sentinel errors:** `errors.New`, `errors.Is` (wrapping), catch-all → 1011 last.
-- **`defer`:** defer the undo right after the thing succeeds; not inside a long loop. One more correct placement → Solid.
-- **Goroutines + `sync.Mutex`:** lock briefly; read under the lock, write outside it. Locks protect the map, not the conn.
-- **Who logs an error:** the function that acts on it. **Logging in production:** events, not traffic.
-- **App close codes:** 4000–4999 app-defined; 4004 not found, 4005 full; 1011 internal.
-- **WebSocket handshake:** GET + `Upgrade` → 101 → two-way. 1000 normal, 1006 abnormal. Vite's own HMR socket (`?token=`) is dev-only noise.
-- **Go dependencies:** `go get`, `go.mod` / `go.sum`, `// indirect`, `go mod tidy`.
-- **WebSocket heartbeat**, **signaling (WebRTC)**: planning only, no code yet.
+- **Backend (M2), details in `docs/learning-archive.md`:** goroutine per connection, sentinel errors, `defer`, `sync.Mutex`, who logs an error, close codes, WebSocket handshake, Go deps; heartbeat and WebRTC signaling planned only.
 - **HTTP statuses** (405 vs 404), **effect cleanup**, **`?.`**, **TS signatures**, **YouTube state vs position**, **`<script>` loading races**, **TS globals**, **deps vs devDeps / lockfiles**, **`net/http` basics**, **CORS / Vite proxy**, **`response.ok`**, **`useState`/`useEffect`**, **message contracts**.
 
 ### Solid
