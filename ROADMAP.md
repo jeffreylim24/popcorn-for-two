@@ -257,8 +257,12 @@ Every milestone ends in something I can demo and commit.
     phone on cellular sync. Rooms are created with
     `curl -X POST https://popcorn-for-two.fly.dev/api/rooms` until the
     "Copy link" button exists.
-  - Left: `readyState` check before `send`, redeploy, then a real
-    session with my partner from our own networks.
+  - Done: `readyState` check before `send` (drop the message if the
+    socket isn't open; the position check catches up).
+  - Left: "Create room" button on the home page (full page load to
+    `/room/CODE`), then "Copy link" in its place inside a room,
+    redeploy, then a real session with my partner from our own
+    networks.
 
 - [ ] **M5: Camera**
   - Done when: my own webcam shows on the page, locally and on the
@@ -282,6 +286,13 @@ Every milestone ends in something I can demo and commit.
 - Room expiry: empty rooms stay in memory until restart. Delete after
   N minutes empty (not at once: a refresh before the partner joins
   would kill the room).
+- Ghost seat after navigating away: Chrome 149+ puts pages with an
+  open WebSocket into the bfcache, so editing the URL in a room tab
+  freezes the old page with its socket still open. Go never sees a
+  leave and the room stays "full" until that tab is closed. React's
+  effect cleanup doesn't run (nothing unmounts). Fix: close the socket
+  on `pagehide`; on `pageshow` with `persisted`, rejoin (or reload).
+  Workaround: close the tab, or create a new room.
 
 ## Not in the MVP
 - Mini-games, movies beyond YouTube (separate brainstorming session)
