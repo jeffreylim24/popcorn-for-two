@@ -18,15 +18,50 @@ const PAUSED_CHECK_INTERVAL_MS = 500
 const SYNC_INTERVAL_MS = 2000
 
 function App() {
+  const playerRef = useRef<YT.Player | null>(null)
+  const timerRef = useRef<number | null>(null)
+  const lastStateRef = useRef<AgreedState | null>(null)
+
   const message = useHealth()
 
   // room code is the 3rd segment of the URL path (e.g., /room/{code})
   const code = window.location.pathname.split('/')[2]
-  const socketRef = useRoomSocket(code)
+  const socketRef = useRoomSocket(code, (data) => {
+    const msg: SyncMessage = JSON.parse(data)
+    const player = playerRef.current
+    if (!player) return
 
-  const playerRef = useRef<YT.Player | null>(null)
-  const timerRef = useRef<number | null>(null)
-  const lastStateRef = useRef<AgreedState | null>(null)
+    if (msg.type === 'action') {
+      lastStateRef.current = {
+        state: msg.state,
+        position: msg.position,
+        at: Date.now(),
+      }
+      const gap = Math.abs(player.getCurrentTime() - msg.position)
+      if (gap > SEEK_THRESHOLD_S) {
+        player.seekTo(msg.position, true)
+      }
+      if (msg.state === 'playing') {
+        player.playVideo()
+      }
+      if (msg.state === 'paused') {
+        player.pauseVideo()
+      }
+    }
+
+    if (msg.type === 'sync') {
+      const isPlaying = player.getPlayerState() === YT.PlayerState.PLAYING
+      if (!shouldCatchUp(isPlaying, player.getCurrentTime(), msg.position))
+        return
+
+      lastStateRef.current = {
+        state: 'playing',
+        position: msg.position,
+        at: Date.now(),
+      }
+      player.seekTo(msg.position, true)
+    }
+  })
 
   useEffect(() => {
     const stopTimer = () => {
@@ -96,47 +131,6 @@ function App() {
       stopTimer()
       playerRef.current?.destroy()
       playerRef.current = null
-    }
-  }, [socketRef])
-
-  useEffect(() => {
-    if (!socketRef.current) return
-
-    socketRef.current.onmessage = (e) => {
-      const msg: SyncMessage = JSON.parse(e.data)
-      const player = playerRef.current
-      if (!player) return
-
-      if (msg.type === 'action') {
-        lastStateRef.current = {
-          state: msg.state,
-          position: msg.position,
-          at: Date.now(),
-        }
-        const gap = Math.abs(player.getCurrentTime() - msg.position)
-        if (gap > SEEK_THRESHOLD_S) {
-          player.seekTo(msg.position, true)
-        }
-        if (msg.state === 'playing') {
-          player.playVideo()
-        }
-        if (msg.state === 'paused') {
-          player.pauseVideo()
-        }
-      }
-
-      if (msg.type === 'sync') {
-        const isPlaying = player.getPlayerState() === YT.PlayerState.PLAYING
-        if (!shouldCatchUp(isPlaying, player.getCurrentTime(), msg.position))
-          return
-
-        lastStateRef.current = {
-          state: 'playing',
-          position: msg.position,
-          at: Date.now(),
-        }
-        player.seekTo(msg.position, true)
-      }
     }
   }, [socketRef])
 
