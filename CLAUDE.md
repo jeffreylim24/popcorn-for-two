@@ -17,10 +17,11 @@ A web app for long-distance couples to have date nights together: movies, videos
 ## Repo layout & commands
 
 - `frontend/`: Vite + React + TS, ESLint, Prettier. `bun run dev` (port 5173), `bun run lint`, `bun run format` / `bun run format:check`, `bun run test` (Vitest), `bun run build`.
-- `backend/`: Go module `github.com/jeffreylim24/popcorn-for-two/backend`, flat layout (`main.go`). `go run .` (port 8080).
+- `backend/`: Go module `github.com/jeffreylim24/popcorn-for-two/backend`, flat layout (`main.go`, `main_test.go`). `go run .` (port 8080), `go test ./...`.
 - API routes live under `/api/`; in dev, Vite proxies `/api` to `:8080` (one origin, no CORS code in Go).
 - `ROADMAP.md`: MVP milestones M1–M7, each with a "done when" demo and the design questions to settle at its start.
-- Review checks Claude may run (read-only): `go vet ./...` and `gofmt -l .` in `backend/`.
+- Root: `README.md`, `Dockerfile` (Bun → Go → Alpine), `fly.toml`. Deploy by hand: `fly deploy --ha=false` (one machine; rooms live in memory).
+- Review checks Claude may run (read-only): `go test ./...`, `go vet ./...` and `gofmt -l .` in `backend/`.
 
 **The learner:** has done full-stack work before but is very rusty. Treat them as a beginner who picks concepts up fast. Ask what they remember before explaining from zero.
 
@@ -37,7 +38,7 @@ A web app for long-distance couples to have date nights together: movies, videos
 **Exceptions**
 1. The user says "just show me", "write it for me", or similar: do exactly what was asked, nothing extra, then explain it.
 2. **Styling fast lane:** for purely visual questions (layout, spacing, sizing, Tailwind classes), give the answer directly with a one-line explanation. No hint ladder. The user still types it.
-3. **Docs files are Claude's:** Claude writes and commits `ROADMAP.md`, `LEARNING.md`, `CLAUDE.md`, and similar planning docs. The user doesn't type these (no learning in it), but makes the decisions they record.
+3. **Docs files are Claude's:** Claude writes and commits `README.md`, `ROADMAP.md`, `LEARNING.md`, `CLAUDE.md`, and similar docs. The user doesn't type these (no learning in it), but makes the decisions they record.
 4. **Commit messages are Claude's:** when the user's work is ready to commit, Claude drafts the message (with a one-line why for its shape). The user still stages, commits, and pushes their own work. **No `Co-Authored-By: Claude` trailer** on messages for code the user wrote; Claude only helped word the message. Claude's own docs commits keep it.
 
 ## Teaching approach
