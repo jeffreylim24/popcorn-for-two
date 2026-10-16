@@ -1,0 +1,104 @@
+package main
+
+import (
+	"errors"
+	"testing"
+
+	"github.com/coder/websocket"
+)
+
+func TestJoinRoom_UnknownCodeRejected(t *testing.T) {
+	conn := &websocket.Conn{}
+	err := joinRoom("unknown", conn)
+	if !errors.Is(err, errRoomNotFound) {
+		t.Errorf("got: %v, want: %v", err, errRoomNotFound)
+	}
+}
+
+func TestJoinRoom_TwoPeopleCanJoin(t *testing.T) {
+	code := createRoom()
+	conn1 := &websocket.Conn{}
+	conn2 := &websocket.Conn{}
+	err1 := joinRoom(code, conn1)
+	err2 := joinRoom(code, conn2)
+	if err1 != nil {
+		t.Errorf("got: %v, want: nil", err1)
+	}
+	if err2 != nil {
+		t.Errorf("got: %v, want: nil", err2)
+	}
+}
+
+func TestJoinRoom_ThirdIsFull(t *testing.T) {
+	code := createRoom()
+	conn1 := &websocket.Conn{}
+	conn2 := &websocket.Conn{}
+	conn3 := &websocket.Conn{}
+	err1 := joinRoom(code, conn1)
+	err2 := joinRoom(code, conn2)
+	err3 := joinRoom(code, conn3)
+	if err1 != nil {
+		t.Fatalf("got: %v, want: nil", err1)
+	}
+	if err2 != nil {
+		t.Fatalf("got: %v, want: nil", err2)
+	}
+	if !errors.Is(err3, errRoomFull) {
+		t.Errorf("got: %v, want: %v", err3, errRoomFull)
+	}
+}
+
+func TestLeaveRoom_FreesSeat(t *testing.T) {
+	code := createRoom()
+	conn1 := &websocket.Conn{}
+	conn2 := &websocket.Conn{}
+	conn3 := &websocket.Conn{}
+	err1 := joinRoom(code, conn1)
+	err2 := joinRoom(code, conn2)
+	if err1 != nil {
+		t.Fatalf("got: %v, want: nil", err1)
+	}
+	if err2 != nil {
+		t.Fatalf("got: %v, want: nil", err2)
+	}
+	leaveRoom(code, conn1)
+	err3 := joinRoom(code, conn3)
+	if err3 != nil {
+		t.Errorf("got: %v, want: nil", err3)
+	}
+}
+
+func TestGetPartnerConn_AloneReturnsNil(t *testing.T) {
+	code := createRoom()
+	conn1 := &websocket.Conn{}
+	err1 := joinRoom(code, conn1)
+	if err1 != nil {
+		t.Fatalf("got: %v, want: nil", err1)
+	}
+	partner := getPartnerConn(code, conn1)
+	if partner != nil {
+		t.Errorf("got: %v, want: nil", partner)
+	}
+}
+
+func TestGetPartnerConn_TwoReturnsOther(t *testing.T) {
+	code := createRoom()
+	conn1 := &websocket.Conn{}
+	conn2 := &websocket.Conn{}
+	err1 := joinRoom(code, conn1)
+	err2 := joinRoom(code, conn2)
+	if err1 != nil {
+		t.Fatalf("got: %v, want: nil", err1)
+	}
+	if err2 != nil {
+		t.Fatalf("got: %v, want: nil", err2)
+	}
+	partner1 := getPartnerConn(code, conn1)
+	partner2 := getPartnerConn(code, conn2)
+	if partner1 != conn2 {
+		t.Errorf("got: %v, want: %v", partner1, conn2)
+	}
+	if partner2 != conn1 {
+		t.Errorf("got: %v, want: %v", partner2, conn1)
+	}
+}
