@@ -83,6 +83,7 @@ func main() {
 	http.HandleFunc("GET /api/health", healthHandler)
 	http.HandleFunc("POST /api/rooms", createRoomHandler)
 	http.HandleFunc("GET /api/rooms/{code}/ws", joinRoomHandler)
+	http.Handle("GET /", spaHandler("../frontend/dist"))
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
@@ -138,4 +139,18 @@ func getPartnerConn(code string, conn *websocket.Conn) *websocket.Conn {
 		}
 	}
 	return nil
+}
+
+func spaHandler(dir string) http.Handler {
+	files := http.Dir(dir)
+	fileServer := http.FileServer(files)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		f, err := files.Open(r.URL.Path)
+		if err != nil {
+			http.ServeFile(w, r, dir+"/index.html")
+			return
+		}
+		f.Close()
+		fileServer.ServeHTTP(w, r)
+	})
 }
