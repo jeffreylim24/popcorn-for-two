@@ -1,5 +1,10 @@
 import { useRef } from 'react'
-import { isNews, SEEK_THRESHOLD_S, shouldCatchUp } from '../sync'
+import {
+  isNews,
+  parseSyncMessage,
+  SEEK_THRESHOLD_S,
+  shouldCatchUp,
+} from '../sync'
 import type { AgreedState, SyncMessage } from '../sync'
 import { useRoomSocket } from './useRoomSocket'
 import { useYouTubePlayer } from './useYouTubePlayer'
@@ -17,7 +22,8 @@ export function useSync(
   const lastStateRef = useRef<AgreedState | null>(null)
 
   const send = useRoomSocket(code, (data) => {
-    const msg: SyncMessage = JSON.parse(data)
+    const msg = parseSyncMessage(data)
+    if (!msg) return
     const player = playerRef.current
     if (!player) return
 

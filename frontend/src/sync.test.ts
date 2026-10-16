@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'vitest'
-import { expectedPosition, isNews, shouldCatchUp } from './sync'
+import {
+  expectedPosition,
+  isNews,
+  parseSyncMessage,
+  shouldCatchUp,
+} from './sync'
 import type { AgreedState } from './sync'
 
 describe('expectedPosition', () => {
@@ -101,5 +106,79 @@ describe('shouldCatchUp', () => {
   test('playing, ahead: should not catch up', () => {
     const result = shouldCatchUp(true, 20, 10)
     expect(result).toBe(false)
+  })
+})
+
+describe('parseSyncMessage', () => {
+  test('valid message: returns SyncMessage', () => {
+    const data = JSON.stringify({
+      type: 'sync',
+      position: 10,
+      state: 'playing',
+    })
+    const result = parseSyncMessage(data)
+    expect(result).toEqual({ type: 'sync', position: 10, state: 'playing' })
+  })
+
+  test('invalid JSON: returns null', () => {
+    const data = '{ invalid json }'
+    const result = parseSyncMessage(data)
+    expect(result).toBeNull()
+  })
+
+  test('missing fields: returns null', () => {
+    const data = JSON.stringify({ type: 'sync', position: 10 })
+    const result = parseSyncMessage(data)
+    expect(result).toBeNull()
+  })
+
+  test('invalid state: returns null', () => {
+    const data = JSON.stringify({
+      type: 'sync',
+      position: 10,
+      state: 'invalid',
+    })
+    const result = parseSyncMessage(data)
+    expect(result).toBeNull()
+  })
+
+  test('invalid type: returns null', () => {
+    const data = JSON.stringify({
+      type: 'invalid',
+      position: 10,
+      state: 'playing',
+    })
+    const result = parseSyncMessage(data)
+    expect(result).toBeNull()
+  })
+
+  test('position is not a number: returns null', () => {
+    const data = JSON.stringify({
+      type: 'sync',
+      position: 'not a number',
+      state: 'playing',
+    })
+    const result = parseSyncMessage(data)
+    expect(result).toBeNull()
+  })
+
+  test('position is negative: returns null', () => {
+    const data = JSON.stringify({
+      type: 'sync',
+      position: -5,
+      state: 'playing',
+    })
+    const result = parseSyncMessage(data)
+    expect(result).toBeNull()
+  })
+
+  test('position is exactly 0: returns SyncMessage', () => {
+    const data = JSON.stringify({
+      type: 'sync',
+      position: 0,
+      state: 'playing',
+    })
+    const result = parseSyncMessage(data)
+    expect(result).toEqual({ type: 'sync', position: 0, state: 'playing' })
   })
 })
