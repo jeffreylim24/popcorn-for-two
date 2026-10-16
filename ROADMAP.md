@@ -185,7 +185,16 @@ Every milestone ends in something I can demo and commit.
        (applying a `sync`). Time comes in as `nowMs` and YouTube state
        as a boolean, so `sync.ts` never touches the clock or `YT` and
        tests need no fakes. Tested in `src/sync.test.ts` (17 tests).
-    3. Next: split `App.tsx` into custom hooks.
+    3. Next: split `App.tsx` into custom hooks, one file each in
+       `src/hooks/`. Decided: 4 hooks. `useHealth` (done);
+       `useRoomSocket(code, onMessage)` returns a stable `send`, knows
+       nothing about YouTube; `useYouTubePlayer(elementId, videoId,
+       {onLocalChange, onPlayingTick})` returns `playerRef`, owns the
+       timers, knows nothing about sockets; `useSync(code)` owns
+       `lastStateRef` and the `isNews`/`shouldCatchUp` policy, composes
+       the other two, returns `playerRef` for App's dev buttons.
+       Callbacks reach the once-only effects through `useEffectEvent`
+       (React 19.2+). Rejected: 2 hooks passing refs to each other.
   - Decided: Vitest for frontend tests (`bun run test` = `vitest run`).
     Reuses the Vite config, the standard runner for Vite projects, and
     fits later hook/component tests. Rejected: `bun test` (no install,

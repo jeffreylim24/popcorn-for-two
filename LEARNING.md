@@ -1,6 +1,6 @@
 # Learning Snapshot
 
-_Last updated: 2026-10-15 (session 16)_
+_Last updated: 2026-10-15 (session 17)_
 
 ## Concepts
 
@@ -20,6 +20,8 @@ _Last updated: 2026-10-15 (session 16)_
 
 ### Learning (introduced, used or explained back once)
 - **Unit tests with Vitest** (session 16): `describe` / `test` / `expect().toBe()`, `*.test.ts`, test-only code in devDeps. Wrote 17 tests across 3 pure functions. Gaps found in review: no test exactly at the threshold, no rewind (`Math.abs`) case, no paused case through `isNews`. "Break it on purpose" (mutation check) exposed each one. By `shouldCatchUp` they covered the boundary, the opposite sign, and the guard unprompted. Test names: moved from "should return true" to `situation: outcome` in domain words.
+- **Custom hooks** (session 17): a `use…` function that calls hooks; moving code into one changes nothing at runtime. Extracted `useHealth` into `src/hooks/` correctly. Installed React DevTools (Components tab shows the hook as `Health`). Not yet used: `useEffectEvent` (stale callback in a once-only effect), `useCallback` for a stable returned function — introduced together and overloaded; reintroduce one at a time.
+- **JSDoc and comment content:** asked unprompted whether comments should be `/** */` for hover. First drafts restated the function name; a good comment says *why* or the non-obvious part (units, signed gap). Claude wrote the final wording on request.
 - **Pure functions for testability:** pass time in (`nowMs`) and pass YouTube state as a boolean, so the function never reads the clock or `YT`.
 - **`never` exhaustive switch:** saw `tsc` flag the `default` after temporarily adding `'ended'`.
 - **YouTube replaces the target element:** put the buttons inside `<div id="player">`, and the iframe swap wiped them. Found it from the diff and a guiding question.
@@ -29,14 +31,10 @@ _Last updated: 2026-10-15 (session 16)_
 - **Echo guard ("only send news")**: compare an outgoing send to the last agreed state (`{state, position, at}`), projecting position while playing. Session 15: asked unprompted whether a `sync` should go through `sendAction` (no: the guard would drop it), i.e. reports vs news. Called `lastStateRef` "shared source of truth between the 2 browsers"; corrected: each tab has its own note, they can differ briefly.
 - **Sync design (tick frequency, "ahead wins")**: asked how to choose the interval; framing "interval = longest an undetected drift lasts" + trade-off table landed.
 - **Guards over enums:** wrote `=== PAUSED` where the decision was `!== PLAYING`; a per-state table (buffering / ended / unstarted) showed the unstarted tab would auto-start. Recheck: when writing a guard, list every state it lets through.
-- **Log placement vs what actually happened:** a log before the decision printed for skipped sends too, so it looked like B was still sending. DevTools **Network → WS → Messages** (↑ sent / ↓ received) is the real proof.
 - **Testing a hypothesis with logs:** guessed "seek fires no event", logged every `onStateChange`, found it holds only while paused. Asked "why did it buffer this time?", and then saw it doesn't always.
-- **Cross-origin iframe:** the page can't see clicks inside YouTube's player; only API events reach you.
-- **JS runs one thing at a time:** no timer tick can land in the middle of a cleanup function (like code on one Java thread).
 - **Refactor habits:** a helper inside the effect (keeps `exhaustive-deps` quiet); named constants with unit suffixes (`_S`, `_MS`); Prettier (`format`, `format:check`).
 - **Browser `WebSocket`:** `new WebSocket(relativeUrl)`, `onmessage`, `close()` in effect cleanup. Wrote it right first try.
 - **`JSON.stringify` / `JSON.parse`** (Jackson table): put `onmessage` inside the YT player's `events` first. One guiding question ("which object fires `onmessage`?") fixed it.
-- **Reading TS overload errors:** skip overloads that never applied; the matching overload's reason is the real error; later errors can be fallout.
 - **TS literal union types** (`'playing' | 'paused'`), a `type` for the message, **guard-clause early return**: wrote them unprompted. A TS type is unchecked at runtime (unlike a Java cast); `JSON.parse` returns `any`.
 - **StrictMode double-mount:** "React shenanigans" → found `<StrictMode>` in `main.tsx` from a pointer. Reasoned that without cleanup, tab 2 gets room full (4005).
 - **Backend (M2), details in `docs/learning-archive.md`:** goroutine per connection, sentinel errors, `defer`, `sync.Mutex`, who logs an error, close codes, WebSocket handshake, Go deps; heartbeat and WebRTC signaling planned only.
@@ -70,7 +68,8 @@ _Last updated: 2026-10-15 (session 16)_
 - **Echo guard = "only send news"** in `sendAction` against `lastStateRef`; **`sync` tick** = `sendSync` every 2 s while playing, apply only while playing and only if partner is >1 s ahead, every send/apply writes the note (full design in `ROADMAP.md` M3).
 - **Sync decisions live in `src/sync.ts`** as pure functions (`expectedPosition`, `isNews`, `shouldCatchUp`), tested in `src/sync.test.ts`.
 - **Vitest** for frontend tests: `bun run test` (`vitest run`).
-- **Code review backlog** (hooks split, `JSON.parse` guard) is scheduled in `ROADMAP.md` M3/M4.
+- **4-hook split of `App.tsx`:** `useHealth`, `useRoomSocket` (socket only, returns stable `send`), `useYouTubePlayer` (player + timers, emits callbacks), `useSync` (owns `lastStateRef` and the sync policy, composes the other two). One file each in `src/hooks/`. Why: each hook has one reason to change; player and socket never see each other. Rejected: 2 hooks passing refs to each other (coupled, sync rules split).
+- **`JSON.parse` guard + `send` readyState check** scheduled in `ROADMAP.md` M4.
 
 ## Open questions
 
@@ -92,11 +91,10 @@ _Last updated: 2026-10-15 (session 16)_
 - When deciding, wants a recommendation + trade-off table. **Don't record a decision until they say so**: a "should we?" question is not a yes (session 13 slip).
 - Asks for code on mechanical work (session 13: the `stopTimer` refactor, the constants + Prettier setup). Fine under the "write it for me" exception; keep the concept steps theirs.
 - Session 14: asked to skip small quizzes and get to the point. An options table + one recommendation + "which one?" worked well for a design choice.
-- Asks for a code review against "industry standards" now and then: a ranked table (principle, why, when) landed.
-- Session 15: pushes back with good design questions ("wasted computation?", "aren't we separating them?"). Answer directly with a small diagram; it moved fast.
+- Session 15: pushes back with good design questions. Answer directly with a small diagram. Bugs from **things outside the diff**: "your diff only touches X, the symptom is in Y" plus a with/without test landed fast.
 - Session 16: a **"break it on purpose" mutation list** after each test step worked well: it showed concrete missing tests better than describing them. When they ask for help finishing tests, writing the rest is fine (test-only, they wrote the first ones).
-- Bugs this session came from **things outside the diff** (iframe replacing its element, autoplay policy). "Your diff only touches X, the symptom is in Y" plus a with/without test landed fast.
+- **Session 17: information overload.** The `useRoomSocket` step bundled `useEffectEvent` + `useCallback` + skeleton + 4 wiring edits + 3 checks; they stopped the session. Split hook work into turns: (1) move code into the hook, (2) wire into App + verify, (3) add the next concept alone. The hook-split proposal (diagram + table + one alternative) was fine.
 
 ## Next step
 
-**M3 cleanup step 3: split `App.tsx` into custom hooks** (steps 1–2 done, 5 commits not pushed). Leftover from review: add a one-line "why" comment above `shouldCatchUp` (the sign *is* "ahead wins") and `isNews`. Then tick M3.
+**M3 cleanup step 3, hook 2 of 4: `useRoomSocket`** (`useHealth` done; 7 commits not pushed). Take it in small turns, one concept each: first move the socket open/close into the hook with `code` as a parameter, then wire into App, then `useEffectEvent` for `onMessage`, then `useCallback` for `send`. After that: `useYouTubePlayer`, `useSync`, then tick M3.

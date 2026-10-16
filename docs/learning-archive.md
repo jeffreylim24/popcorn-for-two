@@ -14,3 +14,11 @@ Older detail moved out of `LEARNING.md` to keep it under budget.
 - **WebSocket handshake:** GET + `Upgrade` → 101 → two-way. 1000 normal, 1006 abnormal. Vite's own HMR socket (`?token=`) is dev-only noise.
 - **Go dependencies:** `go get`, `go.mod` / `go.sum`, `// indirect`, `go mod tidy`.
 - **WebSocket heartbeat**, **signaling (WebRTC)**: planning only, no code yet.
+
+## Moved from LEARNING.md (session 17)
+
+- **Log placement vs what actually happened:** a log before the decision printed for skipped sends too, so it looked like B was still sending. DevTools **Network → WS → Messages** (↑ sent / ↓ received) is the real proof.
+- **Cross-origin iframe:** the page can't see clicks inside YouTube's player; only API events reach you.
+- **JS runs one thing at a time:** no timer tick can land in the middle of a cleanup function (like code on one Java thread).
+- **Reading TS overload errors:** skip overloads that never applied; the matching overload's reason is the real error; later errors can be fallout.
+- Asks for a code review against "industry standards" now and then: a ranked table (principle, why, when) landed.
