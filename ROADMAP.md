@@ -223,9 +223,11 @@ Every milestone ends in something I can demo and commit.
     message shape (done). `WebSocket.send()` throws while the socket is still
     connecting (`sendAction` and `sendSync`); check `readyState` first.
 
-- [ ] **M4: First deploy (by hand)**
-  - Done when: the app runs on a public HTTPS URL, and my partner and I
-    watch a video in sync from our own networks (call on FaceTime).
+- [x] **M4: First deploy (by hand)**
+  - Done when: the app runs on a public HTTPS URL, and two devices on
+    separate networks watch a video in sync. (Was "my partner and I";
+    changed in session 25, since a VPN test covers HTTPS, real lag and
+    two independent browsers. Routers only matter once WebRTC arrives.)
   - Why next: two tabs on one laptop hide real lag, HTTPS, and home
     routers. Also: first real date night.
   - Decided: Fly.io, one always-on machine in `yyz` (Toronto, between
@@ -270,7 +272,17 @@ Every milestone ends in something I can demo and commit.
     before and after prove the move changed nothing. Done: split into
     `rooms.go`, `handlers.go`, `spa.go`, short `main.go` (same package);
     tests renamed to `rooms_test.go`.
-  - Left: a real session with my partner (Montreal ↔ Toronto).
+  - Done (session 25): passed a VPN test on the deployed app.
+  - Decided: Tailwind v4 (Vite plugin) + shadcn/ui (Radix, Nova style).
+    `@/` alias uses `paths` without `baseUrl` (TS 6 rejects it). Lint's
+    fast-refresh rule is off for `components/ui` (CLI-generated files).
+  - Done: cozy restyle. Home page has a pixel font (Pixelify Sans), a
+    cream/terracotta theme and an animated isometric room
+    (`CozyRoom.tsx`, written by Claude at the user's request). Room page
+    has a framed 16:9 player; the debug Play/Pause/Skip buttons are gone
+    (YouTube's controls drive sync).
+  - Still to come: the first real date night with my partner (Montreal ↔
+    Toronto). Not a blocker for M5.
 
 - [ ] **M5: Camera**
   - Done when: my own webcam shows on the page, locally and on the
