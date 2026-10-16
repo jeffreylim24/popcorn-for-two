@@ -1,6 +1,6 @@
 # Learning Snapshot
 
-_Last updated: 2026-10-15 (session 17)_
+_Last updated: 2026-10-15 (session 18)_
 
 ## Concepts
 
@@ -20,7 +20,9 @@ _Last updated: 2026-10-15 (session 17)_
 
 ### Learning (introduced, used or explained back once)
 - **Unit tests with Vitest** (session 16): `describe` / `test` / `expect().toBe()`, `*.test.ts`, test-only code in devDeps. Wrote 17 tests across 3 pure functions. Gaps found in review: no test exactly at the threshold, no rewind (`Math.abs`) case, no paused case through `isNews`. "Break it on purpose" (mutation check) exposed each one. By `shouldCatchUp` they covered the boundary, the opposite sign, and the guard unprompted. Test names: moved from "should return true" to `situation: outcome` in domain words.
-- **Custom hooks** (session 17): a `use…` function that calls hooks; moving code into one changes nothing at runtime. Extracted `useHealth` into `src/hooks/` correctly. Installed React DevTools (Components tab shows the hook as `Health`). Not yet used: `useEffectEvent` (stale callback in a once-only effect), `useCallback` for a stable returned function — introduced together and overloaded; reintroduce one at a time.
+- **Custom hooks** (sessions 17–18): a `use…` function that calls hooks; moving code into one changes nothing at runtime. Extracted `useHealth` and `useRoomSocket` correctly, one small turn at a time. React DevTools installed. Effects run in call order (a hook's effect before App's later ones).
+- **Function identity per render / `useEffectEvent` / `useCallback`** (session 18, shaky): used both correctly, but asked "why would `onMessage` change?" Landed: the component body reruns each render, so an inline arrow is a new object each time (same text, new object) + a "today vs later" table (new object always; different behavior only once it reads changing values). Call-forwarding analogy for `useEffectEvent` was given; not yet checked. Gap: it shows no visible effect yet (handler reads only refs). Recheck in `useSync`, where the handler reads changing values.
+- **Declaration order:** put the hook call above `useRef`s its handler reads; worked at runtime (closure runs later) but read as used-before-declared. A deps array is read during render, so it hits the TDZ.
 - **JSDoc and comment content:** asked unprompted whether comments should be `/** */` for hover. First drafts restated the function name; a good comment says *why* or the non-obvious part (units, signed gap). Claude wrote the final wording on request.
 - **Pure functions for testability:** pass time in (`nowMs`) and pass YouTube state as a boolean, so the function never reads the clock or `YT`.
 - **`never` exhaustive switch:** saw `tsc` flag the `default` after temporarily adding `'ended'`.
@@ -93,8 +95,9 @@ _Last updated: 2026-10-15 (session 17)_
 - Session 14: asked to skip small quizzes and get to the point. An options table + one recommendation + "which one?" worked well for a design choice.
 - Session 15: pushes back with good design questions. Answer directly with a small diagram. Bugs from **things outside the diff**: "your diff only touches X, the symptom is in Y" plus a with/without test landed fast.
 - Session 16: a **"break it on purpose" mutation list** after each test step worked well: it showed concrete missing tests better than describing them. When they ask for help finishing tests, writing the rest is fine (test-only, they wrote the first ones).
-- **Session 17: information overload.** The `useRoomSocket` step bundled `useEffectEvent` + `useCallback` + skeleton + 4 wiring edits + 3 checks; they stopped the session. Split hook work into turns: (1) move code into the hook, (2) wire into App + verify, (3) add the next concept alone. The hook-split proposal (diagram + table + one alternative) was fine.
+- **Hook work in small turns works** (session 18 fixed the session-17 overload): (1) move code into the hook, (2) wire into App + verify, (3) add one concept alone, each with the syntax skeleton and exact line edits. Each turn ends with check + commit message.
+- **"Break it on purpose" only after Vitest test steps.** Session 18: asked to stop them on manual verify steps while struggling with a concept. Also: design break-its so they can actually run (one hit a TDZ error before testing anything).
 
 ## Next step
 
-**M3 cleanup step 3, hook 2 of 4: `useRoomSocket`** (`useHealth` done; 7 commits not pushed). Take it in small turns, one concept each: first move the socket open/close into the hook with `code` as a parameter, then wire into App, then `useEffectEvent` for `onMessage`, then `useCallback` for `send`. After that: `useYouTubePlayer`, `useSync`, then tick M3.
+**M3 cleanup step 3, hook 3 of 4: `useYouTubePlayer`** (`useHealth` and `useRoomSocket` done; commits not pushed). Same small turns: move the player + timers into the hook, wire into App + verify, then route `onLocalChange` / `onPlayingTick` through `useEffectEvent` (second use, no new concept). Then `useSync`, then tick M3.

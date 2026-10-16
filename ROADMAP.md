@@ -188,7 +188,10 @@ Every milestone ends in something I can demo and commit.
     3. Next: split `App.tsx` into custom hooks, one file each in
        `src/hooks/`. Decided: 4 hooks. `useHealth` (done);
        `useRoomSocket(code, onMessage)` returns a stable `send`, knows
-       nothing about YouTube; `useYouTubePlayer(elementId, videoId,
+       nothing about YouTube (done: deals in strings only, `JSON.parse`
+       stays with the caller; `onMessage` via `useEffectEvent`, `send`
+       via `useCallback` reading `socketRef` at call time);
+       `useYouTubePlayer(elementId, videoId,
        {onLocalChange, onPlayingTick})` returns `playerRef`, owns the
        timers, knows nothing about sockets; `useSync(code)` owns
        `lastStateRef` and the `isNews`/`shouldCatchUp` policy, composes
