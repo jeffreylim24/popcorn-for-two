@@ -289,6 +289,19 @@ Every milestone ends in something I can demo and commit.
     live site.
   - Why next: the call still lives in another app. First step to
     bringing it in: see my own face here.
+  - Decisions:
+    - Self-view sits over the video in a top corner. YouTube's
+      controls live inside the iframe, so anything on top of the
+      video hides them; the top corners keep the control bar clear.
+      The two facecams start in opposite top corners so they never
+      overlap at the start.
+    - Permission denied: the video still works and the self-view box
+      says how to unblock (address bar). No camera: no box at all.
+    - Video only. The mic comes with M7.
+    - Camera starts when the room page opens; a button turns it off
+      and on again.
+    - Later (before M7, maybe): a Zoom-style preview screen to check
+      the camera before entering the room.
 
 - [ ] **M6: Drag and resize**
   - Done when: I can drag and resize my facecam anywhere over the
