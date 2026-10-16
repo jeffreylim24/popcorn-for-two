@@ -1,0 +1,215 @@
+/* Animations for CozyRoom. transform-box: fill-box makes transform-origin
+   relative to each element instead of the whole SVG. */
+
+.cozy-float {
+  animation: cozy-float 6s ease-in-out infinite;
+}
+
+.cozy-twinkle {
+  animation: cozy-twinkle 2.4s ease-in-out infinite;
+}
+
+.cozy-cloud {
+  animation: cozy-cloud 18s linear infinite;
+}
+
+.cozy-sway {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: cozy-sway 5s ease-in-out infinite;
+}
+
+.cozy-tv-screen {
+  fill: #7fb7e8;
+  animation: cozy-tv 8s step-end infinite;
+}
+
+.cozy-tv-glow {
+  fill: #7fb7e8;
+  opacity: 0.18;
+  animation:
+    cozy-tv 8s step-end infinite,
+    cozy-flicker 0.9s ease-in-out infinite alternate;
+}
+
+.cozy-tail {
+  transform-box: fill-box;
+  transform-origin: left bottom;
+  animation: cozy-sway 3s ease-in-out infinite;
+}
+
+.cozy-pop {
+  animation: cozy-pop 3s ease-out infinite;
+}
+
+.cozy-steam {
+  animation: cozy-steam 2.4s ease-out infinite;
+}
+
+.cozy-heart {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cozy-heart 4s ease-out infinite;
+}
+
+.cozy-lamp-glow {
+  animation: cozy-lamp 4s ease-in-out infinite;
+}
+
+.cozy-ripple {
+  animation: cozy-ripple 4s ease-in-out infinite;
+}
+
+.cozy-bob {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cozy-bob 3s ease-in-out infinite;
+}
+
+@keyframes cozy-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes cozy-twinkle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Drifts along the left wall's direction (2:1 isometric slope). */
+@keyframes cozy-cloud {
+  from {
+    transform: translate(30px, -15px);
+  }
+  to {
+    transform: translate(-50px, 25px);
+  }
+}
+
+@keyframes cozy-sway {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+/* Hard cuts between "scenes" on the TV. */
+@keyframes cozy-tv {
+  0% {
+    fill: #7fb7e8;
+  }
+  25% {
+    fill: #f2a65a;
+  }
+  50% {
+    fill: #9be3c2;
+  }
+  75% {
+    fill: #e88fb0;
+  }
+}
+
+@keyframes cozy-flicker {
+  from {
+    opacity: 0.14;
+  }
+  to {
+    opacity: 0.24;
+  }
+}
+
+@keyframes cozy-pop {
+  0%,
+  70% {
+    transform: translateY(0);
+  }
+  80% {
+    transform: translateY(-7px);
+  }
+  90%,
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes cozy-steam {
+  from {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 0.8;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes cozy-heart {
+  0% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.6);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-18px) scale(1.1);
+  }
+}
+
+@keyframes cozy-lamp {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+  45% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+@keyframes cozy-ripple {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: translateX(0);
+  }
+  50% {
+    opacity: 0.6;
+    transform: translateX(6px);
+  }
+}
+
+@keyframes cozy-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(2px) rotate(3deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [class^='cozy-'] {
+    animation: none;
+  }
+}
