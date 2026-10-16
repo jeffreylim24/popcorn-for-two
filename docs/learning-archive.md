@@ -22,3 +22,10 @@ Older detail moved out of `LEARNING.md` to keep it under budget.
 - **JS runs one thing at a time:** no timer tick can land in the middle of a cleanup function (like code on one Java thread).
 - **Reading TS overload errors:** skip overloads that never applied; the matching overload's reason is the real error; later errors can be fallout.
 - Asks for a code review against "industry standards" now and then: a ranked table (principle, why, when) landed.
+
+## Moved from LEARNING.md (session 19)
+
+- **`never` exhaustive switch:** saw `tsc` flag the `default` after temporarily adding `'ended'`.
+- **YouTube replaces the target element:** put the buttons inside `<div id="player">`, and the iframe swap wiped them. Found it from the diff and a guiding question.
+- **`git commit --amend`** for an unpushed commit that missed files; every commit should build on its own.
+- **Testing a hypothesis with logs:** guessed "seek fires no event", logged every `onStateChange`, found it holds only while paused. Asked "why did it buffer this time?", and then saw it doesn't always.

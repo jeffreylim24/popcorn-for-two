@@ -1,6 +1,6 @@
 # Learning Snapshot
 
-_Last updated: 2026-10-15 (session 18)_
+_Last updated: 2026-10-15 (session 19)_
 
 ## Concepts
 
@@ -20,20 +20,17 @@ _Last updated: 2026-10-15 (session 18)_
 
 ### Learning (introduced, used or explained back once)
 - **Unit tests with Vitest** (session 16): `describe` / `test` / `expect().toBe()`, `*.test.ts`, test-only code in devDeps. Wrote 17 tests across 3 pure functions. Gaps found in review: no test exactly at the threshold, no rewind (`Math.abs`) case, no paused case through `isNews`. "Break it on purpose" (mutation check) exposed each one. By `shouldCatchUp` they covered the boundary, the opposite sign, and the guard unprompted. Test names: moved from "should return true" to `situation: outcome` in domain words.
-- **Custom hooks** (sessions 17–18): a `use…` function that calls hooks; moving code into one changes nothing at runtime. Extracted `useHealth` and `useRoomSocket` correctly, one small turn at a time. React DevTools installed. Effects run in call order (a hook's effect before App's later ones).
-- **Function identity per render / `useEffectEvent` / `useCallback`** (session 18, shaky): used both correctly, but asked "why would `onMessage` change?" Landed: the component body reruns each render, so an inline arrow is a new object each time (same text, new object) + a "today vs later" table (new object always; different behavior only once it reads changing values). Call-forwarding analogy for `useEffectEvent` was given; not yet checked. Gap: it shows no visible effect yet (handler reads only refs). Recheck in `useSync`, where the handler reads changing values.
-- **Declaration order:** put the hook call above `useRef`s its handler reads; worked at runtime (closure runs later) but read as used-before-declared. A deps array is read during render, so it hits the TDZ.
+- **Custom hooks** (sessions 17–19): a `use…` function that calls hooks; moving code into one changes nothing at runtime. Wrote `useHealth`, `useRoomSocket`, and the `useYouTubePlayer` move + App wiring themselves. Session 19, tired, asked Claude to write the rest: the option-A fix (App passes `playerRef` in), the `useEffectEvent` wrap in `useYouTubePlayer`, and all of `useSync`. **Not reviewed by them yet**; next session goes through it bit by bit. Effects run in call order.
+- **Function identity per render / `useEffectEvent` / `useCallback`** (shaky): an inline arrow is a new object each render (same text, new object); "today vs later" table landed. Call-forwarding picture ("the effect keeps one phone number; React rewires where it forwards each render") given twice; the recheck question went unanswered in session 19. Recheck in the review session on `useYouTubePlayer`: "once `sendAction` reads a changing value, what does the player call without vs with `useEffectEvent`?"
+- **Circular hooks + React Compiler lint** (session 19): `useYouTubePlayer` *returning* `playerRef` made a loop (socket handler needs `playerRef`, player callbacks need `send`). Either order uses something before it's declared. Lint said "cannot call impure function `Date.now`" (misleading) one way and "accessed before it is declared" the other. Asked "is it because we went step by step?" (no: the loop was hidden inside one effect before; step-by-step showed it in a small diff). Fix: the caller creates the ref and passes it in, so each line only uses things above it.
+- **File name case:** macOS ignores case, Linux (deploy) doesn't, so `useYoutubePlayer.ts` vs the `useYouTubePlayer` import would break only in production. Fixed with `mv`.
 - **JSDoc and comment content:** asked unprompted whether comments should be `/** */` for hover. First drafts restated the function name; a good comment says *why* or the non-obvious part (units, signed gap). Claude wrote the final wording on request.
 - **Pure functions for testability:** pass time in (`nowMs`) and pass YouTube state as a boolean, so the function never reads the clock or `YT`.
-- **`never` exhaustive switch:** saw `tsc` flag the `default` after temporarily adding `'ended'`.
-- **YouTube replaces the target element:** put the buttons inside `<div id="player">`, and the iframe swap wiped them. Found it from the diff and a guiding question.
 - **Chrome autoplay policy:** a `playVideo()` from a received message is blocked until the tab has had one click. Confirmed it with a with/without-click test.
-- **`git commit --amend`** for an unpushed commit that missed files; every commit should build on its own.
 - **`setInterval` / `clearInterval`**: second use (the `sync` tick) written right first try, reusing `timerRef` because `stopTimer()` already runs on every state change.
 - **Echo guard ("only send news")**: compare an outgoing send to the last agreed state (`{state, position, at}`), projecting position while playing. Session 15: asked unprompted whether a `sync` should go through `sendAction` (no: the guard would drop it), i.e. reports vs news. Called `lastStateRef` "shared source of truth between the 2 browsers"; corrected: each tab has its own note, they can differ briefly.
 - **Sync design (tick frequency, "ahead wins")**: asked how to choose the interval; framing "interval = longest an undetected drift lasts" + trade-off table landed.
 - **Guards over enums:** wrote `=== PAUSED` where the decision was `!== PLAYING`; a per-state table (buffering / ended / unstarted) showed the unstarted tab would auto-start. Recheck: when writing a guard, list every state it lets through.
-- **Testing a hypothesis with logs:** guessed "seek fires no event", logged every `onStateChange`, found it holds only while paused. Asked "why did it buffer this time?", and then saw it doesn't always.
 - **Refactor habits:** a helper inside the effect (keeps `exhaustive-deps` quiet); named constants with unit suffixes (`_S`, `_MS`); Prettier (`format`, `format:check`).
 - **Browser `WebSocket`:** `new WebSocket(relativeUrl)`, `onmessage`, `close()` in effect cleanup. Wrote it right first try.
 - **`JSON.stringify` / `JSON.parse`** (Jackson table): put `onmessage` inside the YT player's `events` first. One guiding question ("which object fires `onmessage`?") fixed it.
@@ -75,7 +72,8 @@ _Last updated: 2026-10-15 (session 18)_
 
 ## Open questions
 
-- None here. Per-milestone design questions live in `ROADMAP.md`.
+- **Waiting on the user's OK to record in `ROADMAP.md` M3** (not recorded yet, on purpose): option A (App/`useSync` creates `playerRef` and passes it into `useYouTubePlayer`, which returns nothing; why: breaks the hook loop) and `useSync(code, elementId, videoId)` instead of `useSync(code)` (why: the page picks the video, ready for M5).
+- Per-milestone design questions live in `ROADMAP.md`.
 
 ## Teaching formats
 
@@ -96,8 +94,9 @@ _Last updated: 2026-10-15 (session 18)_
 - Session 15: pushes back with good design questions. Answer directly with a small diagram. Bugs from **things outside the diff**: "your diff only touches X, the symptom is in Y" plus a with/without test landed fast.
 - Session 16: a **"break it on purpose" mutation list** after each test step worked well: it showed concrete missing tests better than describing them. When they ask for help finishing tests, writing the rest is fine (test-only, they wrote the first ones).
 - **Hook work in small turns works** (session 18 fixed the session-17 overload): (1) move code into the hook, (2) wire into App + verify, (3) add one concept alone, each with the syntax skeleton and exact line edits. Each turn ends with check + commit message.
+- Session 19: when tired, stops answering rechecks and asks Claude to finish ("I'll review later"). Fine under the exception; schedule the review as its own session and do the skipped rechecks there.
 - **"Break it on purpose" only after Vitest test steps.** Session 18: asked to stop them on manual verify steps while struggling with a concept. Also: design break-its so they can actually run (one hit a TDZ error before testing anything).
 
 ## Next step
 
-**M3 cleanup step 3, hook 3 of 4: `useYouTubePlayer`** (`useHealth` and `useRoomSocket` done; commits not pushed). Same small turns: move the player + timers into the hook, wire into App + verify, then route `onLocalChange` / `onPlayingTick` through `useEffectEvent` (second use, no new concept). Then `useSync`, then tick M3.
+**Review session for the 4-hook split** (all committed, 3 commits not pushed: `4e4f268`, `83145be`, `b4ac9cd`). Go through it bit by bit, in commit order: option A in `useYouTubePlayer` + App, then `useEffectEvent` (do the recheck), then `useSync`. Run the two-tab check if it wasn't done. Then ask whether to record the two pending decisions (Open questions) and tick M3.
