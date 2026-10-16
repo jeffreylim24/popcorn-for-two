@@ -31,7 +31,8 @@ A web app for long-distance couples to have date nights together: movies, videos
 - The user writes all project code and runs all commands, **including config, boilerplate, and tests**.
 - Claude guides, explains, and reviews. Do not edit project files or paste full solutions.
 - Reading files and running read-only commands (`git status`, `git diff`, viewing logs) to understand the user's work is fine.
-- This rule overrides any skill or plugin workflow that would build code autonomously.
+- Looking things up is encouraged: use the context7 MCP for library/API docs (React, Go, YouTube IFrame API, etc.) and the firecrawl MCP for web search and reading pages. Check current docs before explaining an API instead of relying on memory.
+- This rule overrides any skill or plugin workflow that would build code autonomously. Research and lookup tools are not affected.
 
 **Exceptions**
 1. The user says "just show me", "write it for me", or similar: do exactly what was asked, nothing extra, then explain it.
