@@ -66,7 +66,7 @@ Every milestone ends in something I can demo and commit.
   - Done: a message from one tab shows up in the other, not in the
     sender's own tab.
 
-- [ ] **M3: Sync**
+- [x] **M3: Sync**
   - Done when: play, pause, or seek in either tab, and the other tab's
     video follows within about a second, with no echo loop.
   - Why next: messages arrive after M2, but the player ignores them.
@@ -185,19 +185,36 @@ Every milestone ends in something I can demo and commit.
        (applying a `sync`). Time comes in as `nowMs` and YouTube state
        as a boolean, so `sync.ts` never touches the clock or `YT` and
        tests need no fakes. Tested in `src/sync.test.ts` (17 tests).
-    3. Next: split `App.tsx` into custom hooks, one file each in
-       `src/hooks/`. Decided: 4 hooks. `useHealth` (done);
+    3. Done: split `App.tsx` into custom hooks, one file each in
+       `src/hooks/`. Decided: 4 hooks. `useHealth`;
        `useRoomSocket(code, onMessage)` returns a stable `send`, knows
-       nothing about YouTube (done: deals in strings only, `JSON.parse`
+       nothing about YouTube (deals in strings only, `JSON.parse`
        stays with the caller; `onMessage` via `useEffectEvent`, `send`
        via `useCallback` reading `socketRef` at call time);
-       `useYouTubePlayer(elementId, videoId,
-       {onLocalChange, onPlayingTick})` returns `playerRef`, owns the
-       timers, knows nothing about sockets; `useSync(code)` owns
+       `useYouTubePlayer(playerRef, elementId, videoId,
+       {onLocalChange, onPlayingTick})` returns nothing, owns the
+       timers, knows nothing about sockets;
+       `useSync(code, elementId, videoId)` owns `playerRef`,
        `lastStateRef` and the `isNews`/`shouldCatchUp` policy, composes
        the other two, returns `playerRef` for App's dev buttons.
        Callbacks reach the once-only effects through `useEffectEvent`
        (React 19.2+). Rejected: 2 hooks passing refs to each other.
+       Verified with the two-tab check after the split.
+  - Decided: `useSync` creates `playerRef` and passes it into
+    `useYouTubePlayer` (option A). Why: the socket handler needs the
+    player and the player callbacks need `send`, so with the player
+    hook returning its own ref, either call order used something
+    before it was declared. Creating the ref above both calls means
+    every line uses only things above it, lint-clean, and the two
+    hooks never see each other. Cost: the player hook doesn't fully
+    own its ref. Rejected: a late-bound "holder" ref filled after both
+    calls (a ref write during render, which lint flags; easy to
+    forget), one combined player + socket hook (undoes the split), and
+    returning player controls referenced before their declaration
+    (lint: "accessed before it is declared").
+  - Decided: `useSync(code, elementId, videoId)`, not `useSync(code)`.
+    Why: the page decides which element and video; sync logic doesn't
+    care. When choosing a video arrives, only App changes.
   - Decided: Vitest for frontend tests (`bun run test` = `vitest run`).
     Reuses the Vite config, the standard runner for Vite projects, and
     fits later hook/component tests. Rejected: `bun test` (no install,
