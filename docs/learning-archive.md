@@ -37,3 +37,13 @@ Older detail moved out of `LEARNING.md` to keep it under budget.
 - **File name case:** macOS ignores case, Linux (deploy) doesn't. Fixed `useYoutubePlayer.ts` with `mv`.
 - **Pure functions for testability:** pass time in (`nowMs`) and YouTube state as a boolean.
 - **Chrome autoplay policy:** a received `playVideo()` is blocked until the tab has had one click.
+
+## Moved 2026-10-16 (session 25): M4 deploy detail
+
+- **Debugging a server-side ghost (s. 22):** found the bfcache bug themselves; Go log showed no `left` line → Go never saw a close → confirmed by closing the tab. Reported exact repro steps.
+- **Dev vs prod serving (s. 22):** 8080 serves the last `bun run build` (matches prod); 5173 for editing.
+- **Hosting constraints (s. 21):** half-got serverless (missed: several copies = several `rooms` maps). Applied `--ha=false` themselves.
+- **Docker (s. 21):** container = isolated process, not a VM. Wrote the 3-stage Dockerfile from blanks; `COPY` source needed two hints. `.dockerignore`, `--target`, `CGO_ENABLED=0`, `COPY --from`, `-p`.
+- **Fly.io (s. 21–25):** `fly auth login`, `fly launch --no-deploy`, `fly.toml`, `fly deploy --ha=false`, `fly status`, `fly logs`. Deployed the restyle on their own (s. 25).
+- **SPA fallback (s. 21):** wrote `spaHandler`; why `http.Dir.Open` over `os.Open` was told, not checked.
+- **Untrusted input / version skew (s. 21):** `unknown` vs `any`; try/catch around `JSON.parse`; shape check; suggested `position >= 0` themselves.
