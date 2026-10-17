@@ -1,16 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { CozyRoom } from '@/components/CozyRoom'
 import { ArrowUpRight, Moon } from 'lucide-react'
-
-async function createAndJoinRoom() {
-  const response = await fetch('/api/rooms', { method: 'POST' })
-  if (!response.ok) {
-    console.error('Failed to create room:', response.status)
-    return
-  }
-  const code = await response.text()
-  window.location.assign(`/room/${code}`)
-}
+import { createAndJoinRoom } from '@/rooms'
 
 export function HomePage() {
   return (
