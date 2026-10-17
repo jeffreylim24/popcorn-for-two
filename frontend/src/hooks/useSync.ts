@@ -17,7 +17,7 @@ export function useSync(code: string, elementId: string, videoId: string) {
   const playerRef = useRef<YT.Player | null>(null)
   const lastStateRef = useRef<AgreedState | null>(null)
 
-  const send = useRoomSocket(code, (data) => {
+  const { send } = useRoomSocket(code, (data) => {
     const msg = parseSyncMessage(data)
     if (!msg) return
     const player = playerRef.current
