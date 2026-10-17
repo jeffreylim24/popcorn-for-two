@@ -346,7 +346,7 @@ Every milestone ends in something I can demo and commit.
   - Later: close codes are duplicated in Go and TS (shared constants);
     auto-retry with backoff.
 
-- [ ] **M7: Camera (lobby + self-view)**
+- [x] **M7: Camera (lobby + self-view)**
   - Done when: a Zoom-style lobby shows my webcam before I enter the
     room, and in the room my facecam sits over the video, locally and
     on the live site.
@@ -383,9 +383,15 @@ Every milestone ends in something I can demo and commit.
     the effect needs a `cancelled` flag and must stop a late stream's
     tracks. Leaving via the logo is a full page load, which hides the
     leak (Chrome frees the camera on unload).
-  - Not designed yet: does the camera start on the lobby or the room;
-    how the lobby hands the stream to the room; toggle as an `enabled`
-    dep on the effect (recommended) vs `start`/`stop` functions.
+    - Toggle in both the lobby and the room header; both flip the same
+      `cameraOn` in `RoomPage`.
+    - Toggle off hides the blocked box too: the error belongs to one
+      effect run, so cleanup clears it (outside `if (ownStream)`, which
+      is always null when blocked). Toggle on re-asks and the box
+      returns.
+  - Found (session 29): both ends of the `await` need the `cancelled`
+    check: success stops the late stream; failure skips `setError`.
+    Putting the check in cleanup does nothing (cleanup sets the flag).
 
 - [ ] **M8: Drag and resize**
   - Done when: I can drag and resize my facecam anywhere over the
@@ -413,6 +419,10 @@ Every milestone ends in something I can demo and commit.
   effect cleanup doesn't run (nothing unmounts). Fix: close the socket
   on `pagehide`; on `pageshow` with `persisted`, rejoin (or reload).
   Workaround: close the tab, or create a new room.
+
+- Font flash on slow networks: Pixelify Sans downloads only once
+  text using it renders, so "Finding your room…" shows the fallback
+  first. Fix: `<link rel="preload">` the .woff2 in `index.html`.
 
 ## Not in the MVP
 - Mini-games, movies beyond YouTube (separate brainstorming session)

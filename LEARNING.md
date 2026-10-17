@@ -1,6 +1,6 @@
 # Learning Snapshot
 
-_Last updated: 2026-10-17 (session 28)_
+_Last updated: 2026-10-17 (session 29)_
 
 ## Concepts
 
@@ -13,17 +13,24 @@ _Last updated: 2026-10-17 (session 28)_
   - Session 21: **returning an `http.Handler` from a func**, `http.HandlerFunc(...)`: filled the blanks unaided.
   - Session 24: **one package across several files**, unused imports are compile errors, `go test -count=1`, `foo_test.go` next to `foo.go`. Told, not checked back.
 - **`context.Context`:** landed (tentatively) as **"a stop button the caller holds; the function only watches it"**. Earlier tries: `Done()` channel + `select` + ctx tree. Recheck on the heartbeat `Ping(ctx)`: have them pick the parent + timeout and say who holds the button.
-- **`useRef` (read at call time vs copy early):** weakest React idea. Tried: Java instance-field table, read-at-fire-time trace, **"`send` holds the box, not what's in it"** + timeline. Wrote the `readyState` guard right (s. 22). **M7 (camera) is the natural spot:** the `MediaStream` and `<video>` element will live in refs.
-- **Effect cleanup timing (s. 22, 26, 28):** progress in s. 28. Spotted connect → disconnect → connect themselves and blamed StrictMode (right, but said "renders twice", not "effect runs twice"). A two-socket timeline showed the old socket's async `onclose` landing after cleanup. First fix idea was "set status to disconnected in cleanup" (treats state as the guard; the handler is still attached). Landed after the **button `onclick = null` example**; wrote `socket.onclose = null` before `close()` via a local `socket`. Still open from s. 26: the `cancelled` flag for a late `getUserMedia` result. Redo in M7 with a timeline first.
+- **`useRef` (read at call time vs copy early):** weakest React idea. Tried: Java instance-field table, read-at-fire-time trace, **"`send` holds the box, not what's in it"** + timeline. Wrote the `readyState` guard right (s. 22). **S. 29:** wrote `videoRef` + an effect setting `srcObject` on `[stream]` unaided, guard included. Still unchecked: the *read-later* side (a ref read inside a callback).
+- **Effect cleanup timing / "which code runs later" (s. 22, 26, 28, 29):** s. 28 landed `socket.onclose = null` via the `button.onclick = null` example. S. 29 wrote `useCamera` with a `cancelled` flag, but four slips, all the same gap (*which lines run now vs after the `await`*):
+  1. On `cancelled`, returned without stopping the late stream. The trace table → "i don't get it"; the **pizza / note-on-the-door analogy** landed at once.
+  2. Put `try` around the call `start()`, not around the `await` inside it (an async call returns at once). The lint `set-state-in-effect` caught it.
+  3. Put `setError(null)` inside `if (ownStream)`, which is null exactly when blocked, despite a warning.
+  4. Put `if (cancelled) return` in the cleanup, not the `catch`; asked "what does this do?" A two-branch `await` diagram (success / fail) fixed it.
+  Next time, try a different format: have them **label each line "now" or "later"** in a small async function before writing.
 - **TS types vanish at runtime:** wrote `typeof v.type !== SyncMessage['type']` (s. 21). Explained with a "what you write vs what the browser runs" table. Not explained back.
 - **HTTP:** once mixed up the page URL (`/room/CODE`) with the API URL; `fmt.Fprint(w, …)` writes the response, `log` writes your terminal.
 
 ### Learning (introduced, used or explained back once)
-- **Re-run an effect by changing a dep (s. 28):** wrote the `attempt` counter + `[code, attempt]` + `useCallback` reconnect from a flow diagram. First forgot `setStatus('connecting')`; the "button looks broken if it fails again" case landed. Updater form `setX(prev => …)` used.
+- **Lifting state up (s. 29):** chose "owner never unmounts" for the stream, and the lobby as a view at the same URL. Delegated the `RoomPage` / `RoomView` split (dense: rename + new component + props); then wired `cameraOn` / `onToggleCamera` into `RoomView` themselves, following the TS "missing props" error.
+- **Hooks in a child that mounts later (s. 29):** `useSync` in `RoomView` means the socket opens only after Join. Told, not explained back.
+- **Re-run an effect by changing a dep (s. 28, 29):** `attempt` counter (s. 28); the camera toggle as `useCamera(enabled)` (s. 29), chosen over `start`/`stop`. wrote the `attempt` counter + `[code, attempt]` + `useCallback` reconnect from a flow diagram. First forgot `setStatus('connecting')`; the "button looks broken if it fails again" case landed. Updater form `setX(prev => …)` used.
 - **Lookup table typed `Record<Union, …>` (s. 28):** asked Claude to write the status overlay; shown a trace. Then added the `action` field themselves, letting TS errors guide the rows. Asked whether union strings count as hard-coding: told the union type-checks them, unlike `4004`.
 - **`useState` in a custom hook (s. 28):** status union + `useState`, returned up through `useSync`. Logging in the hook body (each render) vs after `setX` (old value): told.
 - **Close codes on the client (s. 28):** `onclose` + `e.code` switch, left a TODO about sharing codes with Go.
-- **`async` / `await` in an effect (s. 26):** given a `fetch` example + skeleton, wrote `useCamera` correctly. Deleted for the reorder; returns in M7.
+- **`async` / `await` in an effect (s. 26, 29):** `useCamera` rewritten with `try`/`catch` and a `DOMException` `.name` check. Gap: `try` only catches what's awaited inside it (see cleanup entry).
 - **Rules of hooks → component split (s. 26–27):** removed the dead `code: string | undefined` guards themselves. Why tighter types help: told.
 - **Go `testing` package (s. 23):** wrote 6 room tests from skeletons; `t.Fatalf` vs `t.Errorf`.
 - **Safe refactor loop (s. 23–24):** baseline tests → move → vet/test/gofmt → smoke test → one `refactor:` commit. S. 28: extracted `createAndJoinRoom` to `src/rooms.ts` and split refactor and feat commits, refactor first so each builds.
@@ -58,8 +65,9 @@ _Last updated: 2026-10-17 (session 28)_
 - **Reordered (s. 26):** M5 routing → M6 status → M7 camera → M8 drag → M9 call; they want visible feedback over console debugging.
 - **M5 (s. 27):** path matched by hand in `App`, soft 404, pages in `src/pages/`.
 - **M6 (s. 28):** status lives in `useRoomSocket` (`{ send, status, reconnect }`); overlay drawn *over* the player (YouTube holds `#player`); `STATUS_TEXT: Record<RoomStatus, …>` holds title, detail, action; Create (not-found / full) and manual Reconnect, no auto-retry.
+- **M7 (s. 29):** lobby is a `joined` view inside `RoomPage` (no router: a URL change kills the stream); `useCamera(cameraOn)` lives in `RoomPage`; toggles in lobby + room header; toggle off hides the blocked box. `pages/` holds only routed pages; views go in `components/`.
 - **The app is public:** many couples' rooms; weigh SEO, abuse, scaling.
-- **Deferred to "Later":** room expiry, bfcache ghost seat (`pagehide`), auto-retry with backoff, shared close-code constants, CI/CD, code-quality pass. `useHealth.ts` unused (their call).
+- **Deferred to "Later":** room expiry, bfcache ghost seat (`pagehide`), auto-retry with backoff, shared close-code constants, CI/CD, code-quality pass. Font preload for Pixelify Sans (slow-network flash). `useHealth.ts` unused (their call).
 
 ## Open questions
 
@@ -69,16 +77,17 @@ _Last updated: 2026-10-17 (session 28)_
 
 - Works: **comparison tables**, **traces with state after each line**, **two-column timelines** (the two-socket one landed), **ASCII flow diagrams**, **concrete analogies** when mechanism explanations don't land. Ask "what do you remember?" first.
 - Works: **fill-in-the-blank skeletons**; **options table + recommendation** (AskUserQuestion with three design calls settled M6 in one turn).
-- **"I don't get what you're getting at":** abstract hints fail. Give the **same idea on a different concrete object** (`button.onclick = null`), then map it back. Landed in s. 28.
+- **"I don't get what you're getting at" / "i don't get it":** abstract hints and trace tables for async timing fail. Give the **same idea on a different concrete object** (`button.onclick = null`), then map it back. Landed in s. 28 (`onclick`) and s. 29 (pizza courier).
 - **Step 5 in s. 28 was too dense** (keep-mounted + `Record` + conditional render + styling) → "just do it for me". Split steps like that.
 - **Fast pace:** one step per turn, why → exact commands → "it worked if…". On "done", verify with `git diff`, lint, build. They often commit/push/deploy ahead: check `git log` first.
 - **Visual work:** they give a reference or ask "help me style"; give classes directly. They notice font mismatches.
 - **Asks sharp "is this OK?" questions** (hard-coded strings, where state lives). Answer with a table + where the real concern is.
 - **Debugging by "paste the log".** **They prune scope and redefine milestones**; record it.
+- **A warning in the same message gets missed** (s. 29, twice): put the trap in the step itself ("put it *outside* the `if`"), or make it its own step.
 - **Doesn't work:** compound or re-asked questions; abstract questions; predicting output; sending to docs to learn a step.
 - **Don't record a decision until they say so.** Delegates mechanical, visual and dense steps; explain with a trace afterwards; keep small logic steps theirs.
 - When tired, stops answering rechecks; put rechecks inside real feature steps. **"Break it on purpose" only after Vitest steps.**
 
 ## Next step
 
-**M7: Camera (lobby + self-view).** M6 is done and deployed. Settle first (see `ROADMAP.md` M7): does the camera start on the lobby or the room; how the lobby hands the stream to the room; toggle as an `enabled` dep (recommended) vs `start`/`stop`. Then redo `useCamera` with a `cancelled` flag, drawing the cleanup timeline before code.
+**M8: Drag and resize.** M7 is done and deployed (lobby, corner self-view, toggles, blocked box). At the start of M8, settle: pointer events + `setPointerCapture` vs mouse events (the iframe swallows moves); where the box's position/size lives (state in `SelfView` vs `RoomPage`) and whether it's pixels or % of the player; whether to keep the box clear of YouTube's control bar. Good spot to recheck the "now vs later" gap: a `pointermove` handler reading a ref.
