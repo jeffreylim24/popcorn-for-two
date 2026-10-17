@@ -18,6 +18,7 @@ export function useCamera(enabled: boolean) {
         }
         setStream(ownStream)
       } catch (err) {
+        if (cancelled) return
         if (err instanceof DOMException && err.name === 'NotAllowedError') {
           setError('denied')
         } else {
