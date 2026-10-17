@@ -19,7 +19,7 @@ A web app for long-distance couples to have date nights together: movies, videos
 - `frontend/`: Vite + React + TS, ESLint, Prettier. `bun run dev` (port 5173), `bun run lint`, `bun run format` / `bun run format:check`, `bun run test` (Vitest), `bun run build`. Imports use the `@/` alias (`@/*` → `src/*`, no `baseUrl`: TS 6 rejects it). `src/components/ui/` is shadcn CLI output (add with `bunx --bun shadcn@latest add <name>`); `src/components/CozyRoom.tsx` is the home-page scene.
 - `backend/`: Go module `github.com/jeffreylim24/popcorn-for-two/backend`, flat layout, one `package main`: `main.go` (routes only), `rooms.go`, `handlers.go`, `spa.go`, `rooms_test.go`. `go run .` (port 8080), `go test ./...`.
 - API routes live under `/api/`; in dev, Vite proxies `/api` to `:8080` (one origin, no CORS code in Go).
-- `ROADMAP.md`: MVP milestones M1–M7, each with a "done when" demo and the design questions to settle at its start.
+- `ROADMAP.md`: MVP milestones M1–M9, each with a "done when" demo and the design questions to settle at its start.
 - Root: `README.md`, `Dockerfile` (Bun → Go → Alpine), `fly.toml`. Deploy by hand: `fly deploy --ha=false` (one machine; rooms live in memory).
 - Review checks Claude may run (read-only): `go test ./...`, `go vet ./...` and `gofmt -l .` in `backend/`.
 

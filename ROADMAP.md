@@ -284,33 +284,76 @@ Every milestone ends in something I can demo and commit.
   - Still to come: the first real date night with my partner (Montreal ↔
     Toronto). Not a blocker for M5.
 
-- [ ] **M5: Camera**
-  - Done when: my own webcam shows on the page, locally and on the
-    live site.
+- [ ] **M5: Pages and routing**
+  - Done when: `/` shows the home page, `/room/CODE` shows the room,
+    and any other URL shows a "page not found" page (no more
+    `/banana` → home or `/x/y` → room "y").
+  - Why next: (reordered in session 26, before the camera) the app
+    gives no feedback on screen, and every later page (lobby, room
+    errors) needs real routing first.
+  - Decided: keep the SPA (one `index.html`, JS picks the page). The
+    bad behavior comes from two loose checks, not from the SPA: Go's
+    fallback serves `index.html` for any non-file path, and `App`
+    reads `pathname.split('/')[2]`. Fix: match `/` and `/room/{code}`
+    exactly; everything else → not found. Rejected: dropping the SPA
+    (rebuilds page serving for nothing this fix doesn't give).
+  - Decided: split `App` into `HomePage` and `RoomPage`. Why: hooks
+    can't be called conditionally, so today each hook takes `code` and
+    checks it inside. With `RoomPage` only rendered for a room, hooks
+    need no check, and leaving the room = unmount = cleanup runs.
+  - Not designed yet: a router library vs matching the path by hand;
+    whether Go also returns a real `404` status for unknown paths
+    (optional; Vite's dev server falls back too, so the frontend check
+    is needed either way).
+
+- [ ] **M6: Room status feedback**
+  - Done when: the room page shows connecting / connected / room not
+    found / room full / disconnected, instead of only the console.
+  - Why next: Go already closes with 4004 / 4005, but
+    `useRoomSocket` has no `onclose`, so the page never says why.
+  - Not designed yet: where the state lives (`useRoomSocket` returns
+    it?), what each screen offers (e.g. "Create a new room" button),
+    whether "disconnected" retries.
+
+- [ ] **M7: Camera (lobby + self-view)**
+  - Done when: a Zoom-style lobby shows my webcam before I enter the
+    room, and in the room my facecam sits over the video, locally and
+    on the live site.
   - Why next: the call still lives in another app. First step to
     bringing it in: see my own face here.
-  - Decisions:
+  - Decisions (session 26, before the reorder):
     - Self-view sits over the video in a top corner. YouTube's
       controls live inside the iframe, so anything on top of the
       video hides them; the top corners keep the control bar clear.
       The two facecams start in opposite top corners so they never
       overlap at the start: room creator top-left, partner top-right,
-      the same on both screens. M7 needs the server to tell each tab
-      which seat it holds.
+      the same on both screens. M9 needs the server to tell each tab
+      which seat it holds (and what "creator" means after a refresh).
     - Permission denied: the video still works and the self-view box
-      says how to unblock (address bar). No camera: no box at all.
-    - Video only. The mic comes with M7.
-    - Camera starts when the room page opens; a button turns it off
-      and on again.
-    - Later (before M7, maybe): a Zoom-style preview screen to check
-      the camera before entering the room.
+      says how to unblock (address bar; Chrome won't re-prompt after
+      Block, so no retry button). No camera: no box at all.
+    - Video only. The mic comes with M9.
+    - The camera turns on by itself (no "start camera" click); a
+      button turns it off and on again.
+  - Found: a first `useCamera` (effect + `getUserMedia`) worked but
+    was deleted for the reorder. Lesson for the redo: cleanup can run
+    *before* `getUserMedia` resolves (StrictMode, or leaving fast), so
+    the effect needs a `cancelled` flag and must stop a late stream's
+    tracks. Leaving via the logo is a full page load, which hides the
+    leak (Chrome frees the camera on unload).
+  - Not designed yet: does the camera start on the lobby or the room;
+    how the lobby hands the stream to the room; toggle as an `enabled`
+    dep on the effect (recommended) vs `start`/`stop` functions.
 
-- [ ] **M6: Drag and resize**
+- [ ] **M8: Drag and resize**
   - Done when: I can drag and resize my facecam anywhere over the
     video, without affecting my partner's layout.
   - Why next: a fixed camera box covers part of the video.
+  - Known: the iframe swallows mouse events while the pointer is over
+    it, so a drag that crosses the video loses its moves. Look at
+    pointer capture. A facecam over YouTube's controls hides them.
 
-- [ ] **M7: Call**
+- [ ] **M9: Call**
   - Done when: my partner and I see and hear each other in the app on
     the live site, both facecams can be dragged and resized, and we no
     longer need FaceTime.
