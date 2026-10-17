@@ -122,3 +122,30 @@ func TestIsValidVideoID(t *testing.T) {
 		}
 	}
 }
+
+func TestSetRoomVideo(t *testing.T) {
+	tests := []struct {
+		roomExists bool
+		videoID    string
+		wantErr    error
+		wantVideo  string
+	}{
+		{true, "dQw4w9WgXcQ", nil, "dQw4w9WgXcQ"},
+		{true, "invalidID", errInvalidVideoID, ""},
+		{false, "dQw4w9WgXcQ", errRoomNotFound, ""},
+	}
+	for _, tt := range tests {
+		c := createRoom()
+		if !tt.roomExists {
+			// Overwrite with invalid room code to test unknown room case
+			c = "invalidRoomCode"
+		}
+		err := setRoomVideo(c, tt.videoID)
+		if !errors.Is(err, tt.wantErr) {
+			t.Errorf("setRoomVideo(%q, %q) = %v, want %v", c, tt.videoID, err, tt.wantErr)
+		}
+		if got := getRoomVideo(c); got != tt.wantVideo {
+			t.Errorf("getRoomVideo(%q) = %q, want %q", c, got, tt.wantVideo)
+		}
+	}
+}

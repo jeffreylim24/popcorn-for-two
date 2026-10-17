@@ -20,6 +20,7 @@ const statusRoomFull websocket.StatusCode = 4005
 
 var errRoomNotFound = errors.New("room not found")
 var errRoomFull = errors.New("room full")
+var errInvalidVideoID = errors.New("invalid video ID")
 
 var rooms = map[string]*room{}
 var roomsMutex sync.Mutex
@@ -93,4 +94,28 @@ func getPartnerConn(code string, conn *websocket.Conn) *websocket.Conn {
 
 func isValidVideoID(id string) bool {
 	return videoIDPattern.MatchString(id)
+}
+
+func setRoomVideo(code, videoID string) error {
+	roomsMutex.Lock()
+	defer roomsMutex.Unlock()
+	r, ok := rooms[code]
+	if !ok {
+		return errRoomNotFound
+	}
+	if !isValidVideoID(videoID) {
+		return errInvalidVideoID
+	}
+	r.videoID = videoID
+	return nil
+}
+
+func getRoomVideo(code string) string {
+	roomsMutex.Lock()
+	defer roomsMutex.Unlock()
+	r, ok := rooms[code]
+	if !ok {
+		return ""
+	}
+	return r.videoID
 }
