@@ -23,5 +23,13 @@ export function RoomPage({ code }: { code: string }) {
     )
   }
 
-  return <RoomView code={code} stream={camera.stream} error={camera.error} />
+  return (
+    <RoomView
+      code={code}
+      stream={camera.stream}
+      error={camera.error}
+      cameraOn={cameraOn}
+      onToggleCamera={() => setCameraOn((on) => !on)}
+    />
+  )
 }

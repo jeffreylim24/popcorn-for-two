@@ -1,6 +1,6 @@
 import type { RoomStatus } from '@/hooks/useRoomSocket'
 import { useSync } from '@/hooks/useSync'
-import { Popcorn } from 'lucide-react'
+import { Popcorn, Video, VideoOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createAndJoinRoom } from '@/rooms'
 import { SelfView } from '@/components/SelfView'
@@ -44,11 +44,19 @@ type RoomViewProps = {
   code: string
   stream: MediaStream | null
   error: 'denied' | 'unavailable' | null
+  cameraOn: boolean
+  onToggleCamera: () => void
 }
 
 // The room after Join. useSync lives here, not in RoomPage, so the socket
 // opens only once this mounts (and #player exists by then).
-export function RoomView({ code, stream, error }: RoomViewProps) {
+export function RoomView({
+  code,
+  stream,
+  error,
+  cameraOn,
+  onToggleCamera,
+}: RoomViewProps) {
   const { status, reconnect } = useSync(code, 'player', VIDEO_ID)
   const statusText = STATUS_TEXT[status]
 
@@ -58,10 +66,27 @@ export function RoomView({ code, stream, error }: RoomViewProps) {
         <a href="/" className="font-heading text-xl font-bold">
           popcorn for <span className="text-primary">two</span>
         </a>
-        <span className="flex items-center gap-1.5 rounded-full border border-primary/30 px-3 py-1 font-heading text-xs">
-          <Popcorn className="size-3.5 text-primary" aria-hidden="true" />
-          room {code}
-        </span>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="rounded-full font-heading text-xs"
+            onClick={onToggleCamera}
+            aria-pressed={cameraOn}
+          >
+            {cameraOn ? (
+              <Video data-icon="inline-start" aria-hidden="true" />
+            ) : (
+              <VideoOff data-icon="inline-start" aria-hidden="true" />
+            )}
+            {cameraOn ? 'Camera on' : 'Camera off'}
+          </Button>
+          <span className="flex items-center gap-1.5 rounded-full border border-primary/30 px-3 py-1 font-heading text-xs">
+            <Popcorn className="size-3.5 text-primary" aria-hidden="true" />
+            room {code}
+          </span>
+        </div>
       </header>
       <section className="flex flex-1 flex-col justify-center gap-4 py-8">
         {/* YouTube replaces #player with an iframe, so the wrapper does the sizing. */}
