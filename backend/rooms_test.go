@@ -102,3 +102,23 @@ func TestGetPartnerConn_TwoReturnsOther(t *testing.T) {
 		t.Errorf("got: %v, want: %v", partner2, conn1)
 	}
 }
+
+func TestIsValidVideoID(t *testing.T) {
+	tests := []struct {
+		id   string
+		want bool
+	}{
+		{"dQw4w9WgXcQ", true},
+		{"dQw4-_WgXcQ", true},
+		{"dQw4w9WgXc", false},
+		{"dQw4w9WgXcQQ", false},
+		{"dQw4w9 gXcQ", false},
+		{"", false},
+	}
+	for _, tt := range tests {
+		got := isValidVideoID(tt.id)
+		if got != tt.want {
+			t.Errorf("isValidVideoID(%q) = %v, want %v", tt.id, got, tt.want)
+		}
+	}
+}

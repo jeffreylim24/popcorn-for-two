@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"math/rand/v2"
+	"regexp"
 	"sync"
 
 	"github.com/coder/websocket"
@@ -22,6 +23,8 @@ var errRoomFull = errors.New("room full")
 
 var rooms = map[string]*room{}
 var roomsMutex sync.Mutex
+
+var videoIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
 
 func generateRoomCode() string {
 	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -86,4 +89,8 @@ func getPartnerConn(code string, conn *websocket.Conn) *websocket.Conn {
 		}
 	}
 	return nil
+}
+
+func isValidVideoID(id string) bool {
+	return videoIDPattern.MatchString(id)
 }
