@@ -366,6 +366,17 @@ Every milestone ends in something I can demo and commit.
     - Video only. The mic comes with M9.
     - The camera turns on by itself (no "start camera" click); a
       button turns it off and on again.
+  - Decisions (session 29):
+    - The lobby is a view at the same URL (`/room/CODE`), not its own
+      page: a `joined` state in `RoomPage` swaps lobby for room. There's
+      no router, so changing URL is a full page load, which kills the
+      stream. The socket opens only after Join, so a lobby tab takes no
+      seat.
+    - No handoff: `useCamera` runs in `RoomPage`, the parent of both
+      views, and passes `stream` down. Its owner never unmounts, so the
+      camera stays on across Join.
+    - Toggle is a dep: `useCamera(enabled)`. Off → cleanup stops the
+      tracks; on → the effect runs again. Same pattern as `attempt`.
   - Found: a first `useCamera` (effect + `getUserMedia`) worked but
     was deleted for the reorder. Lesson for the redo: cleanup can run
     *before* `getUserMedia` resolves (StrictMode, or leaving fast), so
