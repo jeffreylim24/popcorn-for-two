@@ -2,11 +2,13 @@ import { HomePage } from '@/pages/HomePage'
 import { RoomPage } from '@/pages/RoomPage'
 
 function App() {
-  // room code is the 3rd segment of the URL path (e.g., /room/{code})
-  const code = window.location.pathname.split('/')[2]
+  const parts = window.location.pathname.split('/')
 
-  if (!code) return <HomePage />
-  return <RoomPage code={code} />
+  if (parts.length === 2 && parts[1] === '') return <HomePage />
+  if (parts.length === 3 && parts[1] === 'room' && parts[2] !== '') {
+    return <RoomPage code={parts[2]} />
+  }
+  return <p>page not found</p>
 }
 
 export default App
