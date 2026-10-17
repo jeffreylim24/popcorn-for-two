@@ -11,13 +11,13 @@ import { useYouTubePlayer } from './useYouTubePlayer'
 
 /**
  * Keeps this tab's player in sync with the partner's: applies incoming
- * messages and sends only real news. Returns the player ref for direct use.
+ * messages and sends only real news. Returns the player ref and status for direct use.
  */
 export function useSync(code: string, elementId: string, videoId: string) {
   const playerRef = useRef<YT.Player | null>(null)
   const lastStateRef = useRef<AgreedState | null>(null)
 
-  const { send } = useRoomSocket(code, (data) => {
+  const { send, status } = useRoomSocket(code, (data) => {
     const msg = parseSyncMessage(data)
     if (!msg) return
     const player = playerRef.current
@@ -73,5 +73,5 @@ export function useSync(code: string, elementId: string, videoId: string) {
     onPlayingTick: sendSync,
   })
 
-  return playerRef
+  return { playerRef, status }
 }
