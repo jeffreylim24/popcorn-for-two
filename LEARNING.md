@@ -1,6 +1,6 @@
 # Learning Snapshot
 
-_Last updated: 2026-10-16 (session 26)_
+_Last updated: 2026-10-16 (session 27)_
 
 ## Concepts
 
@@ -20,7 +20,9 @@ _Last updated: 2026-10-16 (session 26)_
 
 ### Learning (introduced, used or explained back once)
 - **`async` / `await` in an effect (s. 26):** said "I don't know any of the syntax"; given a `fetch` example + fill-in skeleton, wrote `useCamera` correctly (inner `async` function, `try/catch`, guard first, `[code]` deps). Code was deleted for the reorder; the pattern returns in M7.
-- **Rules of hooks → component split (s. 26):** asked "shouldn't App do the check?" Told: hooks can't be conditional, so the check lives in the hook; splitting `HomePage`/`RoomPage` removes it. First real step of M5.
+- **Rules of hooks → component split (s. 26–27):** asked "shouldn't App do the check?" (s. 26). S. 27: Claude did the split at their request (mechanical move); they removed the now-dead `code: string | undefined` + `if (!code) return` from the hooks themselves. Why the type tightening helps (TS now catches `undefined`) told, not explained back.
+- **Path matching by hand (s. 27):** asked Claude to write it. Shown a `split('/')` trace table: leading `/` makes `parts[0]` empty, so check part **count** and **every** part (old code read only part 3 → `/x/y` = room "y"). Not explained back; a natural recheck when the router question returns (accounts).
+- **SPA vs "page not found" (s. 27):** asked whether they conflict. Landed with a flow diagram: Go always sends `index.html`; not-found is just a third branch React picks. Then soft 404 (`200` status) vs a real Go `404`.
 - **Reading tutorial code critically (s. 26):** brought two online `useCamera` examples. Told: they're click-driven (`start()`), and both leak a stream that arrives after unmount. Not yet judged one themselves.
 - **Tailwind + shadcn setup (s. 25):** did all setup steps smoothly: Tailwind v4 Vite plugin + `@import 'tailwindcss'`; `@/` alias needs **two tools** (TS `paths` for type-checking, Vite `resolve.alias` for the build); shadcn **copies source in** (`components.json`, `cn()`, theme vars in `index.css`); generated code vs project rules (lint override for `components/ui`, Prettier on generated files). Hit TS6258 (`paths` outside `compilerOptions`; Claude's wording was unclear). None explained back; low priority (styling isn't a goal).
 - **Testing on real networks (s. 25):** asked whether a VPN can stand in for the partner session. Told: covers HTTPS, real lag, two independent browsers; routers don't matter until WebRTC. Chose to redefine M4's done-when.
@@ -62,6 +64,8 @@ _Last updated: 2026-10-16 (session 26)_
 - **`@/` alias without `baseUrl`** (TS 6 rejects it); `react-refresh` rule off for `src/components/ui`.
 - **M4 done-when changed** to "two devices on separate networks" (VPN test passed). Partner date night still to come; not a blocker.
 - **Reordered (s. 26):** on-screen feedback before the camera: M5 pages/routing (exact `/`, `/room/{code}`, else not found; keep the SPA), M6 room status (close codes 4004/4005 on screen), M7 camera with a lobby preview, M8 drag, M9 call. Why: they want to see feedback live instead of debugging in the console. Camera design calls (made earlier this session) moved to M7.
+- **M5 routing (s. 27):** match the path by hand in `App`, no router library yet (two flat routes; swap for React Router when accounts/persistent rooms add many routes). Not-found is frontend only (soft 404): Go's page list would duplicate React's; revisit with more public pages. Pages in `src/pages/`.
+- **The app is public (s. 27):** many couples' rooms at once, small scale. Not a private two-person app; weigh trade-offs (SEO, abuse, scaling) accordingly.
 - **Deferred to "Later":** room expiry, the bfcache ghost seat (`pagehide`), CI/CD, code-quality pass. `useHealth.ts` is now unused (their call to delete).
 
 ## Open questions
@@ -82,8 +86,10 @@ _Last updated: 2026-10-16 (session 26)_
 - **Doesn't work:** compound or re-asked questions; abstract questions; predicting output; sending to docs to learn a step.
 - **Don't record a decision until they say so.** Docs prose: they don't want to write it.
 - Asks Claude to write unfamiliar-syntax or visual parts; fine under the exception; keep concept steps theirs.
+- **Delegates more (s. 27):** "do it for me" on mechanical refactors, and on a logic step (path matching) and the visual page. Fine under the exception; explain with a trace afterwards. Still wrote the hook cleanup. Offer the small logic steps; don't push.
+- **Thinks ahead about scope (s. 27):** challenged "by hand" with future features (Netflix, games, accounts). Separating "in-room state" from "new URLs" + "pay now vs later" landed; they chose by hand.
 - When tired, stops answering rechecks; put rechecks inside real feature steps. **"Break it on purpose" only after Vitest steps.**
 
 ## Next step
 
-**M5: Pages and routing.** Done when: `/` → home, `/room/CODE` → room, anything else → "page not found". Settle first: a router library vs matching the path by hand, and whether Go also returns a real `404` status. Then their first code step: split `App` into `HomePage` and `RoomPage` (hooks lose their `code` checks). `useCamera` was deleted (their call; working tree clean).
+**M6: Room status feedback.** M5 is done (pushed; deploy not confirmed). Done when: the room page shows connecting / connected / room not found (4004) / room full (4005) / disconnected instead of only the console. Settle first: where the state lives (`useRoomSocket` returns it?), what each screen offers (e.g. "Create a new room"), whether "disconnected" retries. `useRoomSocket` has no `onclose` yet.

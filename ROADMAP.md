@@ -284,7 +284,7 @@ Every milestone ends in something I can demo and commit.
   - Still to come: the first real date night with my partner (Montreal ↔
     Toronto). Not a blocker for M5.
 
-- [ ] **M5: Pages and routing**
+- [x] **M5: Pages and routing**
   - Done when: `/` shows the home page, `/room/CODE` shows the room,
     and any other URL shows a "page not found" page (no more
     `/banana` → home or `/x/y` → room "y").
@@ -316,6 +316,10 @@ Every milestone ends in something I can demo and commit.
     URLs are short-lived and shouldn't be indexed. Revisit when the app
     has more public pages (landing pages, accounts) where correct
     statuses matter for search engines and link checkers.
+  - Done (session 27): `src/pages/` holds `HomePage`, `RoomPage`,
+    `NotFoundPage`; `App` splits the path and checks part count and
+    every part (`/room/ABC/` with a trailing slash → not found, on
+    purpose). Hooks now take `code: string` with no guard.
 
 - [ ] **M6: Room status feedback**
   - Done when: the room page shows connecting / connected / room not
