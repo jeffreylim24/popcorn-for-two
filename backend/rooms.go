@@ -9,13 +9,18 @@ import (
 	"github.com/coder/websocket"
 )
 
+type room struct {
+	conns   map[*websocket.Conn]bool
+	videoID string
+}
+
 const statusRoomNotFound websocket.StatusCode = 4004
 const statusRoomFull websocket.StatusCode = 4005
 
 var errRoomNotFound = errors.New("room not found")
 var errRoomFull = errors.New("room full")
 
-var rooms = map[string]map[*websocket.Conn]bool{}
+var rooms = map[string]*room{}
 var roomsMutex sync.Mutex
 
 func generateRoomCode() string {
@@ -36,7 +41,10 @@ func createRoom() string {
 		roomCode = generateRoomCode()
 		_, ok = rooms[roomCode]
 	}
-	rooms[roomCode] = map[*websocket.Conn]bool{}
+	rooms[roomCode] = &room{
+		conns:   map[*websocket.Conn]bool{},
+		videoID: "",
+	}
 	return roomCode
 }
 
@@ -47,24 +55,32 @@ func joinRoom(code string, conn *websocket.Conn) error {
 	if !ok {
 		return errRoomNotFound
 	}
-	if len(rooms[code]) > 1 {
+	if len(rooms[code].conns) > 1 {
 		return errRoomFull
 	}
-	rooms[code][conn] = true
+	rooms[code].conns[conn] = true
 	return nil
 }
 
 func leaveRoom(code string, conn *websocket.Conn) {
 	roomsMutex.Lock()
 	defer roomsMutex.Unlock()
-	delete(rooms[code], conn)
+	r, ok := rooms[code]
+	if !ok {
+		return
+	}
+	delete(r.conns, conn)
 	log.Println("Client left room:", code)
 }
 
 func getPartnerConn(code string, conn *websocket.Conn) *websocket.Conn {
 	roomsMutex.Lock()
 	defer roomsMutex.Unlock()
-	for c := range rooms[code] {
+	r, ok := rooms[code]
+	if !ok {
+		return nil
+	}
+	for c := range r.conns {
 		if c != conn {
 			return c
 		}
