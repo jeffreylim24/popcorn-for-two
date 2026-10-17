@@ -5,6 +5,7 @@
 A web app for long-distance couples to have date nights together: movies, videos, mini-games, all over a voice/video call.
 
 **MVP:** two people on a video call watch a YouTube video in sync.
+- Public app: hosts many couples' rooms at once (small scale). Don't weigh trade-offs as if only two people use it.
 - Either person can play, pause, or seek, and the other person's video follows. No host-only controls.
 - Each person can drag and resize the facecams on their screen, like a Twitch streamer layout.
 
@@ -16,12 +17,13 @@ A web app for long-distance couples to have date nights together: movies, videos
 
 ## Repo layout & commands
 
-- `frontend/`: Vite + React + TS, ESLint, Prettier. `bun run dev` (port 5173), `bun run lint`, `bun run format` / `bun run format:check`, `bun run test` (Vitest), `bun run build`. Imports use the `@/` alias (`@/*` → `src/*`, no `baseUrl`: TS 6 rejects it). `src/components/ui/` is shadcn CLI output (add with `bunx --bun shadcn@latest add <name>`); `src/components/CozyRoom.tsx` is the home-page scene.
+- `frontend/`: Vite + React + TS, ESLint, Prettier. `bun run dev` (port 5173), `bun run lint`, `bun run format` / `bun run format:check`, `bun run test` (Vitest), `bun run build`. Imports use the `@/` alias (`@/*` → `src/*`, no `baseUrl`: TS 6 rejects it). `src/components/ui/` is shadcn CLI output (add with `bunx --bun shadcn@latest add <name>`); `src/components/CozyRoom.tsx` is the home-page scene. `src/pages/` holds `HomePage`, `RoomPage`, `NotFoundPage`; `App.tsx` matches the path by hand (`/`, `/room/{code}`, else not found; no router library).
 - `backend/`: Go module `github.com/jeffreylim24/popcorn-for-two/backend`, flat layout, one `package main`: `main.go` (routes only), `rooms.go`, `handlers.go`, `spa.go`, `rooms_test.go`. `go run .` (port 8080), `go test ./...`.
 - API routes live under `/api/`; in dev, Vite proxies `/api` to `:8080` (one origin, no CORS code in Go).
 - `ROADMAP.md`: MVP milestones M1–M9, each with a "done when" demo and the design questions to settle at its start.
 - Root: `README.md`, `Dockerfile` (Bun → Go → Alpine), `fly.toml`. Deploy by hand: `fly deploy --ha=false` (one machine; rooms live in memory).
 - Review checks Claude may run (read-only): `go test ./...`, `go vet ./...` and `gofmt -l .` in `backend/`.
+- Visual check Claude may run: `bun run build`, `bunx vite preview --port <p>`, then headless Chrome `--screenshot=<scratchpad>/x.png <url>`.
 
 **The learner:** has done full-stack work before but is very rusty. Treat them as a beginner who picks concepts up fast. Ask what they remember before explaining from zero.
 
