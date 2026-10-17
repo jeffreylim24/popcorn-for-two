@@ -301,10 +301,21 @@ Every milestone ends in something I can demo and commit.
     can't be called conditionally, so today each hook takes `code` and
     checks it inside. With `RoomPage` only rendered for a room, hooks
     need no check, and leaving the room = unmount = cleanup runs.
-  - Not designed yet: a router library vs matching the path by hand;
-    whether Go also returns a real `404` status for unknown paths
-    (optional; Vite's dev server falls back too, so the frontend check
-    is needed either way).
+  - Decided: match the path by hand (a small function in `App`), no
+    router library yet. Why: two flat routes, and a full reload on
+    entering a room is fine. Games or other video sources live inside
+    a room (room state, not new URLs). Revisit with accounts and
+    persistent rooms (`/login`, `/rooms`, auth redirects, shared
+    layouts): then swap the matcher for React Router. The page split
+    keeps that a one-file change.
+  - Decided: "page not found" is frontend only; Go keeps serving
+    `index.html` with `200` for unknown paths (a "soft 404"). Why: the
+    frontend check is needed anyway (Vite's dev server falls back the
+    same way), and a Go `404` means keeping the page list in two places
+    that can drift. The only page crawlers should index is `/`; room
+    URLs are short-lived and shouldn't be indexed. Revisit when the app
+    has more public pages (landing pages, accounts) where correct
+    statuses matter for search engines and link checkers.
 
 - [ ] **M6: Room status feedback**
   - Done when: the room page shows connecting / connected / room not
