@@ -1,6 +1,6 @@
 # Learning Snapshot
 
-_Last updated: 2026-10-16 (session 27)_
+_Last updated: 2026-10-17 (session 28)_
 
 ## Concepts
 
@@ -13,83 +13,72 @@ _Last updated: 2026-10-16 (session 27)_
   - Session 21: **returning an `http.Handler` from a func**, `http.HandlerFunc(...)`: filled the blanks unaided.
   - Session 24: **one package across several files**, unused imports are compile errors, `go test -count=1`, `foo_test.go` next to `foo.go`. Told, not checked back.
 - **`context.Context`:** landed (tentatively) as **"a stop button the caller holds; the function only watches it"**. Earlier tries: `Done()` channel + `select` + ctx tree. Recheck on the heartbeat `Ping(ctx)`: have them pick the parent + timeout and say who holds the button.
-- **`useRef` (read at call time vs copy early):** weakest React idea. Tried: Java instance-field table, read-at-fire-time trace, **"`send` holds the box, not what's in it"** + timeline. Session 22: wrote the `readyState` guard right, but the recheck went unanswered. Don't re-ask; fold it into the `pagehide` fix. **M7 (camera) is a natural spot:** the `MediaStream` and `<video>` element will live in refs.
-- **Effect cleanup vs page lifecycle (s. 22, 26):** said "idk" to why cleanup didn't run in the bfcache. Given: cleanup runs only on unmount / deps change; frozen page = "paused movie, not TV off". S. 26: camera light went off on leaving, but only because the logo is a full page load (Chrome frees the camera on unload), not cleanup. Shown a timeline of **cleanup running before an async result arrives** (StrictMode) → `cancelled` flag + stop late stream. Not written or explained back; redo in M7.
-- **TS types vanish at runtime:** wrote `typeof v.type !== SyncMessage['type']` (s. 21). Explained with a "what you write vs what the browser runs" table; `as const` array as one source. Claude wrote it; not explained back.
+- **`useRef` (read at call time vs copy early):** weakest React idea. Tried: Java instance-field table, read-at-fire-time trace, **"`send` holds the box, not what's in it"** + timeline. Wrote the `readyState` guard right (s. 22). **M7 (camera) is the natural spot:** the `MediaStream` and `<video>` element will live in refs.
+- **Effect cleanup timing (s. 22, 26, 28):** progress in s. 28. Spotted connect → disconnect → connect themselves and blamed StrictMode (right, but said "renders twice", not "effect runs twice"). A two-socket timeline showed the old socket's async `onclose` landing after cleanup. First fix idea was "set status to disconnected in cleanup" (treats state as the guard; the handler is still attached). Landed after the **button `onclick = null` example**; wrote `socket.onclose = null` before `close()` via a local `socket`. Still open from s. 26: the `cancelled` flag for a late `getUserMedia` result. Redo in M7 with a timeline first.
+- **TS types vanish at runtime:** wrote `typeof v.type !== SyncMessage['type']` (s. 21). Explained with a "what you write vs what the browser runs" table. Not explained back.
 - **HTTP:** once mixed up the page URL (`/room/CODE`) with the API URL; `fmt.Fprint(w, …)` writes the response, `log` writes your terminal.
 
 ### Learning (introduced, used or explained back once)
-- **`async` / `await` in an effect (s. 26):** said "I don't know any of the syntax"; given a `fetch` example + fill-in skeleton, wrote `useCamera` correctly (inner `async` function, `try/catch`, guard first, `[code]` deps). Code was deleted for the reorder; the pattern returns in M7.
-- **Rules of hooks → component split (s. 26–27):** asked "shouldn't App do the check?" (s. 26). S. 27: Claude did the split at their request (mechanical move); they removed the now-dead `code: string | undefined` + `if (!code) return` from the hooks themselves. Why the type tightening helps (TS now catches `undefined`) told, not explained back.
-- **Path matching by hand (s. 27):** asked Claude to write it. Shown a `split('/')` trace table: leading `/` makes `parts[0]` empty, so check part **count** and **every** part (old code read only part 3 → `/x/y` = room "y"). Not explained back; a natural recheck when the router question returns (accounts).
-- **SPA vs "page not found" (s. 27):** asked whether they conflict. Landed with a flow diagram: Go always sends `index.html`; not-found is just a third branch React picks. Then soft 404 (`200` status) vs a real Go `404`.
-- **Reading tutorial code critically (s. 26):** brought two online `useCamera` examples. Told: they're click-driven (`start()`), and both leak a stream that arrives after unmount. Not yet judged one themselves.
-- **Tailwind + shadcn setup (s. 25):** did all setup steps smoothly: Tailwind v4 Vite plugin + `@import 'tailwindcss'`; `@/` alias needs **two tools** (TS `paths` for type-checking, Vite `resolve.alias` for the build); shadcn **copies source in** (`components.json`, `cn()`, theme vars in `index.css`); generated code vs project rules (lint override for `components/ui`, Prettier on generated files). Hit TS6258 (`paths` outside `compilerOptions`; Claude's wording was unclear). None explained back; low priority (styling isn't a goal).
-- **Testing on real networks (s. 25):** asked whether a VPN can stand in for the partner session. Told: covers HTTPS, real lag, two independent browsers; routers don't matter until WebRTC. Chose to redefine M4's done-when.
-- **Go `testing` package (s. 23):** wrote 6 room tests from comment skeletons; `t.Fatalf` (setup) vs `t.Errorf` (checks) via a failure trace.
-- **Safe refactor loop (s. 23–24):** baseline tests → move → vet/test/gofmt → curl smoke test → `git mv` → one `refactor:` commit. Hasn't said back *why* the smoke test was needed.
-- **Browser `WebSocket` + `readyState` (s. 22):** wrote the guard unaided, compared against `WebSocket.OPEN`.
-- **Custom hooks + rules of hooks** (s. 17–20): slot position, not name. Wrote `useHealth`, `useRoomSocket`, the `useYouTubePlayer` move.
+- **Re-run an effect by changing a dep (s. 28):** wrote the `attempt` counter + `[code, attempt]` + `useCallback` reconnect from a flow diagram. First forgot `setStatus('connecting')`; the "button looks broken if it fails again" case landed. Updater form `setX(prev => …)` used.
+- **Lookup table typed `Record<Union, …>` (s. 28):** asked Claude to write the status overlay; shown a trace. Then added the `action` field themselves, letting TS errors guide the rows. Asked whether union strings count as hard-coding: told the union type-checks them, unlike `4004`.
+- **`useState` in a custom hook (s. 28):** status union + `useState`, returned up through `useSync`. Logging in the hook body (each render) vs after `setX` (old value): told.
+- **Close codes on the client (s. 28):** `onclose` + `e.code` switch, left a TODO about sharing codes with Go.
+- **`async` / `await` in an effect (s. 26):** given a `fetch` example + skeleton, wrote `useCamera` correctly. Deleted for the reorder; returns in M7.
+- **Rules of hooks → component split (s. 26–27):** removed the dead `code: string | undefined` guards themselves. Why tighter types help: told.
+- **Go `testing` package (s. 23):** wrote 6 room tests from skeletons; `t.Fatalf` vs `t.Errorf`.
+- **Safe refactor loop (s. 23–24):** baseline tests → move → vet/test/gofmt → smoke test → one `refactor:` commit. S. 28: extracted `createAndJoinRoom` to `src/rooms.ts` and split refactor and feat commits, refactor first so each builds.
+- **Browser `WebSocket` + `readyState` (s. 22):** wrote the guard unaided.
+- **Custom hooks + rules of hooks** (s. 17–20): slot position, not name.
 - **Function identity / `useEffectEvent` / `useCallback`:** recheck still open: "once `sendAction` reads a changing value, what does the player call without vs with `useEffectEvent`?"
-- **JSDoc and comment content:** say *why* or the non-obvious part, not the function name.
-- **`setInterval` / `clearInterval`**, **echo guard**, **sync design ("ahead wins")**, **guards over enums**, **refactor habits**.
-- **`JSON.stringify` / `JSON.parse`**, **TS literal unions / guard clauses**, **StrictMode double-mount** (M7: camera opened twice in dev).
-- **Backend (M2) and deploy (M4) detail in `docs/learning-archive.md`:** goroutines, sentinel errors, `defer`, `sync.Mutex`, close codes, handshake, Docker, Fly, SPA fallback, untrusted input.
-- **HTTP statuses**, **effect cleanup**, **`?.`**, **TS signatures**, **YouTube state vs position**, **`<script>` loading races**, **deps vs devDeps / lockfiles**, **`net/http` basics**, **CORS / Vite proxy**, **`response.ok`**, **`useState`/`useEffect`**, **message contracts**.
+- **JSDoc and comment content:** say *why*. Updates stale JSDoc when reminded.
+- **`setInterval`**, **echo guard**, **sync design ("ahead wins")**, **guards over enums**, **`JSON` parse/stringify**, **TS literal unions**, **StrictMode double-mount**.
+- **Backend (M2), deploy (M4), M5 detail in `docs/learning-archive.md`.**
+- **HTTP statuses**, **`?.`**, **TS signatures**, **YouTube state vs position**, **`<script>` races**, **deps vs devDeps**, **`net/http`**, **CORS / Vite proxy**, **`response.ok`**, **message contracts**.
 
 ### Solid
 - **Unit tests with Vitest:** wrote 8 `parseSyncMessage` tests unprompted, `toEqual` vs `toBe` right.
 - **Callbacks, calling vs handing over** (`onClick={f}` not `onClick={f()}`).
-- **Debugging by isolation.** **Designing a test that forces the rare case.**
+- **Debugging by isolation.** **Designing a test that forces the rare case.** **Manual test plans** (not-found, full, server stopped, throttled network).
 - **Design reasoning:** collision risk, server as source of truth, the 2-person cap, false-leave risk, single responsibility, one source of truth for allowed values.
 - **Errors as return values**; log-and-continue when the error is someone else's.
-- **Deploying by hand:** commit → push → `fly deploy --ha=false` → `fly status`, unprompted (s. 25).
-- Git: four areas, `status -sb`, upstream; Conventional Commits; one logical change per commit (split a `style:` commit off on their own); selective staging.
+- **Deploying by hand:** commit → push → `fly deploy --ha=false` → `fly status`, unprompted.
+- Git: four areas, upstream, Conventional Commits, one logical change per commit, selective staging.
 - `.gitignore` scope; lockfiles committed; `go.mod` / `go.sum`; toolchains vs project deps.
 
 ## Decisions
 
-- **Frontend:** React + TS + Vite; Tailwind v4 + shadcn/ui (Radix, Nova style); Bun; ESLint; no React Compiler. Keep StrictMode.
-- **Backend:** Go, flat layout until there are several programs. Run `go vet ./...` before committing Go.
-- **Repo:** monorepo `frontend/` + `backend/`; Conventional Commits; commit straight to `main` for now.
-- **Toolchain:** Go 1.27.1, Bun 1.4.2, Node 26, React 19.3, Vite 8, TS 6. Ports: Vite 5173, Go 8080; Vite proxies `/api` (with `ws: true`).
-- **Roadmap:** M1–M9 in `ROADMAP.md`, pull-by-need. All per-milestone design calls live there. Deploy by hand; CI/CD later.
-- **Docs files and commit messages are Claude's;** the user stages, commits, pushes. `Co-Authored-By: Claude` only on code Claude wrote.
-- **Raw YouTube IFrame API, no React wrapper**; keep YouTube's own controls (debug buttons removed s. 25).
-- **WebSocket library `coder/websocket`;** map-touching helpers lock + `defer Unlock()`; handlers never hold the lock.
-- **Hosting:** Fly.io, one always-on machine in `yyz`, `--ha=false`. Don't deploy during a date night (wipes rooms).
-- **Sync rules and message parsing live in `src/sync.ts`** as pure functions, tested with Vitest.
-- **Prettier** (pinned, single quotes, no semicolons). Formatting commits stay separate.
-- **Styling is delegated (s. 25):** visual work (the cozy home page, `CozyRoom.tsx`, room page) was written by Claude at their request. Theme: cream / cocoa / terracotta, Pixelify Sans headings, lucide icons (no Unicode symbols: the pixel font lacks them). App logic stays theirs.
-- **`@/` alias without `baseUrl`** (TS 6 rejects it); `react-refresh` rule off for `src/components/ui`.
-- **M4 done-when changed** to "two devices on separate networks" (VPN test passed). Partner date night still to come; not a blocker.
-- **Reordered (s. 26):** on-screen feedback before the camera: M5 pages/routing (exact `/`, `/room/{code}`, else not found; keep the SPA), M6 room status (close codes 4004/4005 on screen), M7 camera with a lobby preview, M8 drag, M9 call. Why: they want to see feedback live instead of debugging in the console. Camera design calls (made earlier this session) moved to M7.
-- **M5 routing (s. 27):** match the path by hand in `App`, no router library yet (two flat routes; swap for React Router when accounts/persistent rooms add many routes). Not-found is frontend only (soft 404): Go's page list would duplicate React's; revisit with more public pages. Pages in `src/pages/`.
-- **The app is public (s. 27):** many couples' rooms at once, small scale. Not a private two-person app; weigh trade-offs (SEO, abuse, scaling) accordingly.
-- **Deferred to "Later":** room expiry, the bfcache ghost seat (`pagehide`), CI/CD, code-quality pass. `useHealth.ts` is now unused (their call to delete).
+- **Frontend:** React + TS + Vite; Tailwind v4 + shadcn/ui; Bun; ESLint; Prettier (single quotes, no semicolons); no React Compiler; keep StrictMode.
+- **Backend:** Go, flat layout; `coder/websocket`; map helpers lock + `defer Unlock()`. `go vet ./...` before committing Go.
+- **Repo:** monorepo, Conventional Commits, straight to `main`. Docs + commit messages are Claude's; the user stages, commits, pushes.
+- **Toolchain:** Go 1.27.1, Bun 1.4.2, Node 26, React 19.3, Vite 8, TS 6. Ports 5173 / 8080; Vite proxies `/api` (`ws: true`).
+- **Roadmap:** M1–M9 in `ROADMAP.md`, pull-by-need; per-milestone design calls live there.
+- **Raw YouTube IFrame API**, YouTube's own controls. Sync rules in `src/sync.ts`, tested.
+- **Hosting:** Fly.io, one machine in `yyz`, `--ha=false`. Rooms in memory: a deploy or restart wipes them.
+- **Styling is delegated:** Claude writes visual work on request (cream / cocoa / terracotta, Pixelify Sans headings, lucide icons). App logic stays theirs.
+- **Reordered (s. 26):** M5 routing → M6 status → M7 camera → M8 drag → M9 call; they want visible feedback over console debugging.
+- **M5 (s. 27):** path matched by hand in `App`, soft 404, pages in `src/pages/`.
+- **M6 (s. 28):** status lives in `useRoomSocket` (`{ send, status, reconnect }`); overlay drawn *over* the player (YouTube holds `#player`); `STATUS_TEXT: Record<RoomStatus, …>` holds title, detail, action; Create (not-found / full) and manual Reconnect, no auto-retry.
+- **The app is public:** many couples' rooms; weigh SEO, abuse, scaling.
+- **Deferred to "Later":** room expiry, bfcache ghost seat (`pagehide`), auto-retry with backoff, shared close-code constants, CI/CD, code-quality pass. `useHealth.ts` unused (their call).
 
 ## Open questions
 
-- Worldwide users (one region adds latency far away): room-based routing (`fly-replay`) vs shared state. Offered as post-MVP; not answered yet.
+- Worldwide users: room-based routing (`fly-replay`) vs shared state. Post-MVP; not answered.
 
 ## Teaching formats
 
-- Works: **comparison tables**, **traces with state after each line**, **two-column timelines**, **slot/box diagrams**, **ASCII flow diagrams**, **concrete analogies** after mechanism explanations don't land. Ask "what do you remember?" first.
-- Works: **fill-in-the-blank skeletons**; **guiding question about a concrete case**; **options table + one recommendation + "which one?"**.
-- **Fast pace works (s. 21–25):** one step per turn, why (2–3 lines) → exact commands → "it worked if…". When they reply "done", verify with read-only checks (`git diff`, lint, build) instead of asking for output. They often commit/push/deploy ahead of the next step: check `git log` before giving commands.
-- **Visual work:** they give a reference (screenshot/URL) and want it built. Iterate with headless-Chrome screenshots; they give short concrete feedback ("looks like Arial", "arrow looks off").
-- **Debugging by "paste the log":** whole server log after a clean repro answers the first question by itself.
-- **They prune scope and redefine milestones** (Copy link, bfcache fix, M4 done-when). Respect it; record it in `ROADMAP.md`.
-- **"idk" to a guiding question:** conceptual hint + the syntax on a *different* example.
-- **Check facts before asserting;** say "unverified" when it is. Precise wording in config steps ("inside a new `compilerOptions` block", not "next to `files`").
-- **Pushes back on structure (s. 26):** questions where checks live and compares against online examples. Answer with the reason + options table; it lands. Wants **visible feedback** over console debugging, and reorders the roadmap for it.
+- Works: **comparison tables**, **traces with state after each line**, **two-column timelines** (the two-socket one landed), **ASCII flow diagrams**, **concrete analogies** when mechanism explanations don't land. Ask "what do you remember?" first.
+- Works: **fill-in-the-blank skeletons**; **options table + recommendation** (AskUserQuestion with three design calls settled M6 in one turn).
+- **"I don't get what you're getting at":** abstract hints fail. Give the **same idea on a different concrete object** (`button.onclick = null`), then map it back. Landed in s. 28.
+- **Step 5 in s. 28 was too dense** (keep-mounted + `Record` + conditional render + styling) → "just do it for me". Split steps like that.
+- **Fast pace:** one step per turn, why → exact commands → "it worked if…". On "done", verify with `git diff`, lint, build. They often commit/push/deploy ahead: check `git log` first.
+- **Visual work:** they give a reference or ask "help me style"; give classes directly. They notice font mismatches.
+- **Asks sharp "is this OK?" questions** (hard-coded strings, where state lives). Answer with a table + where the real concern is.
+- **Debugging by "paste the log".** **They prune scope and redefine milestones**; record it.
 - **Doesn't work:** compound or re-asked questions; abstract questions; predicting output; sending to docs to learn a step.
-- **Don't record a decision until they say so.** Docs prose: they don't want to write it.
-- Asks Claude to write unfamiliar-syntax or visual parts; fine under the exception; keep concept steps theirs.
-- **Delegates more (s. 27):** "do it for me" on mechanical refactors, and on a logic step (path matching) and the visual page. Fine under the exception; explain with a trace afterwards. Still wrote the hook cleanup. Offer the small logic steps; don't push.
-- **Thinks ahead about scope (s. 27):** challenged "by hand" with future features (Netflix, games, accounts). Separating "in-room state" from "new URLs" + "pay now vs later" landed; they chose by hand.
+- **Don't record a decision until they say so.** Delegates mechanical, visual and dense steps; explain with a trace afterwards; keep small logic steps theirs.
 - When tired, stops answering rechecks; put rechecks inside real feature steps. **"Break it on purpose" only after Vitest steps.**
 
 ## Next step
 
-**M6: Room status feedback.** M5 is done (pushed; deploy not confirmed). Done when: the room page shows connecting / connected / room not found (4004) / room full (4005) / disconnected instead of only the console. Settle first: where the state lives (`useRoomSocket` returns it?), what each screen offers (e.g. "Create a new room"), whether "disconnected" retries. `useRoomSocket` has no `onclose` yet.
+**M7: Camera (lobby + self-view).** M6 is done and deployed. Settle first (see `ROADMAP.md` M7): does the camera start on the lobby or the room; how the lobby hands the stream to the room; toggle as an `enabled` dep (recommended) vs `start`/`stop`. Then redo `useCamera` with a `cancelled` flag, drawing the cleanup timeline before code.

@@ -47,3 +47,11 @@ Older detail moved out of `LEARNING.md` to keep it under budget.
 - **Fly.io (s. 21–25):** `fly auth login`, `fly launch --no-deploy`, `fly.toml`, `fly deploy --ha=false`, `fly status`, `fly logs`. Deployed the restyle on their own (s. 25).
 - **SPA fallback (s. 21):** wrote `spaHandler`; why `http.Dir.Open` over `os.Open` was told, not checked.
 - **Untrusted input / version skew (s. 21):** `unknown` vs `any`; try/catch around `JSON.parse`; shape check; suggested `position >= 0` themselves.
+
+## Moved 2026-10-17 (session 28): M5 and setup detail
+
+- **Tailwind + shadcn setup (s. 25):** Tailwind v4 Vite plugin + `@import 'tailwindcss'`; `@/` alias needs TS `paths` and Vite `resolve.alias`; shadcn copies source in (`components.json`, `cn()`, theme vars); lint override for `components/ui`. Hit TS6258 (`paths` outside `compilerOptions`). Not explained back; low priority.
+- **Testing on real networks (s. 25):** a VPN covers HTTPS, real lag, two independent browsers; routers matter only with WebRTC. M4's done-when redefined.
+- **Path matching by hand (s. 27):** `split('/')` trace: leading `/` makes `parts[0]` empty; check part count and every part. Claude wrote it; not explained back.
+- **SPA vs "page not found" (s. 27):** Go always sends `index.html`; not-found is a third branch React picks. Soft 404 (`200`) vs a real Go `404`.
+- **Reading tutorial code critically (s. 26):** two online `useCamera` examples were click-driven and leaked a late stream. Not yet judged one themselves.

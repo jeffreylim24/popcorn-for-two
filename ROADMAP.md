@@ -321,7 +321,7 @@ Every milestone ends in something I can demo and commit.
     every part (`/room/ABC/` with a trailing slash → not found, on
     purpose). Hooks now take `code: string` with no guard.
 
-- [ ] **M6: Room status feedback**
+- [x] **M6: Room status feedback**
   - Done when: the room page shows connecting / connected / room not
     found / room full / disconnected, instead of only the console.
   - Why next: Go already closes with 4004 / 4005, but
@@ -336,6 +336,15 @@ Every milestone ends in something I can demo and commit.
     - Disconnected: a "Reconnect" button, no auto-retry. Auto-retry
       needs backoff, a way to tell a blip from a dead room, and it
       can hit 4005 while the server still holds the old seat.
+    - Reconnect bumps an `attempt` counter in the effect's deps, so
+      the old socket is cleaned up like on unmount.
+    - The overlay is drawn over the player, never instead of it:
+      YouTube holds `#player`, and a remount would leave it empty.
+  - Found: cleanup must detach `onclose` before `close()`, or the
+    old socket's async close event reports a false "disconnected"
+    (StrictMode's mount → cleanup → mount shows it on every load).
+  - Later: close codes are duplicated in Go and TS (shared constants);
+    auto-retry with backoff.
 
 - [ ] **M7: Camera (lobby + self-view)**
   - Done when: a Zoom-style lobby shows my webcam before I enter the
