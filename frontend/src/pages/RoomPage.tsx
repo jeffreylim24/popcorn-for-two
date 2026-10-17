@@ -3,6 +3,8 @@ import { useSync } from '@/hooks/useSync'
 import { Popcorn } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createAndJoinRoom } from '@/rooms'
+import { useCamera } from '@/hooks/useCamera'
+import { SelfView } from '@/components/SelfView'
 
 // Dummy video ID for testing.
 const VIDEO_ID = 'kzcI5F4tGiU'
@@ -41,6 +43,7 @@ const STATUS_TEXT: Record<
 
 export function RoomPage({ code }: { code: string }) {
   const { status, reconnect } = useSync(code, 'player', VIDEO_ID)
+  const camera = useCamera(true)
   const statusText = STATUS_TEXT[status]
 
   return (
@@ -58,6 +61,7 @@ export function RoomPage({ code }: { code: string }) {
         {/* YouTube replaces #player with an iframe, so the wrapper does the sizing. */}
         <div className="relative aspect-video w-full overflow-hidden rounded-2xl border-4 border-foreground/80 bg-foreground shadow-xl [&>iframe]:size-full">
           <div id="player" />
+          <SelfView stream={camera.stream} error={camera.error} />
           {/* Drawn over the player, not instead of it: YouTube keeps hold of #player. */}
           {statusText && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-foreground/90 p-6 text-center text-background">
