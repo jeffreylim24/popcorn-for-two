@@ -326,9 +326,16 @@ Every milestone ends in something I can demo and commit.
     found / room full / disconnected, instead of only the console.
   - Why next: Go already closes with 4004 / 4005, but
     `useRoomSocket` has no `onclose`, so the page never says why.
-  - Not designed yet: where the state lives (`useRoomSocket` returns
-    it?), what each screen offers (e.g. "Create a new room" button),
-    whether "disconnected" retries.
+  - Decided (s. 28):
+    - `useRoomSocket` owns the status and returns `{ send, status }`;
+      `useSync` passes it up to `RoomPage`. The status lives next to
+      the socket that produces it.
+    - Room not found / room full: a message card plus a "Create a new
+      room" button (same `POST /api/rooms` as the home page). The URL
+      is a dead end, so offer a way forward.
+    - Disconnected: a "Reconnect" button, no auto-retry. Auto-retry
+      needs backoff, a way to tell a blip from a dead room, and it
+      can hit 4005 while the server still holds the old seat.
 
 - [ ] **M7: Camera (lobby + self-view)**
   - Done when: a Zoom-style lobby shows my webcam before I enter the
