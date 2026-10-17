@@ -8,7 +8,7 @@ export function useRoomSocket(code: string, onMessage: (data: string) => void) {
   const handleMessage = useEffectEvent(onMessage)
 
   const [status, setStatus] = useState<RoomStatus>('connecting')
-  console.log('[status]', status)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     socketRef.current = new WebSocket(`/api/rooms/${code}/ws`)
@@ -39,12 +39,17 @@ export function useRoomSocket(code: string, onMessage: (data: string) => void) {
       socket.close()
       socketRef.current = null
     }
-  }, [code])
+  }, [code, attempt])
 
   const send = useCallback((data: string) => {
     if (socketRef.current?.readyState !== WebSocket.OPEN) return
     socketRef.current.send(data)
   }, [])
 
-  return { send, status }
+  const reconnect = useCallback(() => {
+    setAttempt((prev) => prev + 1)
+    setStatus('connecting')
+  }, [])
+
+  return { send, status, reconnect }
 }

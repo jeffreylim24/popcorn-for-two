@@ -10,23 +10,37 @@ const VIDEO_ID = 'kzcI5F4tGiU'
 // Record forces an entry per status, so a new status can't be forgotten here.
 const STATUS_TEXT: Record<
   RoomStatus,
-  { title: string; detail: string } | null
+  {
+    title: string
+    detail: string
+    action: 'create' | 'reconnect' | null
+  } | null
 > = {
-  connecting: { title: 'Finding your room…', detail: 'Just a moment.' },
+  connecting: {
+    title: 'Finding your room…',
+    detail: 'Just a moment.',
+    action: null,
+  },
   connected: null,
   'not-found': {
     title: 'Room not found',
     detail: 'The link may be mistyped, or the room has closed.',
+    action: 'create',
   },
-  full: { title: 'Room is full', detail: 'Two people are already here.' },
+  full: {
+    title: 'Room is full',
+    detail: 'Two people are already here.',
+    action: 'create',
+  },
   disconnected: {
     title: 'Connection lost',
     detail: 'The connection to the room dropped.',
+    action: 'reconnect',
   },
 }
 
 export function RoomPage({ code }: { code: string }) {
-  const { status } = useSync(code, 'player', VIDEO_ID)
+  const { status, reconnect } = useSync(code, 'player', VIDEO_ID)
   const statusText = STATUS_TEXT[status]
 
   return (
@@ -48,8 +62,10 @@ export function RoomPage({ code }: { code: string }) {
           {statusText && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-foreground/90 p-6 text-center text-background">
               <p className="font-heading text-xl">{statusText.title}</p>
-              <p className="font-heading text-sm opacity-80">{statusText.detail}</p>
-              {(status === 'not-found' || status === 'full') && (
+              <p className="font-heading text-sm opacity-80">
+                {statusText.detail}
+              </p>
+              {statusText.action === 'create' && (
                 <Button
                   type="button"
                   size="lg"
@@ -57,6 +73,16 @@ export function RoomPage({ code }: { code: string }) {
                   onClick={createAndJoinRoom}
                 >
                   Create a new room
+                </Button>
+              )}
+              {statusText.action === 'reconnect' && (
+                <Button
+                  type="button"
+                  size="lg"
+                  className="mt-3 h-11 px-6 font-heading text-base"
+                  onClick={reconnect}
+                >
+                  Reconnect
                 </Button>
               )}
             </div>
