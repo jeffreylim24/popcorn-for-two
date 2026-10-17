@@ -28,6 +28,7 @@ export function useCamera(enabled: boolean) {
     start()
 
     return () => {
+      setError(null)
       if (ownStream) {
         ownStream.getTracks().forEach((track) => track.stop())
         setStream(null)
