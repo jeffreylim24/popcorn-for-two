@@ -393,7 +393,24 @@ Every milestone ends in something I can demo and commit.
     check: success stops the late stream; failure skips `setError`.
     Putting the check in cleanup does nothing (cleanup sets the flag).
 
-- [ ] **M8: Drag and resize**
+- [ ] **M8: Pick a video**
+  - Done when: either of us pastes a YouTube link, both tabs switch to
+    it, and play/pause/seek still sync. Someone who joins or refreshes
+    later gets the same video. Locally and on the live site.
+  - Why next: the room plays a hard-coded dummy video.
+  - Decisions (session 29):
+    - The server remembers the room's video: Go stores the ID on the
+      room, sends it right after a join, and relays changes. A relay
+      alone leaves a late joiner or a refresh on the default video.
+    - The server validates the ID (11 chars of `A-Z a-z 0-9 _ -`)
+      before storing it: it's a public server, so never store an
+      arbitrary string from the wire. The client turns links into IDs.
+    - Switch with the player API (`cueVideoById`), not by re-creating
+      the player: one `YT.Player`, handlers and timers stay attached.
+    - A new video starts paused at 0 on both tabs; whoever presses play
+      sends a normal action, so no new race.
+
+- [ ] **M9: Drag and resize**
   - Done when: I can drag and resize my facecam anywhere over the
     video, without affecting my partner's layout.
   - Why next: a fixed camera box covers part of the video.
@@ -401,13 +418,15 @@ Every milestone ends in something I can demo and commit.
     it, so a drag that crosses the video loses its moves. Look at
     pointer capture. A facecam over YouTube's controls hides them.
 
-- [ ] **M9: Call**
+- [ ] **M10: Call**
   - Done when: my partner and I see and hear each other in the app on
     the live site, both facecams can be dragged and resized, and we no
     longer need FaceTime.
   - Why next: I can only see my own face.
 
 ## Later
+- Search YouTube from the app (like watch2gether): needs the YouTube
+  Data API and an API key kept server-side (a secret, plus quota).
 - CI/CD: when manual deploys get annoying
 - Room expiry: empty rooms stay in memory until restart. Delete after
   N minutes empty (not at once: a refresh before the partner joins

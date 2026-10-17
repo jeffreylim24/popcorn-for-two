@@ -90,4 +90,4 @@ _Last updated: 2026-10-17 (session 29)_
 
 ## Next step
 
-**M8: Drag and resize.** M7 is done and deployed (lobby, corner self-view, toggles, blocked box). At the start of M8, settle: pointer events + `setPointerCapture` vs mouse events (the iframe swallows moves); where the box's position/size lives (state in `SelfView` vs `RoomPage`) and whether it's pixels or % of the player; whether to keep the box clear of YouTube's control bar. Good spot to recheck the "now vs later" gap: a `pointermove` handler reading a ref.
+**M8: Pick a video** (inserted, s. 29; decisions in `ROADMAP.md`). Then **M9: Drag and resize.** M7 is done and deployed (lobby, corner self-view, toggles, blocked box). At the start of M8, settle: pointer events + `setPointerCapture` vs mouse events (the iframe swallows moves); where the box's position/size lives (state in `SelfView` vs `RoomPage`) and whether it's pixels or % of the player; whether to keep the box clear of YouTube's control bar. Good spot to recheck the "now vs later" gap: a `pointermove` handler reading a ref.
