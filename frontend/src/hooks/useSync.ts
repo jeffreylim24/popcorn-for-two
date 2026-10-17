@@ -13,11 +13,7 @@ import { useYouTubePlayer } from './useYouTubePlayer'
  * Keeps this tab's player in sync with the partner's: applies incoming
  * messages and sends only real news. Returns the player ref for direct use.
  */
-export function useSync(
-  code: string | undefined,
-  elementId: string,
-  videoId: string,
-) {
+export function useSync(code: string, elementId: string, videoId: string) {
   const playerRef = useRef<YT.Player | null>(null)
   const lastStateRef = useRef<AgreedState | null>(null)
 
