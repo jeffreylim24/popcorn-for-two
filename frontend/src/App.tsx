@@ -1,4 +1,5 @@
 import { HomePage } from '@/pages/HomePage'
+import { NotFoundPage } from '@/pages/NotFoundPage'
 import { RoomPage } from '@/pages/RoomPage'
 
 function App() {
@@ -8,7 +9,7 @@ function App() {
   if (parts.length === 3 && parts[1] === 'room' && parts[2] !== '') {
     return <RoomPage code={parts[2]} />
   }
-  return <p>page not found</p>
+  return <NotFoundPage />
 }
 
 export default App
