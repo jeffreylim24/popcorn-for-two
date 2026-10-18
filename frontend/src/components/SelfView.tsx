@@ -1,21 +1,17 @@
 import { VideoOff } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
 
 type SelfViewProps = {
   stream: MediaStream | null
   error: 'denied' | 'unavailable' | null
-  // Size and position. The default is the room's spot over the player.
+  // Size and position, set by the parent (the lobby's is fixed, the room's moves).
   className?: string
+  style?: CSSProperties
 }
 
-// Your own facecam. In the room it sits over the player's top-left corner so
-// YouTube's control bar along the bottom stays clear.
-export function SelfView({
-  stream,
-  error,
-  className = 'absolute top-3 left-3 w-1/4 max-w-56',
-}: SelfViewProps) {
+// Your own facecam.
+export function SelfView({ stream, error, className, style }: SelfViewProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
 
   useEffect(() => {
@@ -32,6 +28,7 @@ export function SelfView({
           'flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-background/80 bg-foreground/90 p-3 text-center text-background shadow-lg',
           className,
         )}
+        style={style}
       >
         <VideoOff className="size-5 text-primary" aria-hidden="true" />
         <p className="font-heading text-xs">Camera blocked</p>
@@ -56,6 +53,7 @@ export function SelfView({
         'aspect-video -scale-x-100 rounded-xl border-2 border-background/80 bg-foreground object-cover shadow-lg',
         className,
       )}
+      style={style}
     />
   )
 }

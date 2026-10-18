@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { RoomStatus } from '@/hooks/useRoomSocket'
 import { useSync } from '@/hooks/useSync'
 import { Popcorn, Video, VideoOff } from 'lucide-react'
@@ -42,6 +43,12 @@ const STATUS_TEXT: Record<
   },
 }
 
+/**
+ * The cam box as fractions of the window: x and y are its top-left corner.
+ * No height: the box is 16:9, so the browser works it out from the width.
+ */
+type CamBox = { x: number; y: number; width: number }
+
 type RoomViewProps = {
   code: string
   stream: MediaStream | null
@@ -50,8 +57,10 @@ type RoomViewProps = {
   onToggleCamera: () => void
 }
 
-// The room after Join. useSync lives here, not in RoomPage, so the socket
-// opens only once this mounts (and #player exists by then).
+/**
+ * The room after Join. useSync lives here, not in RoomPage, so the socket
+ * opens only once this mounts (and #player exists by then).
+ */
 export function RoomView({
   code,
   stream,
@@ -61,6 +70,8 @@ export function RoomView({
 }: RoomViewProps) {
   const { status, reconnect, pickVideo } = useSync(code, 'player', VIDEO_ID)
   const statusText = STATUS_TEXT[status]
+  // Lives here, not in SelfView: SelfView unmounts when the camera is off.
+  const [camBox] = useState<CamBox>({ x: 0.02, y: 0.1, width: 0.2 })
 
   return (
     <main className="mx-auto flex min-h-svh max-w-5xl flex-col px-6 py-8">
@@ -95,7 +106,6 @@ export function RoomView({
         {/* YouTube replaces #player with an iframe, so the wrapper does the sizing. */}
         <div className="relative aspect-video w-full overflow-hidden rounded-2xl border-4 border-foreground/80 bg-foreground shadow-xl [&>iframe]:size-full">
           <div id="player" />
-          <SelfView stream={stream} error={error} />
           {/* Drawn over the player, not instead of it: YouTube keeps hold of #player. */}
           {statusText && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-foreground/90 p-6 text-center text-background">
@@ -132,6 +142,17 @@ export function RoomView({
           sync.
         </p>
       </section>
+      {/* Outside the player wrapper: its overflow-hidden would clip the box. */}
+      <SelfView
+        stream={stream}
+        error={error}
+        className="fixed z-10"
+        style={{
+          left: `${camBox.x * 100}vw`,
+          top: `${camBox.y * 100}vh`,
+          width: `${camBox.width * 100}vw`,
+        }}
+      />
     </main>
   )
 }
