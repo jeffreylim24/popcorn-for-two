@@ -2,7 +2,8 @@ import { describe, expect, test } from 'vitest'
 import {
   expectedPosition,
   isNews,
-  parseSyncMessage,
+  parsePlaybackMessage,
+  parseVideoMessage,
   shouldCatchUp,
 } from './sync'
 import type { AgreedState } from './sync'
@@ -109,26 +110,26 @@ describe('shouldCatchUp', () => {
   })
 })
 
-describe('parseSyncMessage', () => {
-  test('valid message: returns SyncMessage', () => {
+describe('parsePlaybackMessage', () => {
+  test('valid message: returns PlaybackMessage', () => {
     const data = JSON.stringify({
       type: 'sync',
       position: 10,
       state: 'playing',
     })
-    const result = parseSyncMessage(data)
+    const result = parsePlaybackMessage(data)
     expect(result).toEqual({ type: 'sync', position: 10, state: 'playing' })
   })
 
   test('invalid JSON: returns null', () => {
     const data = '{ invalid json }'
-    const result = parseSyncMessage(data)
+    const result = parsePlaybackMessage(data)
     expect(result).toBeNull()
   })
 
   test('missing fields: returns null', () => {
     const data = JSON.stringify({ type: 'sync', position: 10 })
-    const result = parseSyncMessage(data)
+    const result = parsePlaybackMessage(data)
     expect(result).toBeNull()
   })
 
@@ -138,7 +139,7 @@ describe('parseSyncMessage', () => {
       position: 10,
       state: 'invalid',
     })
-    const result = parseSyncMessage(data)
+    const result = parsePlaybackMessage(data)
     expect(result).toBeNull()
   })
 
@@ -148,7 +149,7 @@ describe('parseSyncMessage', () => {
       position: 10,
       state: 'playing',
     })
-    const result = parseSyncMessage(data)
+    const result = parsePlaybackMessage(data)
     expect(result).toBeNull()
   })
 
@@ -158,7 +159,7 @@ describe('parseSyncMessage', () => {
       position: 'not a number',
       state: 'playing',
     })
-    const result = parseSyncMessage(data)
+    const result = parsePlaybackMessage(data)
     expect(result).toBeNull()
   })
 
@@ -168,17 +169,40 @@ describe('parseSyncMessage', () => {
       position: -5,
       state: 'playing',
     })
-    const result = parseSyncMessage(data)
+    const result = parsePlaybackMessage(data)
     expect(result).toBeNull()
   })
 
-  test('position is exactly 0: returns SyncMessage', () => {
+  test('position is exactly 0: returns PlaybackMessage', () => {
     const data = JSON.stringify({
       type: 'sync',
       position: 0,
       state: 'playing',
     })
-    const result = parseSyncMessage(data)
+    const result = parsePlaybackMessage(data)
     expect(result).toEqual({ type: 'sync', position: 0, state: 'playing' })
+  })
+})
+
+describe('parseVideoMessage', () => {
+  test('valid message: returns VideoMessage', () => {
+    const data = JSON.stringify({ type: 'video', videoId: 'dQw4w9WgXcQ' })
+    const result = parseVideoMessage(data)
+    expect(result).toEqual({ type: 'video', videoId: 'dQw4w9WgXcQ' })
+  })
+
+  test.each([
+    ['invalid JSON', '{ invalid json }'],
+    ['not an object', JSON.stringify('dQw4w9WgXcQ')],
+    ['wrong type', JSON.stringify({ type: 'action', videoId: 'dQw4w9WgXcQ' })],
+    ['missing videoId', JSON.stringify({ type: 'video' })],
+    ['videoId not a string', JSON.stringify({ type: 'video', videoId: 42 })],
+    ['videoId too short', JSON.stringify({ type: 'video', videoId: 'abc' })],
+    [
+      'videoId with a bad character',
+      JSON.stringify({ type: 'video', videoId: 'dQw4w9WgX<Q' }),
+    ],
+  ])('%s: returns null', (_reason, data) => {
+    expect(parseVideoMessage(data)).toBeNull()
   })
 })

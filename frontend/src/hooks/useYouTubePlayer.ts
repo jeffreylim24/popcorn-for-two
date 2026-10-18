@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent, useRef, type RefObject } from 'react'
 import { SEEK_THRESHOLD_S } from '../sync'
-import type { SyncMessage } from '../sync'
+import type { PlaybackMessage } from '../sync'
 
 declare global {
   interface Window {
@@ -22,7 +22,7 @@ export function useYouTubePlayer(
   elementId: string,
   videoId: string,
   callbacks: {
-    onLocalChange: (position: number, state: SyncMessage['state']) => void
+    onLocalChange: (position: number, state: PlaybackMessage['state']) => void
     onPlayingTick: (position: number) => void
   },
 ) {

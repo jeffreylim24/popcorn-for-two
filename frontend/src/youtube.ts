@@ -1,5 +1,5 @@
 const YOUTUBE_HOSTS = ['youtube.com', 'www.youtube.com', 'm.youtube.com']
-const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/
+export const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/
 
 /**
  * Turns a pasted YouTube link into its 11-character video ID, or null if

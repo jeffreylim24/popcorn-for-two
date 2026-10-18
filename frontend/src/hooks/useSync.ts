@@ -1,11 +1,11 @@
 import { useRef } from 'react'
 import {
   isNews,
-  parseSyncMessage,
+  parsePlaybackMessage,
   SEEK_THRESHOLD_S,
   shouldCatchUp,
 } from '../sync'
-import type { AgreedState, SyncMessage } from '../sync'
+import type { AgreedState, PlaybackMessage } from '../sync'
 import { useRoomSocket } from './useRoomSocket'
 import { useYouTubePlayer } from './useYouTubePlayer'
 
@@ -18,7 +18,7 @@ export function useSync(code: string, elementId: string, videoId: string) {
   const lastStateRef = useRef<AgreedState | null>(null)
 
   const { send, status, reconnect } = useRoomSocket(code, (data) => {
-    const msg = parseSyncMessage(data)
+    const msg = parsePlaybackMessage(data)
     if (!msg) return
     const player = playerRef.current
     if (!player) return
@@ -55,15 +55,15 @@ export function useSync(code: string, elementId: string, videoId: string) {
     }
   })
 
-  const sendAction = (position: number, state: SyncMessage['state']) => {
+  const sendAction = (position: number, state: PlaybackMessage['state']) => {
     if (!isNews(lastStateRef.current, state, position, Date.now())) return
-    const msg: SyncMessage = { type: 'action', position, state }
+    const msg: PlaybackMessage = { type: 'action', position, state }
     send(JSON.stringify(msg))
     lastStateRef.current = { state, position, at: Date.now() }
   }
 
   const sendSync = (position: number) => {
-    const msg: SyncMessage = { type: 'sync', position, state: 'playing' }
+    const msg: PlaybackMessage = { type: 'sync', position, state: 'playing' }
     send(JSON.stringify(msg))
     lastStateRef.current = { state: 'playing', position, at: Date.now() }
   }

@@ -1,3 +1,5 @@
+import { VIDEO_ID } from './youtube'
+
 /**
  * Positions further apart than this count as a seek, and get corrected.
  */
@@ -5,30 +7,32 @@ export const SEEK_THRESHOLD_S = 1
 
 // Allowed values live once, as runtime arrays; the types are derived from
 // them, so the parser's checks and the types can't drift apart.
-export const MESSAGE_TYPES = ['action', 'sync'] as const
+export const PLAYBACK_MESSAGE_TYPES = ['action', 'sync'] as const
 export const PLAYBACK_STATES = ['playing', 'paused'] as const
 
-export type MessageType = (typeof MESSAGE_TYPES)[number]
+export type PlaybackMessageType = (typeof PLAYBACK_MESSAGE_TYPES)[number]
 export type PlaybackState = (typeof PLAYBACK_STATES)[number]
 
-export type SyncMessage = {
-  type: MessageType
+export type PlaybackMessage = {
+  type: PlaybackMessageType
   position: number
   state: PlaybackState
 }
 
+export type VideoMessage = { type: 'video'; videoId: string }
+
 export type AgreedState = {
-  state: SyncMessage['state']
+  state: PlaybackMessage['state']
   position: number
   at: number
 }
 
 /**
- * Turns raw socket text into a `SyncMessage`, or `null` if it isn't one.
+ * Turns raw socket text into a `PlaybackMessage`, or `null` if it isn't one.
  * The partner's tab may run older code after a deploy, so nothing off the
  * wire is trusted.
  */
-export function parseSyncMessage(data: string): SyncMessage | null {
+export function parsePlaybackMessage(data: string): PlaybackMessage | null {
   let value: unknown
 
   try {
@@ -39,12 +43,12 @@ export function parseSyncMessage(data: string): SyncMessage | null {
 
   if (typeof value !== 'object' || value === null) return null
   const v = value as Record<string, unknown>
-  if (!MESSAGE_TYPES.some((t) => t === v.type)) return null
+  if (!PLAYBACK_MESSAGE_TYPES.some((t) => t === v.type)) return null
   if (typeof v.position !== 'number') return null
   if (v.position < 0) return null
   if (!PLAYBACK_STATES.some((s) => s === v.state)) return null
 
-  return v as SyncMessage
+  return v as PlaybackMessage
 }
 
 /**
@@ -73,7 +77,7 @@ export function expectedPosition(last: AgreedState, nowMs: number): number {
  */
 export function isNews(
   last: AgreedState | null,
-  state: SyncMessage['state'],
+  state: PlaybackMessage['state'],
   position: number,
   nowMs: number,
 ): boolean {
@@ -95,4 +99,27 @@ export function shouldCatchUp(
   if (!isPlaying) return false
   const gap = partnerPosition - myPosition
   return gap > SEEK_THRESHOLD_S
+}
+
+/**
+ * Turns raw socket text into a `VideoMessage`, or `null` if it isn't one.
+ * The server already checks the ID, but nothing off the wire is trusted:
+ * a bad ID would reach `cueVideoById`.
+ */
+export function parseVideoMessage(data: string): VideoMessage | null {
+  let value: unknown
+
+  try {
+    value = JSON.parse(data)
+  } catch {
+    return null
+  }
+
+  if (typeof value !== 'object' || value === null) return null
+  const v = value as Record<string, unknown>
+  if (v.type !== 'video') return null
+  if (typeof v.videoId !== 'string') return null
+  if (!VIDEO_ID.test(v.videoId)) return null
+
+  return v as VideoMessage
 }
