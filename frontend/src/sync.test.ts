@@ -84,103 +84,40 @@ describe('isNews', () => {
 })
 
 describe('shouldCatchUp', () => {
-  test('not playing: should not catch up', () => {
-    const result = shouldCatchUp(false, 10, 20)
-    expect(result).toBe(false)
-  })
-
-  test('playing, behind by more than 1s: should catch up', () => {
-    const result = shouldCatchUp(true, 10, 20)
-    expect(result).toBe(true)
-  })
-
-  test('playing, behind by exactly 1s: should not catch up', () => {
-    const result = shouldCatchUp(true, 10, 11)
-    expect(result).toBe(false)
-  })
-
-  test('playing, behind by less than 1s: should not catch up', () => {
-    const result = shouldCatchUp(true, 10, 10.5)
-    expect(result).toBe(false)
-  })
-
-  test('playing, ahead: should not catch up', () => {
-    const result = shouldCatchUp(true, 20, 10)
-    expect(result).toBe(false)
+  // [name, isPlaying, myPosition, partnerPosition, want]
+  test.each([
+    ['not playing', false, 10, 20, false],
+    ['playing, behind by more than 1s', true, 10, 20, true],
+    ['playing, behind by exactly 1s', true, 10, 11, false],
+    ['playing, behind by less than 1s', true, 10, 10.5, false],
+    ['playing, ahead', true, 20, 10, false],
+  ])('%s', (_name, isPlaying, mine, partner, want) => {
+    expect(shouldCatchUp(isPlaying, mine, partner)).toBe(want)
   })
 })
 
 describe('parsePlaybackMessage', () => {
-  test('valid message: returns PlaybackMessage', () => {
-    const data = JSON.stringify({
-      type: 'sync',
-      position: 10,
-      state: 'playing',
-    })
-    const result = parsePlaybackMessage(data)
-    expect(result).toEqual({ type: 'sync', position: 10, state: 'playing' })
+  // A valid message with some fields swapped out. A field set to undefined
+  // is left out entirely, because JSON.stringify drops it.
+  const message = (fields: Record<string, unknown> = {}) =>
+    JSON.stringify({ type: 'sync', position: 10, state: 'playing', ...fields })
+
+  test.each([
+    ['valid message', message()],
+    ['position is exactly 0', message({ position: 0 })],
+  ])('%s: returns PlaybackMessage', (_reason, data) => {
+    expect(parsePlaybackMessage(data)).toEqual(JSON.parse(data))
   })
 
-  test('invalid JSON: returns null', () => {
-    const data = '{ invalid json }'
-    const result = parsePlaybackMessage(data)
-    expect(result).toBeNull()
-  })
-
-  test('missing fields: returns null', () => {
-    const data = JSON.stringify({ type: 'sync', position: 10 })
-    const result = parsePlaybackMessage(data)
-    expect(result).toBeNull()
-  })
-
-  test('invalid state: returns null', () => {
-    const data = JSON.stringify({
-      type: 'sync',
-      position: 10,
-      state: 'invalid',
-    })
-    const result = parsePlaybackMessage(data)
-    expect(result).toBeNull()
-  })
-
-  test('invalid type: returns null', () => {
-    const data = JSON.stringify({
-      type: 'invalid',
-      position: 10,
-      state: 'playing',
-    })
-    const result = parsePlaybackMessage(data)
-    expect(result).toBeNull()
-  })
-
-  test('position is not a number: returns null', () => {
-    const data = JSON.stringify({
-      type: 'sync',
-      position: 'not a number',
-      state: 'playing',
-    })
-    const result = parsePlaybackMessage(data)
-    expect(result).toBeNull()
-  })
-
-  test('position is negative: returns null', () => {
-    const data = JSON.stringify({
-      type: 'sync',
-      position: -5,
-      state: 'playing',
-    })
-    const result = parsePlaybackMessage(data)
-    expect(result).toBeNull()
-  })
-
-  test('position is exactly 0: returns PlaybackMessage', () => {
-    const data = JSON.stringify({
-      type: 'sync',
-      position: 0,
-      state: 'playing',
-    })
-    const result = parsePlaybackMessage(data)
-    expect(result).toEqual({ type: 'sync', position: 0, state: 'playing' })
+  test.each([
+    ['invalid JSON', '{ invalid json }'],
+    ['missing fields', message({ state: undefined })],
+    ['invalid state', message({ state: 'invalid' })],
+    ['invalid type', message({ type: 'invalid' })],
+    ['position is not a number', message({ position: 'not a number' })],
+    ['position is negative', message({ position: -5 })],
+  ])('%s: returns null', (_reason, data) => {
+    expect(parsePlaybackMessage(data)).toBeNull()
   })
 })
 
