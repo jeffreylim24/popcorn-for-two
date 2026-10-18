@@ -421,19 +421,54 @@ Every milestone ends in something I can demo and commit.
       message usually does) waits in `pendingVideoRef`.
     - Copy link button in the room header.
 
-- [ ] **M9: Drag and resize**
+- [x] **M9: Drag and resize**
   - Done when: I can drag and resize my facecam anywhere over the
     video, without affecting my partner's layout.
   - Why next: a fixed camera box covers part of the video.
   - Known: the iframe swallows mouse events while the pointer is over
     it, so a drag that crosses the video loses its moves. Look at
     pointer capture. A facecam over YouTube's controls hides them.
+  - Decisions (session 31):
+    - Pointer events + `setPointerCapture`: once captured, every move
+      goes to the box, even over the iframe. Touch comes free, and
+      there are no global listeners to clean up.
+    - The box's position and size live in `RoomView`, not `SelfView`:
+      `SelfView` unmounts when the camera is off, which would reset
+      them. The lobby keeps a plain, fixed `SelfView`.
+    - Bounded by the whole window, not the player: there's free space
+      around the video, so don't force the camera to cover it. The box
+      is `position: fixed`, kept fully inside the window, and leaves
+      the player wrapper (its `overflow-hidden` would clip it).
+    - Stored as fractions of the window, not pixels, so a resize keeps
+      its spot on the screen. It can drift relative to the video;
+      accepted.
+    - Covering YouTube's controls is fine: you can move, shrink or turn
+      off the box. A click on the box is always for the box.
+    - Resize from the bottom-right corner only: `x, y` stay put and
+      only `width` changes. Min width 0.1 of the window.
+  - Built (session 31):
+    - `camBox = { x, y, width }` state in `RoomView`; no height (16:9).
+      A fixed wrapper div holds the handlers; `SelfView` stays plain.
+    - Drag: pointerdown saves the pointer's and the cam's start in a
+      ref (`null` = not dragging, so hover moves do nothing); each move
+      adds the change since pointerdown to the *start*, so moves don't
+      compound. Clamped per axis in px, then turned into fractions.
+    - Resize: a handle inside the wrapper calls `stopPropagation` so no
+      drag starts. Max width = min(room to the right, room below × 16/9).
+      Hover-only corner bracket.
+    - Known: a height-only window resize can push the cam off the
+      bottom (see "Later").
 
 - [ ] **M10: Call**
   - Done when: my partner and I see and hear each other in the app on
     the live site, both facecams can be dragged and resized, and we no
     longer need FaceTime.
   - Why next: I can only see my own face.
+  - To settle (from session 31): a "shared stage" start, where seat 1's
+    cam starts top-left and seat 2's top-right on both screens. Needs
+    the server to tell each tab its seat. Do drags then sync, or does
+    each screen keep its own layout after the start? M9 starts every
+    cam top-left.
 
 ## Later
 - Search YouTube from the app (like watch2gether): needs the YouTube
@@ -449,6 +484,12 @@ Every milestone ends in something I can demo and commit.
   effect cleanup doesn't run (nothing unmounts). Fix: close the socket
   on `pagehide`; on `pageshow` with `persisted`, rejoin (or reload).
   Workaround: close the tab, or create a new room.
+
+- Facecam off the bottom after a height-only resize (e.g. opening
+  DevTools docked at the bottom): the clamp runs only on drag moves.
+  The top edge stays on screen, so it can't be lost, and the next drag
+  fixes it. Fix: re-clamp in a window `resize` listener (an effect with
+  cleanup).
 
 - Font flash on slow networks: Pixelify Sans downloads only once
   text using it renders, so "Finding your room…" shows the fallback
