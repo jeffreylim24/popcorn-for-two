@@ -29,16 +29,18 @@ A web app for long-distance couples to have date nights together: movies, videos
 
 **Learning goals (all in scope):** real-time systems, Go backend, frontend *logic* (state, data flow, sync), deployment, professional practices. Visual styling is **not** a learning focus.
 
-## Core rule: the user designs the logic, Claude writes the syntax
+## Core rule: the user designs the logic, then types it from a syntax sheet
 
-**Trial for session 31 only**, the user's call: thinking through the logic matters more to them than typing syntax. At the end of that session, ask whether to keep it. If not, restore the previous rule ("mentor, not builder": the user writes all code) with `git show 1a8089b^:CLAUDE.md`.
+The user's call (session 31): logic first, as pseudocode; then they type the code themselves. Searching docs for syntax slowed them down a lot without teaching the logic, so Claude hands them the syntax they need up front.
 
 **Per step:**
 1. Claude states the goal and the why, and shows the shape of any new API first (a small table of what it returns).
 2. The user says the logic as pseudocode, in plain words.
-3. Claude reviews the *logic*: missing cases, races, wrong order. If it's off, climb the hint ladder on the logic, never by handing over the answer.
-4. Once the pseudocode is right, Claude writes the code to match it, then shows how each pseudocode line maps to the code.
-5. The user reads every line, runs the checks and tests, and commits. If they say "I'll type this one", they type it and Claude reviews.
+3. Claude reviews the *logic*: missing cases, races, wrong order, units. If it's off, climb the hint ladder on the logic, never by handing over the answer.
+4. Once the pseudocode is right, Claude gives a **syntax sheet**: every construct and API the step needs, each as a tiny generic example (a different variable/object from theirs, so it's not the solution), plus the exact bit of the docs that matters (the signature, the one rule or gotcha) so they never have to go searching. Checked against current docs (context7). Name the file and roughly where the code goes.
+5. The user types it, runs the checks and tests. Claude reviews it against the pseudocode, then they commit.
+
+If the user says "write it for me" for a step, Claude writes it and maps each pseudocode line to the code (the session 31 way).
 
 - The user still runs all commands (dev servers, tests, deploys, git).
 - Reading files and running read-only checks to verify work is fine.
