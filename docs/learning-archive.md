@@ -55,3 +55,13 @@ Older detail moved out of `LEARNING.md` to keep it under budget.
 - **Path matching by hand (s. 27):** `split('/')` trace: leading `/` makes `parts[0]` empty; check part count and every part. Claude wrote it; not explained back.
 - **SPA vs "page not found" (s. 27):** Go always sends `index.html`; not-found is a third branch React picks. Soft 404 (`200`) vs a real Go `404`.
 - **Reading tutorial code critically (s. 26):** two online `useCamera` examples were click-driven and leaked a late stream. Not yet judged one themselves.
+
+## Moved 2026-10-17 (session 30): M6–M7 React detail
+
+- **Lookup table typed `Record<Union, …>` (s. 28):** asked Claude to write the status overlay; shown a trace. Then added the `action` field themselves, letting TS errors guide the rows. Asked whether union strings count as hard-coding: told the union type-checks them, unlike `4004`.
+- **`useState` in a custom hook (s. 28):** status union + `useState`, returned up through `useSync`. Logging in the hook body (each render) vs after `setX` (old value): told.
+- **Close codes on the client (s. 28):** `onclose` + `e.code` switch, left a TODO about sharing codes with Go.
+- **Rules of hooks → component split (s. 26–27):** removed the dead `code: string | undefined` guards themselves. Why tighter types help: told.
+- **Re-run an effect by changing a dep (s. 28, 29):** wrote the `attempt` counter + `[code, attempt]` + `useCallback` reconnect from a flow diagram. First forgot `setStatus('connecting')`; the "button looks broken if it fails again" case landed. Updater form `setX(prev => …)` used. S. 29: camera toggle as `useCamera(enabled)`.
+- **Lifting state up (s. 29):** chose "owner never unmounts" for the stream, and the lobby as a view at the same URL. Delegated the `RoomPage` / `RoomView` split; then wired `cameraOn` / `onToggleCamera` themselves, following the TS "missing props" error.
+- **`useCamera` slips (s. 29), all "which lines run now vs after the `await`":** returned on `cancelled` without stopping the late stream (pizza / note-on-the-door analogy landed); `try` around the call `start()` not the `await`; `setError(null)` inside `if (ownStream)`; `if (cancelled) return` in the cleanup not the `catch` (two-branch `await` diagram fixed it).

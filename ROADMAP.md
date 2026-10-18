@@ -393,7 +393,7 @@ Every milestone ends in something I can demo and commit.
     check: success stops the late stream; failure skips `setError`.
     Putting the check in cleanup does nothing (cleanup sets the flag).
 
-- [ ] **M8: Pick a video**
+- [x] **M8: Pick a video**
   - Done when: either of us pastes a YouTube link, both tabs switch to
     it, and play/pause/seek still sync. Someone who joins or refreshes
     later gets the same video. Locally and on the live site.
@@ -409,6 +409,17 @@ Every milestone ends in something I can demo and commit.
       the player: one `YT.Player`, handlers and timers stay attached.
     - A new video starts paused at 0 on both tabs; whoever presses play
       sends a normal action, so no new race.
+  - Built (session 30):
+    - Go: `room` struct (`map[string]*room`, conns + videoID); the read
+      loop peeks at each message's `type` with `json.Unmarshal`, drops
+      non-JSON, and drops a bad video ID instead of relaying it.
+    - Client: `VideoMessage` has its own parser (not a third
+      `PlaybackMessage` type: different shape). `SyncMessage` renamed
+      `PlaybackMessage`, since it covers `action` and `sync`.
+    - The player ref is set only in `onReady`: before that, `YT.Player`
+      is a shell with no methods. A video that arrives first (the join
+      message usually does) waits in `pendingVideoRef`.
+    - Copy link button in the room header.
 
 - [ ] **M9: Drag and resize**
   - Done when: I can drag and resize my facecam anywhere over the
