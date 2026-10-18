@@ -469,8 +469,32 @@ Every milestone ends in something I can demo and commit.
     the server to tell each tab its seat. Do drags then sync, or does
     each screen keep its own layout after the start? M9 starts every
     cam top-left.
+  - Scope (session 31): the call plus a **mic toggle** in the lobby and
+    the room, like the camera's. Device choice etc. is M11.
+  - Leaning (session 31): mute by turning the track off
+    (`track.enabled = false`), for both mic and camera: instant, and
+    the call is untouched. Check in Chrome whether the camera light
+    goes off; if it stays on, switch the camera to stopping the track
+    (privacy, public app). The partner needs a "camera off" signal
+    either way.
+  - Echo: show a note that headphones are recommended, or the movie
+    may echo. Test whether Chrome's echo cancellation catches the
+    YouTube audio before deciding anything more.
+
+- [ ] **M11: Devices** _(discuss again when we get here: scope and
+  order are a first guess from session 31)_
+  - Done when: I can pick my camera, mic and speakers, in the lobby
+    and mid-call, and balance my partner's voice against the movie.
+  - Why next: Zoom-style settings; the wrong mic or a loud movie
+    spoils a date night.
+  - Rough notes: list devices (`enumerateDevices`); pick one via
+    `getUserMedia` with a `deviceId`; mid-call, swap the sent track
+    (`replaceTrack`); speakers via `setSinkId`; volume via YouTube's
+    `setVolume` + the partner video's `volume`.
 
 ## Later
+- Switch devices by themselves when one is unplugged mid-call
+  (headphones out): listen for `devicechange`.
 - Search YouTube from the app (like watch2gether): needs the YouTube
   Data API and an API key kept server-side (a secret, plus quota).
 - CI/CD: when manual deploys get annoying
@@ -498,4 +522,6 @@ Every milestone ends in something I can demo and commit.
 ## Not in the MVP
 - Mini-games, movies beyond YouTube (separate brainstorming session)
 - Accounts and login
+- Background blur / replace: needs an ML model splitting you from the
+  background on every frame (CPU heavy).
 - Browsers other than Chrome
