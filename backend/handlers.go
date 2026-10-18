@@ -14,7 +14,19 @@ import (
 
 type peekMessage struct {
 	Type    string `json:"type"`
-	VideoID string `json:"videoId"`
+	VideoID string `json:"videoId,omitempty"`
+}
+
+// sendJSON marshals v and writes it to c as one text message, giving up
+// after 5 seconds.
+func sendJSON(ctx context.Context, c *websocket.Conn, v any) error {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	return c.Write(ctx, websocket.MessageText, data)
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -35,7 +47,7 @@ func joinRoomHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.CloseNow()
 
-	err = joinRoom(code, conn)
+	partner, err := joinRoom(code, conn)
 	if errors.Is(err, errRoomNotFound) {
 		log.Println("Room not found:", code)
 		conn.Close(statusRoomNotFound, "Room not found")
@@ -52,7 +64,27 @@ func joinRoomHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Println("Client joined room:", code)
-	defer leaveRoom(code, conn)
+	defer func() {
+		// Tell whoever is still here, so they can close the call
+		if p := leaveRoom(code, conn); p != nil {
+			err := sendJSON(r.Context(), p, peekMessage{Type: "partner-left"})
+			if err != nil {
+				log.Println("Error writing partner-left:", err)
+			}
+		}
+	}()
+
+	// Someone was here first: they wait, and the newcomer makes the offer
+	if partner != nil {
+		err = sendJSON(r.Context(), partner, peekMessage{Type: "partner-joined"})
+		if err != nil {
+			log.Println("Error writing partner-joined:", err)
+		}
+		err = sendJSON(r.Context(), conn, peekMessage{Type: "partner-present"})
+		if err != nil {
+			log.Println("Error writing partner-present:", err)
+		}
+	}
 
 	// Send the current video ID to the newly joined client
 	id := getRoomVideo(code)

@@ -52,29 +52,44 @@ func createRoom() string {
 	return roomCode
 }
 
-func joinRoom(code string, conn *websocket.Conn) error {
-	roomsMutex.Lock()
-	defer roomsMutex.Unlock()
-	_, ok := rooms[code]
-	if !ok {
-		return errRoomNotFound
-	}
-	if len(rooms[code].conns) > 1 {
-		return errRoomFull
-	}
-	rooms[code].conns[conn] = true
-	return nil
-}
-
-func leaveRoom(code string, conn *websocket.Conn) {
+// joinRoom adds conn to the room and returns whoever was already in it
+// (nil if the room was empty). Both happen under one lock, so two
+// people joining at once can't both see the other as "already here".
+func joinRoom(code string, conn *websocket.Conn) (*websocket.Conn, error) {
 	roomsMutex.Lock()
 	defer roomsMutex.Unlock()
 	r, ok := rooms[code]
 	if !ok {
-		return
+		return nil, errRoomNotFound
+	}
+	if len(r.conns) > 1 {
+		return nil, errRoomFull
+	}
+	var partner *websocket.Conn
+	for c := range r.conns {
+		partner = c
+	}
+	r.conns[conn] = true
+	return partner, nil
+}
+
+// leaveRoom removes conn from the room and returns whoever is still in it
+// (nil if the room is now empty). Both happen under one lock, so someone
+// joining in between can't be mistaken for the partner who stayed.
+func leaveRoom(code string, conn *websocket.Conn) *websocket.Conn {
+	roomsMutex.Lock()
+	defer roomsMutex.Unlock()
+	r, ok := rooms[code]
+	if !ok {
+		return nil
 	}
 	delete(r.conns, conn)
 	log.Println("Client left room:", code)
+	var partner *websocket.Conn
+	for c := range r.conns {
+		partner = c
+	}
+	return partner
 }
 
 func getPartnerConn(code string, conn *websocket.Conn) *websocket.Conn {

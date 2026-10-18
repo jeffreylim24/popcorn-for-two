@@ -9,7 +9,7 @@ import (
 
 func TestJoinRoom_UnknownCodeRejected(t *testing.T) {
 	conn := &websocket.Conn{}
-	err := joinRoom("unknown", conn)
+	_, err := joinRoom("unknown", conn)
 	if !errors.Is(err, errRoomNotFound) {
 		t.Errorf("got: %v, want: %v", err, errRoomNotFound)
 	}
@@ -19,8 +19,8 @@ func TestJoinRoom_TwoPeopleCanJoin(t *testing.T) {
 	code := createRoom()
 	conn1 := &websocket.Conn{}
 	conn2 := &websocket.Conn{}
-	err1 := joinRoom(code, conn1)
-	err2 := joinRoom(code, conn2)
+	_, err1 := joinRoom(code, conn1)
+	_, err2 := joinRoom(code, conn2)
 	if err1 != nil {
 		t.Errorf("got: %v, want: nil", err1)
 	}
@@ -29,14 +29,34 @@ func TestJoinRoom_TwoPeopleCanJoin(t *testing.T) {
 	}
 }
 
+func TestJoinRoom_ReturnsWhoWasHereFirst(t *testing.T) {
+	code := createRoom()
+	conn1 := &websocket.Conn{}
+	conn2 := &websocket.Conn{}
+	partner1, err1 := joinRoom(code, conn1)
+	partner2, err2 := joinRoom(code, conn2)
+	if err1 != nil {
+		t.Fatalf("got: %v, want: nil", err1)
+	}
+	if err2 != nil {
+		t.Fatalf("got: %v, want: nil", err2)
+	}
+	if partner1 != nil {
+		t.Errorf("first join: got: %v, want: nil", partner1)
+	}
+	if partner2 != conn1 {
+		t.Errorf("second join: got: %v, want: %v", partner2, conn1)
+	}
+}
+
 func TestJoinRoom_ThirdIsFull(t *testing.T) {
 	code := createRoom()
 	conn1 := &websocket.Conn{}
 	conn2 := &websocket.Conn{}
 	conn3 := &websocket.Conn{}
-	err1 := joinRoom(code, conn1)
-	err2 := joinRoom(code, conn2)
-	err3 := joinRoom(code, conn3)
+	_, err1 := joinRoom(code, conn1)
+	_, err2 := joinRoom(code, conn2)
+	_, err3 := joinRoom(code, conn3)
 	if err1 != nil {
 		t.Fatalf("got: %v, want: nil", err1)
 	}
@@ -53,8 +73,8 @@ func TestLeaveRoom_FreesSeat(t *testing.T) {
 	conn1 := &websocket.Conn{}
 	conn2 := &websocket.Conn{}
 	conn3 := &websocket.Conn{}
-	err1 := joinRoom(code, conn1)
-	err2 := joinRoom(code, conn2)
+	_, err1 := joinRoom(code, conn1)
+	_, err2 := joinRoom(code, conn2)
 	if err1 != nil {
 		t.Fatalf("got: %v, want: nil", err1)
 	}
@@ -62,16 +82,38 @@ func TestLeaveRoom_FreesSeat(t *testing.T) {
 		t.Fatalf("got: %v, want: nil", err2)
 	}
 	leaveRoom(code, conn1)
-	err3 := joinRoom(code, conn3)
+	_, err3 := joinRoom(code, conn3)
 	if err3 != nil {
 		t.Errorf("got: %v, want: nil", err3)
+	}
+}
+
+func TestLeaveRoom_ReturnsWhoStayed(t *testing.T) {
+	code := createRoom()
+	conn1 := &websocket.Conn{}
+	conn2 := &websocket.Conn{}
+	_, err1 := joinRoom(code, conn1)
+	_, err2 := joinRoom(code, conn2)
+	if err1 != nil {
+		t.Fatalf("got: %v, want: nil", err1)
+	}
+	if err2 != nil {
+		t.Fatalf("got: %v, want: nil", err2)
+	}
+	stayed := leaveRoom(code, conn2)
+	if stayed != conn1 {
+		t.Errorf("first leave: got: %v, want: %v", stayed, conn1)
+	}
+	stayed = leaveRoom(code, conn1)
+	if stayed != nil {
+		t.Errorf("last leave: got: %v, want: nil", stayed)
 	}
 }
 
 func TestGetPartnerConn_AloneReturnsNil(t *testing.T) {
 	code := createRoom()
 	conn1 := &websocket.Conn{}
-	err1 := joinRoom(code, conn1)
+	_, err1 := joinRoom(code, conn1)
 	if err1 != nil {
 		t.Fatalf("got: %v, want: nil", err1)
 	}
@@ -85,8 +127,8 @@ func TestGetPartnerConn_TwoReturnsOther(t *testing.T) {
 	code := createRoom()
 	conn1 := &websocket.Conn{}
 	conn2 := &websocket.Conn{}
-	err1 := joinRoom(code, conn1)
-	err2 := joinRoom(code, conn2)
+	_, err1 := joinRoom(code, conn1)
+	_, err2 := joinRoom(code, conn2)
 	if err1 != nil {
 		t.Fatalf("got: %v, want: nil", err1)
 	}
