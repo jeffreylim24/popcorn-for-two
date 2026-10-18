@@ -4,6 +4,7 @@ import { Popcorn, Video, VideoOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createAndJoinRoom } from '@/rooms'
 import { SelfView } from '@/components/SelfView'
+import { VideoPicker } from '@/components/VideoPicker'
 
 // Dummy video ID for testing.
 const VIDEO_ID = 'kzcI5F4tGiU'
@@ -57,7 +58,7 @@ export function RoomView({
   cameraOn,
   onToggleCamera,
 }: RoomViewProps) {
-  const { status, reconnect } = useSync(code, 'player', VIDEO_ID)
+  const { status, reconnect, pickVideo } = useSync(code, 'player', VIDEO_ID)
   const statusText = STATUS_TEXT[status]
 
   return (
@@ -123,6 +124,7 @@ export function RoomView({
             </div>
           )}
         </div>
+        <VideoPicker onPick={pickVideo} />
         <p className="text-center font-heading text-sm text-muted-foreground">
           Send this page's link to your person. Play, pause and seek stay in
           sync.

@@ -24,13 +24,17 @@ export function useYouTubePlayer(
   callbacks: {
     onLocalChange: (position: number, state: PlaybackMessage['state']) => void
     onPlayingTick: (position: number) => void
+    onReady: () => void
   },
 ) {
   const timerRef = useRef<number | null>(null)
   const onLocalChange = useEffectEvent(callbacks.onLocalChange)
   const onPlayingTick = useEffectEvent(callbacks.onPlayingTick)
+  const onReady = useEffectEvent(callbacks.onReady)
 
   useEffect(() => {
+    let player: YT.Player | null = null
+
     const stopTimer = () => {
       if (timerRef.current) {
         clearInterval(timerRef.current)
@@ -39,9 +43,15 @@ export function useYouTubePlayer(
     }
 
     const createYouTubePlayer = () => {
-      playerRef.current = new YT.Player(elementId, {
+      player = new YT.Player(elementId, {
         videoId,
         events: {
+          // The player's methods only exist from here on, so the ref stays
+          // null until now and callers' `if (!player)` guards hold.
+          onReady: () => {
+            playerRef.current = player
+            onReady()
+          },
           onStateChange: (e) => {
             stopTimer()
             if (
@@ -83,7 +93,8 @@ export function useYouTubePlayer(
 
     return () => {
       stopTimer()
-      playerRef.current?.destroy()
+      // The local, not the ref: before onReady the ref is still null.
+      player?.destroy()
       playerRef.current = null
     }
   }, [playerRef, elementId, videoId])
