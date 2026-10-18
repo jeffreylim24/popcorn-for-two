@@ -5,7 +5,11 @@ import type { RoomSocket } from './useRoomSocket'
 const ICE_SERVERS: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }]
 
 /** The fields a call message may carry. Anything else is ignored. */
-type CallMessage = { type?: string; sdp?: string }
+type CallMessage = {
+  type?: string
+  sdp?: string
+  candidate?: RTCIceCandidateInit
+}
 
 /**
  * The video call with the partner, over the room's `socket`. The newcomer
@@ -28,6 +32,14 @@ export function useCall(socket: RoomSocket) {
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS })
     pc.onsignalingstatechange = () => {
       console.log('call: signalingState', pc.signalingState)
+    }
+    pc.onconnectionstatechange = () => {
+      console.log('call: connectionState', pc.connectionState)
+    }
+    pc.onicecandidate = (e) => {
+      if (e.candidate) {
+        send(JSON.stringify({ type: 'candidate', candidate: e.candidate }))
+      }
     }
     pcRef.current = pc
     return pc
@@ -77,6 +89,14 @@ export function useCall(socket: RoomSocket) {
         const pc = pcRef.current
         if (!pc) return
         await pc.setRemoteDescription({ type: 'answer', sdp: msg.sdp })
+        break
+      }
+
+      // An address the partner's phone found: our phone tries it.
+      case 'candidate': {
+        const pc = pcRef.current
+        if (!pc) return
+        await pc.addIceCandidate(msg.candidate)
         break
       }
 
