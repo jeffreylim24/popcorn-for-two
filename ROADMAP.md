@@ -471,12 +471,15 @@ Every milestone ends in something I can demo and commit.
     cam top-left.
   - Scope (session 31): the call plus a **mic toggle** in the lobby and
     the room, like the camera's. Device choice etc. is M11.
-  - Leaning (session 31): mute by turning the track off
-    (`track.enabled = false`), for both mic and camera: instant, and
-    the call is untouched. Check in Chrome whether the camera light
-    goes off; if it stays on, switch the camera to stopping the track
-    (privacy, public app). The partner needs a "camera off" signal
-    either way.
+  - Leaning (session 31), matching Meet and Zoom:
+    - Mic: mute (`track.enabled = false`). Instant; the call is
+      untouched.
+    - Camera: stop it, as now (`useCamera(enabled)`), so the light goes
+      off. The spec says `enabled = false` should turn the light off,
+      but Chrome has had a bug where it stays on, and people trust that
+      light on a public app. Mid-call, swap the sent track with
+      `replaceTrack` (`null` while off): no renegotiation.
+    - The partner needs a "camera off" signal either way.
   - Echo: show a note that headphones are recommended, or the movie
     may echo. Test whether Chrome's echo cancellation catches the
     YouTube audio before deciding anything more.
