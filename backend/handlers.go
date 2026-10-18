@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -10,6 +11,11 @@ import (
 
 	"github.com/coder/websocket"
 )
+
+type peekMessage struct {
+	Type    string `json:"type"`
+	VideoID string `json:"videoId"`
+}
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Health check: OK")
@@ -54,6 +60,21 @@ func joinRoomHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("Error reading message:", err)
 			return
 		}
+
+		var peek peekMessage
+		err = json.Unmarshal(msg, &peek)
+		if err != nil {
+			log.Println("Error unmarshaling message:", err)
+			continue
+		}
+		if peek.Type == "video" {
+			err = setRoomVideo(code, peek.VideoID)
+			if err != nil {
+				log.Println("Error setting room video:", err)
+				continue
+			}
+		}
+
 		partner := getPartnerConn(code, conn)
 		if partner == nil {
 			continue
