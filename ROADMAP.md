@@ -492,6 +492,14 @@ Every milestone ends in something I can demo and commit.
     - Camera off: tell the partner over the socket
       (`{type: 'camera', on}`), and send the current state on "partner
       joined".
+    - Socket plumbing: `RoomView` owns `useRoomSocket`; `useSync` and
+      `useCall` get the socket and plug in with `subscribe`. Passing a
+      handler in instead loops (`react-hooks/immutability`).
+  - Progress (session 32): join/leave notices (Go), offer/answer, and
+    ICE candidates are done; two tabs reach `connected`. Next: media in
+    the slots. Testing two tabs on one Mac needs Chrome's Local Network
+    permission (System Settings → Privacy & Security), or `.local`
+    candidates can't be resolved and the call fails.
   - Echo: show a note that headphones are recommended, or the movie
     may echo. Test whether Chrome's echo cancellation catches the
     YouTube audio before deciding anything more.
