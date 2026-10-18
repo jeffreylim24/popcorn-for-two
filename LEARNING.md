@@ -48,6 +48,7 @@ _Last updated: 2026-10-17 (session 30)_
 - **Toolchain:** Go 1.27.1, Bun 1.4.2, Node 26, React 19.3, Vite 8, TS 6. Ports 5173 / 8080; Vite proxies `/api` (`ws: true`).
 - **Raw YouTube IFrame API**, YouTube's own controls. Sync rules in `src/sync.ts`, tested.
 - **Hosting:** Fly.io, one machine in `yyz`, `--ha=false`. Rooms in memory: a deploy or restart wipes them.
+- **Workflow (s. 30):** user writes pseudocode, Claude writes the code once the logic is right (see `CLAUDE.md` core rule).
 - **Styling is delegated:** Claude writes visual work (cream / cocoa / terracotta, Pixelify Sans headings, lucide icons). App logic stays theirs.
 - **M5–M7:** see `ROADMAP.md` (path matched by hand; status in `useRoomSocket` + `STATUS_TEXT`; lobby view inside `RoomPage`, `useCamera(cameraOn)`).
 - **M8 (s. 30):** server stores + validates the video; `VideoMessage` has its own parser; `SyncMessage` → `PlaybackMessage`; player ref set only in `onReady`, early video waits in `pendingVideoRef`. Copy link button. Details in `ROADMAP.md`.
@@ -65,6 +66,7 @@ _Last updated: 2026-10-17 (session 30)_
 - **Unfamiliar API → show its shape first** (a table of real outputs) before asking them to write against it. "I keep having to google" = the step was missing that.
 - **"i don't get it":** give the same idea on a different concrete object, then map it back.
 - **Fast pace:** one step per turn, why → exact commands → "it worked if…". On "done", verify with `git diff`, lint, build, tests. They often commit/push ahead: check `git log` first.
+- **New workflow (from s. 31, their call):** they give pseudocode, Claude reviews the logic, then writes the code and maps it back to their lines. Syntax was eating the focus that belongs on logic. Watch: do they read the written code? Offer "you type this one" now and then for syntax recall.
 - **Delegation (s. 30, heavy late in the session):** tests, `pickVideo`, the cleanup fix and the pending ref all went "do it for me". Explain what was written with a trace; keep the next step small enough to be theirs.
 - **Sharp questions are a strength:** "shouldn't it guard anyway?", "isn't the test dependent on the getter?", "is it because the backend re-sends?". Answer with a table, and concede when they're right.
 - **A warning in the same message gets missed** (s. 29 twice, s. 30 cleanup): make the trap its own step, or a question they must answer.
