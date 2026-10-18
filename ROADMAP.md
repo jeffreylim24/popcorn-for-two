@@ -464,22 +464,34 @@ Every milestone ends in something I can demo and commit.
     the live site, both facecams can be dragged and resized, and we no
     longer need FaceTime.
   - Why next: I can only see my own face.
-  - To settle (from session 31): a "shared stage" start, where seat 1's
-    cam starts top-left and seat 2's top-right on both screens. Needs
-    the server to tell each tab its seat. Do drags then sync, or does
-    each screen keep its own layout after the start? M9 starts every
-    cam top-left.
   - Scope (session 31): the call plus a **mic toggle** in the lobby and
     the room, like the camera's. Device choice etc. is M11.
-  - Leaning (session 31), matching Meet and Zoom:
-    - Mic: mute (`track.enabled = false`). Instant; the call is
-      untouched.
-    - Camera: stop it, as now (`useCamera(enabled)`), so the light goes
-      off. The spec says `enabled = false` should turn the light off,
-      but Chrome has had a bug where it stays on, and people trust that
-      light on a public app. Mid-call, swap the sent track with
-      `replaceTrack` (`null` while off): no renegotiation.
-    - The partner needs a "camera off" signal either way.
+  - Decided (session 32):
+    - Signalling: over the existing room WebSocket. Go already relays
+      any JSON to the partner; it adds join/leave notices ("partner
+      present" to the newcomer, "partner joined" / "partner left" to
+      the other). `coder/websocket` reads at most 32 KB per message:
+      check a real offer's size in DevTools.
+    - Who offers: the newcomer. `joinRoom` holds the lock, so one side
+      is always first. On "partner left", close the old connection;
+      a refresh or Reconnect is a fresh call.
+    - Network: Google STUN first. Cloudflare TURN (1,000 GB/month free,
+      then $0.05/GB) as the last M10 step, with short-lived credentials
+      that Go fetches using a secret. Why: many couples, and some
+      networks block direct calls. Big apps (Discord, Meet, Zoom) put
+      an SFU in the media path instead; Zoom's 2-person P2P mode is the
+      closest match to ours. Media is always encrypted (DTLS-SRTP);
+      direct calls only show each partner the other's IP.
+    - Cams: no shared stage for now. Self top-left, partner top-right,
+      and each screen keeps its own layout. **End goal: drags sync on
+      both screens** (a key priority); design it after M10 (seats,
+      clashing drags, different screen shapes).
+    - Mic: mute (`track.enabled = false`). Camera: stop it, as now,
+      so the light goes off. Create both audio and video slots up
+      front, then `replaceTrack(track | null)`: no renegotiation.
+    - Camera off: tell the partner over the socket
+      (`{type: 'camera', on}`), and send the current state on "partner
+      joined".
   - Echo: show a note that headphones are recommended, or the movie
     may echo. Test whether Chrome's echo cancellation catches the
     YouTube audio before deciding anything more.
@@ -496,6 +508,13 @@ Every milestone ends in something I can demo and commit.
     `setVolume` + the partner video's `volume`.
 
 ## Later
+- ICE restart on a network change (Wi-Fi → hotspot) to keep the call
+  instead of starting fresh: a renegotiation, so it needs a rule for
+  who restarts, and auto-retry for the socket first (below).
+- "Hide my IP" toggle: relay-only calls (`iceTransportPolicy:
+  'relay'`), like WhatsApp and Signal. Needs TURN.
+- Room-code hardening: the code is the only gate to a room (and a
+  partner's camera). Rate-limit join attempts; consider longer codes.
 - Switch devices by themselves when one is unplugged mid-call
   (headphones out): listen for `devicechange`.
 - Search YouTube from the app (like watch2gether): needs the YouTube
