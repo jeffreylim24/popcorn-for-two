@@ -8,10 +8,10 @@ import { SelfView } from '@/components/SelfView'
 import { VideoPicker } from '@/components/VideoPicker'
 import { CopyLinkButton } from '@/components/CopyLinkButton'
 
-// Dummy video ID for testing.
+/** Dummy video ID for testing. */
 const VIDEO_ID = 'kzcI5F4tGiU'
 
-// Record forces an entry per status, so a new status can't be forgotten here.
+/** Record forces an entry per status, so a new status can't be forgotten here. */
 const STATUS_TEXT: Record<
   RoomStatus,
   {
@@ -49,6 +49,7 @@ const STATUS_TEXT: Record<
  */
 type CamBox = { x: number; y: number; width: number }
 
+/** `value`, pulled into the range `min`..`max`. */
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max)
 
@@ -75,8 +76,10 @@ export function RoomView({
   const statusText = STATUS_TEXT[status]
   // Lives here, not in SelfView: SelfView unmounts when the camera is off.
   const [camBox, setCamBox] = useState<CamBox>({ x: 0.02, y: 0.1, width: 0.2 })
-  // Where the pointer (px) and the cam (fractions) were at pointerdown.
-  // null = no drag in progress, so moves while hovering do nothing.
+  /**
+   * Where the pointer (px) and the cam (fractions) were at pointerdown.
+   * null = no drag in progress, so moves while hovering do nothing.
+   */
   const dragRef = useRef<{
     pointerX: number
     pointerY: number
@@ -101,12 +104,8 @@ export function RoomView({
     const { innerWidth, innerHeight } = window
     // Measured, not worked out from 16:9: the "camera blocked" box isn't 16:9.
     const box = e.currentTarget.getBoundingClientRect()
-    // In px: the start position plus the change since pointerdown, not the
-    // current position, so moves don't compound.
     const left = drag.boxX * innerWidth + (e.clientX - drag.pointerX)
     const top = drag.boxY * innerHeight + (e.clientY - drag.pointerY)
-    // Clamp each axis on its own so the whole box stays in the window, then
-    // px → fraction of the window.
     setCamBox({
       ...camBox,
       x: clamp(left, 0, innerWidth - box.width) / innerWidth,

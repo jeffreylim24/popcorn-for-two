@@ -5,12 +5,11 @@ import { cn } from '@/lib/utils'
 type SelfViewProps = {
   stream: MediaStream | null
   error: 'denied' | 'unavailable' | null
-  // Size and position, set by the parent (the lobby's is fixed, the room's moves).
   className?: string
   style?: CSSProperties
 }
 
-// Your own facecam.
+/** Your own facecam. */
 export function SelfView({ stream, error, className, style }: SelfViewProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
 
