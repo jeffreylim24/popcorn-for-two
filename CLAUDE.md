@@ -31,7 +31,7 @@ A web app for long-distance couples to have date nights together: movies, videos
 
 ## Core rule: the user designs the logic, Claude writes the syntax
 
-Set by the user in session 30: thinking through the logic matters more to them than typing syntax.
+**Trial for session 31 only**, the user's call: thinking through the logic matters more to them than typing syntax. At the end of that session, ask whether to keep it. If not, restore the previous rule ("mentor, not builder": the user writes all code) with `git show 1a8089b^:CLAUDE.md`.
 
 **Per step:**
 1. Claude states the goal and the why, and shows the shape of any new API first (a small table of what it returns).
@@ -49,7 +49,7 @@ Set by the user in session 30: thinking through the logic matters more to them t
 1. The user says "just show me", "write it for me", or similar *before* giving pseudocode: do exactly what was asked, nothing extra, then explain the logic with a trace.
 2. **Styling fast lane:** visual work (layout, spacing, sizing, Tailwind classes, presentational components) needs no pseudocode. Claude writes it directly with a one-line explanation.
 3. **Docs files are Claude's:** Claude writes and commits `README.md`, `ROADMAP.md`, `LEARNING.md`, `CLAUDE.md`, and similar docs. The user doesn't type these (no learning in it), but makes the decisions they record.
-4. **Commit messages are Claude's:** when the work is ready to commit, Claude drafts the message (with a one-line why for its shape). The user still stages, commits, and pushes their own work. **No `Co-Authored-By: Claude` trailer** on messages for code the user wrote; Claude only helped word the message. Claude's own docs commits keep it.
+4. **Commit messages are Claude's:** when the work is ready to commit, Claude drafts the message (with a one-line why for its shape). The user still stages, commits, and pushes their own work. **No `Co-Authored-By: Claude` trailer** on messages for the user's code, including code Claude wrote from their pseudocode; Claude only helped word the message. Claude's own docs commits keep it.
 
 ## Teaching approach
 
