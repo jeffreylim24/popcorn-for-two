@@ -117,6 +117,41 @@ export function RoomView({
     dragRef.current = null
   }
 
+  /**
+   * Where the pointer (px) was and the cam's width (fraction) at pointerdown
+   * on the resize handle. null = not resizing.
+   */
+  const resizeRef = useRef<{ pointerX: number; boxWidth: number } | null>(null)
+
+  const handleResizeDown = (e: PointerEvent<HTMLDivElement>) => {
+    // Stop here, or the wrapper's handlePointerDown starts a drag too.
+    e.stopPropagation()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    resizeRef.current = { pointerX: e.clientX, boxWidth: camBox.width }
+  }
+
+  const handleResizeMove = (e: PointerEvent<HTMLDivElement>) => {
+    const resize = resizeRef.current
+    if (!resize) return
+    const { innerWidth, innerHeight } = window
+    // Start width plus the change since pointerdown, in px.
+    const width = resize.boxWidth * innerWidth + (e.clientX - resize.pointerX)
+    // Room to the right of the cam, and the widest 16:9 cam that fits
+    // in the room below it.
+    const roomRight = (1 - camBox.x) * innerWidth
+    const roomBelow = innerHeight - camBox.y * innerHeight
+    const maxWidth = Math.min(roomRight, (roomBelow * 16) / 9)
+    const minWidth = 0.1 * innerWidth
+    setCamBox({
+      ...camBox,
+      width: clamp(width, minWidth, maxWidth) / innerWidth,
+    })
+  }
+
+  const handleResizeUp = () => {
+    resizeRef.current = null
+  }
+
   return (
     <main className="mx-auto flex min-h-svh max-w-5xl flex-col px-6 py-8">
       <header className="flex items-center justify-between">
@@ -199,6 +234,16 @@ export function RoomView({
         onPointerUp={handlePointerUp}
       >
         <SelfView stream={stream} error={error} className="w-full" />
+        {/* Only when there's a box to resize (SelfView draws nothing otherwise). */}
+        {(stream || error === 'denied') && (
+          <div
+            aria-hidden="true"
+            className="absolute right-0 bottom-0 size-5 cursor-nwse-resize rounded-tl-lg rounded-br-xl border-t-2 border-l-2 border-background/80 bg-foreground/70"
+            onPointerDown={handleResizeDown}
+            onPointerMove={handleResizeMove}
+            onPointerUp={handleResizeUp}
+          />
+        )}
       </div>
     </main>
   )
