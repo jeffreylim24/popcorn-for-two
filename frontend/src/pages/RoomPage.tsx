@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useCamera } from '@/hooks/useCamera'
+import { useMic } from '@/hooks/useMic'
 import { Lobby } from '@/components/Lobby'
 import { RoomView } from '@/components/RoomView'
 
@@ -9,6 +10,7 @@ export function RoomPage({ code }: { code: string }) {
   const [joined, setJoined] = useState(false)
   const [cameraOn, setCameraOn] = useState(true)
   const camera = useCamera(cameraOn)
+  const mic = useMic()
 
   if (!joined) {
     return (
@@ -26,7 +28,8 @@ export function RoomPage({ code }: { code: string }) {
   return (
     <RoomView
       code={code}
-      stream={camera.stream}
+      camStream={camera.stream}
+      micStream={mic.stream}
       error={camera.error}
       cameraOn={cameraOn}
       onToggleCamera={() => setCameraOn((on) => !on)}

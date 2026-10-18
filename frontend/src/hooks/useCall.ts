@@ -12,10 +12,34 @@ type CallMessage = {
 }
 
 /**
+ * Puts my camera and mic into the phone's sending slots (null = send
+ * nothing). Safe to call again: it swaps, never adds, so no new offer.
+ */
+function putTracks(
+  pc: RTCPeerConnection,
+  videoTrack: MediaStreamTrack | null,
+  audioTrack: MediaStreamTrack | null,
+) {
+  return Promise.all(
+    pc.getTransceivers().map((slot) => {
+      // The receiver's track always exists; the sender's is null until filled.
+      const kind = slot.receiver.track.kind
+      return slot.sender.replaceTrack(
+        kind === 'video' ? videoTrack : audioTrack,
+      )
+    }),
+  )
+}
+
+/**
  * The video call with the partner, over the room's `socket`. The newcomer
  * offers; the one already in the room answers.
  */
-export function useCall(socket: RoomSocket) {
+export function useCall(
+  socket: RoomSocket,
+  videoTrack: MediaStreamTrack | null,
+  audioTrack: MediaStreamTrack | null,
+) {
   const { send, subscribe } = socket
   /** This tab's phone: its half of the call. `null` when there's no call. */
   const pcRef = useRef<RTCPeerConnection | null>(null)
@@ -60,6 +84,7 @@ export function useCall(socket: RoomSocket) {
         const pc = newPhone()
         pc.addTransceiver('video')
         pc.addTransceiver('audio')
+        await putTracks(pc, videoTrack, audioTrack)
         const offer = await pc.createOffer()
         await pc.setLocalDescription(offer)
         send(JSON.stringify(offer))
@@ -79,6 +104,7 @@ export function useCall(socket: RoomSocket) {
         pc.getTransceivers().forEach((t) => {
           t.direction = 'sendrecv'
         })
+        await putTracks(pc, videoTrack, audioTrack)
         const answer = await pc.createAnswer()
         await pc.setLocalDescription(answer)
         send(JSON.stringify(answer))
@@ -108,4 +134,12 @@ export function useCall(socket: RoomSocket) {
 
   // Plug into the socket; the cleanup unplugs on unmount.
   useEffect(() => subscribe((data) => handleMessage(data)), [subscribe])
+
+  // A track changed mid-call (camera toggled, mic allowed late): swap it in.
+  // No phone yet? The offer/answer cases put the latest tracks in later.
+  useEffect(() => {
+    const pc = pcRef.current
+    if (!pc) return
+    putTracks(pc, videoTrack, audioTrack)
+  }, [videoTrack, audioTrack])
 }

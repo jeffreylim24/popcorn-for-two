@@ -56,7 +56,8 @@ const clamp = (value: number, min: number, max: number) =>
 
 type RoomViewProps = {
   code: string
-  stream: MediaStream | null
+  camStream: MediaStream | null
+  micStream: MediaStream | null
   error: 'denied' | 'unavailable' | null
   cameraOn: boolean
   onToggleCamera: () => void
@@ -69,7 +70,8 @@ type RoomViewProps = {
  */
 export function RoomView({
   code,
-  stream,
+  camStream,
+  micStream,
   error,
   cameraOn,
   onToggleCamera,
@@ -77,7 +79,9 @@ export function RoomView({
   const socket = useRoomSocket(code)
   const { status, reconnect } = socket
   const { pickVideo } = useSync(socket, 'player', VIDEO_ID)
-  useCall(socket)
+  const videoTrack = camStream?.getVideoTracks()[0] ?? null
+  const audioTrack = micStream?.getAudioTracks()[0] ?? null
+  useCall(socket, videoTrack, audioTrack)
   const statusText = STATUS_TEXT[status]
   // Lives here, not in SelfView: SelfView unmounts when the camera is off.
   const [camBox, setCamBox] = useState<CamBox>({ x: 0.02, y: 0.1, width: 0.2 })
@@ -139,10 +143,7 @@ export function RoomView({
     const resize = resizeRef.current
     if (!resize) return
     const { innerWidth, innerHeight } = window
-    // Start width plus the change since pointerdown, in px.
     const width = resize.boxWidth * innerWidth + (e.clientX - resize.pointerX)
-    // Room to the right of the cam, and the widest 16:9 cam that fits
-    // in the room below it.
     const roomRight = (1 - camBox.x) * innerWidth
     const roomBelow = innerHeight - camBox.y * innerHeight
     const maxWidth = Math.min(roomRight, (roomBelow * 16) / 9)
@@ -238,9 +239,9 @@ export function RoomView({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
-        <SelfView stream={stream} error={error} className="w-full" />
+        <SelfView stream={camStream} error={error} className="w-full" />
         {/* Only when there's a box to resize (SelfView draws nothing otherwise). */}
-        {(stream || error === 'denied') && (
+        {(camStream || error === 'denied') && (
           <div
             aria-hidden="true"
             className="absolute right-0 bottom-0 size-6 cursor-nwse-resize p-1.5"
