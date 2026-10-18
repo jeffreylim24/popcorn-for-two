@@ -1,11 +1,22 @@
-import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 export type RoomStatus =
   'connecting' | 'connected' | 'not-found' | 'full' | 'disconnected'
 
-export function useRoomSocket(code: string, onMessage: (data: string) => void) {
+/** A function that gets each incoming message's text. */
+type Listener = (data: string) => void
+
+/** What `useRoomSocket` hands back: the pipe that hooks plug into. */
+export type RoomSocket = ReturnType<typeof useRoomSocket>
+
+/**
+ * This tab's one socket to the room. Hooks plug in with `subscribe` to hear
+ * incoming messages; each one ignores the types it doesn't handle.
+ */
+export function useRoomSocket(code: string) {
   const socketRef = useRef<WebSocket | null>(null)
-  const handleMessage = useEffectEvent(onMessage)
+  /** Everyone plugged in. Kept across reconnects, so nobody has to re-plug. */
+  const listenersRef = useRef(new Set<Listener>())
 
   const [status, setStatus] = useState<RoomStatus>('connecting')
   const [attempt, setAttempt] = useState(0)
@@ -13,7 +24,7 @@ export function useRoomSocket(code: string, onMessage: (data: string) => void) {
   useEffect(() => {
     socketRef.current = new WebSocket(`/api/rooms/${code}/ws`)
     socketRef.current.onmessage = (e) => {
-      handleMessage(e.data)
+      listenersRef.current.forEach((listener) => listener(e.data))
     }
     socketRef.current.onopen = () => {
       setStatus('connected')
@@ -51,5 +62,13 @@ export function useRoomSocket(code: string, onMessage: (data: string) => void) {
     setStatus('connecting')
   }, [])
 
-  return { send, status, reconnect }
+  /** Plugs `listener` in. Returns the function that unplugs it. */
+  const subscribe = useCallback((listener: Listener) => {
+    listenersRef.current.add(listener)
+    return () => {
+      listenersRef.current.delete(listener)
+    }
+  }, [])
+
+  return { send, status, reconnect, subscribe }
 }

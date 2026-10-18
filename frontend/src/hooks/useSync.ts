@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useEffectEvent, useRef } from 'react'
 import {
   isNews,
   parsePlaybackMessage,
@@ -8,15 +8,20 @@ import {
 } from '../sync'
 import type { AgreedState, PlaybackMessage, VideoMessage } from '../sync'
 import { parseVideoId } from '../youtube'
-import { useRoomSocket } from './useRoomSocket'
+import type { RoomSocket } from './useRoomSocket'
 import { useYouTubePlayer } from './useYouTubePlayer'
 
 /**
  * Keeps this tab's player in sync with the partner's: applies incoming
- * messages and sends only real news. Returns the player ref, status,
- * reconnect function, and `pickVideo` to switch both tabs to a new link.
+ * messages and sends only real news, over the room's `socket`. Returns the
+ * player ref and `pickVideo` to switch both tabs to a new link.
  */
-export function useSync(code: string, elementId: string, videoId: string) {
+export function useSync(
+  socket: RoomSocket,
+  elementId: string,
+  videoId: string,
+) {
+  const { send, subscribe } = socket
   const playerRef = useRef<YT.Player | null>(null)
   const lastStateRef = useRef<AgreedState | null>(null)
   // The server sends the room's video as soon as we join, usually before
@@ -35,7 +40,8 @@ export function useSync(code: string, elementId: string, videoId: string) {
     lastStateRef.current = { state: 'paused', position: 0, at: Date.now() }
   }
 
-  const { send, status, reconnect } = useRoomSocket(code, (data) => {
+  /** Applies one incoming message; ignores types that aren't for sync. */
+  const handleMessage = useEffectEvent((data: string) => {
     const videoMsg = parseVideoMessage(data)
     if (videoMsg) {
       cueVideo(videoMsg.videoId)
@@ -79,6 +85,9 @@ export function useSync(code: string, elementId: string, videoId: string) {
     }
   })
 
+  // Plug into the socket; the cleanup unplugs on unmount.
+  useEffect(() => subscribe((data) => handleMessage(data)), [subscribe])
+
   const sendAction = (position: number, state: PlaybackMessage['state']) => {
     if (!isNews(lastStateRef.current, state, position, Date.now())) return
     const msg: PlaybackMessage = { type: 'action', position, state }
@@ -115,5 +124,5 @@ export function useSync(code: string, elementId: string, videoId: string) {
     onReady: cuePendingVideo,
   })
 
-  return { playerRef, status, reconnect, pickVideo }
+  return { playerRef, pickVideo }
 }
