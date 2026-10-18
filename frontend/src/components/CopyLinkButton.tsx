@@ -1,0 +1,44 @@
+import { useEffect, useState } from 'react'
+import { Check, Link } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+
+const COPIED_FOR_MS = 2000
+
+// Copies the room's URL, the thing you send your person to join.
+export function CopyLinkButton() {
+  const [copied, setCopied] = useState(false)
+
+  // Flip back to "Copy link" after a moment; the cleanup cancels the timer
+  // if the button unmounts first.
+  useEffect(() => {
+    if (!copied) return
+    const timer = setTimeout(() => setCopied(false), COPIED_FOR_MS)
+    return () => clearTimeout(timer)
+  }, [copied])
+
+  const handleClick = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setCopied(true)
+    } catch (err) {
+      console.error('Could not copy the room link:', err)
+    }
+  }
+
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      className="rounded-full font-heading text-xs"
+      onClick={handleClick}
+    >
+      {copied ? (
+        <Check data-icon="inline-start" aria-hidden="true" />
+      ) : (
+        <Link data-icon="inline-start" aria-hidden="true" />
+      )}
+      {copied ? 'Copied!' : 'Copy link'}
+    </Button>
+  )
+}

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { createAndJoinRoom } from '@/rooms'
 import { SelfView } from '@/components/SelfView'
 import { VideoPicker } from '@/components/VideoPicker'
+import { CopyLinkButton } from '@/components/CopyLinkButton'
 
 // Dummy video ID for testing.
 const VIDEO_ID = 'kzcI5F4tGiU'
@@ -68,6 +69,7 @@ export function RoomView({
           popcorn for <span className="text-primary">two</span>
         </a>
         <div className="flex items-center gap-2">
+          <CopyLinkButton />
           <Button
             type="button"
             size="sm"
