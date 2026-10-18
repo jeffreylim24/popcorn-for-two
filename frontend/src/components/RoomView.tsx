@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState, type PointerEvent } from 'react'
 import type { RoomStatus } from '@/hooks/useRoomSocket'
 import { useSync } from '@/hooks/useSync'
 import { Popcorn, Video, VideoOff } from 'lucide-react'
@@ -71,7 +71,40 @@ export function RoomView({
   const { status, reconnect, pickVideo } = useSync(code, 'player', VIDEO_ID)
   const statusText = STATUS_TEXT[status]
   // Lives here, not in SelfView: SelfView unmounts when the camera is off.
-  const [camBox] = useState<CamBox>({ x: 0.02, y: 0.1, width: 0.2 })
+  const [camBox, setCamBox] = useState<CamBox>({ x: 0.02, y: 0.1, width: 0.2 })
+  // Where the pointer (px) and the cam (fractions) were at pointerdown.
+  // null = no drag in progress, so moves while hovering do nothing.
+  const dragRef = useRef<{
+    pointerX: number
+    pointerY: number
+    boxX: number
+    boxY: number
+  } | null>(null)
+
+  const handlePointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    // Every move goes to this box until release, even over the YouTube iframe.
+    e.currentTarget.setPointerCapture(e.pointerId)
+    dragRef.current = {
+      pointerX: e.clientX,
+      pointerY: e.clientY,
+      boxX: camBox.x,
+      boxY: camBox.y,
+    }
+  }
+
+  const handlePointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    if (!drag) return
+    // Change since pointerdown, px → fraction of the window. Added to the
+    // start position, not the current one, so moves don't compound.
+    const dx = (e.clientX - drag.pointerX) / window.innerWidth
+    const dy = (e.clientY - drag.pointerY) / window.innerHeight
+    setCamBox({ ...camBox, x: drag.boxX + dx, y: drag.boxY + dy })
+  }
+
+  const handlePointerUp = () => {
+    dragRef.current = null
+  }
 
   return (
     <main className="mx-auto flex min-h-svh max-w-5xl flex-col px-6 py-8">
@@ -143,16 +176,19 @@ export function RoomView({
         </p>
       </section>
       {/* Outside the player wrapper: its overflow-hidden would clip the box. */}
-      <SelfView
-        stream={stream}
-        error={error}
-        className="fixed z-10"
+      <div
+        className="fixed z-10 cursor-grab touch-none select-none active:cursor-grabbing"
         style={{
           left: `${camBox.x * 100}vw`,
           top: `${camBox.y * 100}vh`,
           width: `${camBox.width * 100}vw`,
         }}
-      />
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+      >
+        <SelfView stream={stream} error={error} className="w-full" />
+      </div>
     </main>
   )
 }
