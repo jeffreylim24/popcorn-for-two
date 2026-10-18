@@ -1,6 +1,7 @@
 import { useRef, useState, type PointerEvent } from 'react'
 import { useRoomSocket, type RoomStatus } from '@/hooks/useRoomSocket'
 import { useSync } from '@/hooks/useSync'
+import { useCall } from '@/hooks/useCall'
 import { Popcorn, Video, VideoOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createAndJoinRoom } from '@/rooms'
@@ -76,6 +77,7 @@ export function RoomView({
   const socket = useRoomSocket(code)
   const { status, reconnect } = socket
   const { pickVideo } = useSync(socket, 'player', VIDEO_ID)
+  useCall(socket)
   const statusText = STATUS_TEXT[status]
   // Lives here, not in SelfView: SelfView unmounts when the camera is off.
   const [camBox, setCamBox] = useState<CamBox>({ x: 0.02, y: 0.1, width: 0.2 })
