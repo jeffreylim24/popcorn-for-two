@@ -73,4 +73,4 @@ _Last updated: 2026-10-18 (session 31)_
 
 ## Next step
 
-**M10: Call.** M9 is done and passed on the live site (drag, clamp to the window, bottom-right resize). The hover-only handle (`b5e86ed`) goes live with the next deploy. At the start of M10, settle: WebRTC signalling over the existing room socket, STUN/TURN, how the partner's cam is placed (the shared-stage question above), and adding the mic.
+**M10: Call.** M9 is done and passed on the live site (drag, clamp to the window, bottom-right resize). The hover-only handle is live too. At the start of M10, settle: WebRTC signalling over the existing room socket, STUN/TURN, how the partner's cam is placed (the shared-stage question above), and adding the mic.
