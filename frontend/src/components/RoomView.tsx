@@ -223,7 +223,7 @@ export function RoomView({
       </section>
       {/* Outside the player wrapper: its overflow-hidden would clip the box. */}
       <div
-        className="fixed z-10 cursor-grab touch-none select-none active:cursor-grabbing"
+        className="group fixed z-10 cursor-grab touch-none select-none active:cursor-grabbing"
         style={{
           left: `${camBox.x * 100}vw`,
           top: `${camBox.y * 100}vh`,
@@ -238,11 +238,14 @@ export function RoomView({
         {(stream || error === 'denied') && (
           <div
             aria-hidden="true"
-            className="absolute right-0 bottom-0 size-5 cursor-nwse-resize rounded-tl-lg rounded-br-xl border-t-2 border-l-2 border-background/80 bg-foreground/70"
+            className="absolute right-0 bottom-0 size-6 cursor-nwse-resize p-1.5"
             onPointerDown={handleResizeDown}
             onPointerMove={handleResizeMove}
             onPointerUp={handleResizeUp}
-          />
+          >
+            {/* A thin corner bracket, shown on hover; the padding keeps the grab area bigger than what's drawn. */}
+            <div className="size-full rounded-br-md border-r-2 border-b-2 border-background/90 opacity-0 transition-opacity group-hover:opacity-100" />
+          </div>
         )}
       </div>
     </main>
