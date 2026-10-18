@@ -49,6 +49,9 @@ const STATUS_TEXT: Record<
  */
 type CamBox = { x: number; y: number; width: number }
 
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max)
+
 type RoomViewProps = {
   code: string
   stream: MediaStream | null
@@ -95,11 +98,20 @@ export function RoomView({
   const handlePointerMove = (e: PointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current
     if (!drag) return
-    // Change since pointerdown, px → fraction of the window. Added to the
-    // start position, not the current one, so moves don't compound.
-    const dx = (e.clientX - drag.pointerX) / window.innerWidth
-    const dy = (e.clientY - drag.pointerY) / window.innerHeight
-    setCamBox({ ...camBox, x: drag.boxX + dx, y: drag.boxY + dy })
+    const { innerWidth, innerHeight } = window
+    // Measured, not worked out from 16:9: the "camera blocked" box isn't 16:9.
+    const box = e.currentTarget.getBoundingClientRect()
+    // In px: the start position plus the change since pointerdown, not the
+    // current position, so moves don't compound.
+    const left = drag.boxX * innerWidth + (e.clientX - drag.pointerX)
+    const top = drag.boxY * innerHeight + (e.clientY - drag.pointerY)
+    // Clamp each axis on its own so the whole box stays in the window, then
+    // px → fraction of the window.
+    setCamBox({
+      ...camBox,
+      x: clamp(left, 0, innerWidth - box.width) / innerWidth,
+      y: clamp(top, 0, innerHeight - box.height) / innerHeight,
+    })
   }
 
   const handlePointerUp = () => {
