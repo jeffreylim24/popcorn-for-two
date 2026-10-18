@@ -54,6 +54,24 @@ func joinRoomHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Client joined room:", code)
 	defer leaveRoom(code, conn)
 
+	// Send the current video ID to the newly joined client
+	id := getRoomVideo(code)
+	if id != "" {
+		data, err := json.Marshal(peekMessage{Type: "video", VideoID: id})
+		if err != nil {
+			log.Println("Error marshaling message:", err)
+			// Call can continue without sending videoId
+		} else {
+			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+			err = conn.Write(ctx, websocket.MessageText, data)
+			cancel()
+			if err != nil {
+				log.Println("Error writing video message:", err)
+				// Call can continue without sending videoId
+			}
+		}
+	}
+
 	for {
 		typ, msg, err := conn.Read(r.Context())
 		if err != nil {
