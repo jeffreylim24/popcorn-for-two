@@ -1,13 +1,17 @@
-import { Popcorn, Video, VideoOff } from 'lucide-react'
+import { Mic, MicOff, Popcorn, Video, VideoOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SelfView } from '@/components/SelfView'
+import { micLabel } from '@/mic'
 
 type LobbyProps = {
   code: string
   stream: MediaStream | null
-  error: 'denied' | 'unavailable' | null
+  cameraError: 'denied' | 'unavailable' | null
   cameraOn: boolean
   onToggleCamera: () => void
+  micError: 'denied' | 'unavailable' | null
+  micOn: boolean
+  onToggleMic: () => void
   onJoin: () => void
 }
 
@@ -16,15 +20,18 @@ type LobbyProps = {
 export function Lobby({
   code,
   stream,
-  error,
+  cameraError,
   cameraOn,
   onToggleCamera,
+  micError,
+  micOn,
+  onToggleMic,
   onJoin,
 }: LobbyProps) {
   // Shown under the preview; the video or the blocked box covers it.
   const placeholder = !cameraOn
     ? 'Camera is off'
-    : error === 'unavailable'
+    : cameraError === 'unavailable'
       ? 'No camera found'
       : 'Starting camera…'
 
@@ -54,7 +61,7 @@ export function Lobby({
           </p>
           <SelfView
             stream={stream}
-            error={error}
+            error={cameraError}
             className="absolute inset-0 size-full rounded-none border-0 shadow-none"
           />
         </div>
@@ -73,6 +80,23 @@ export function Lobby({
               <VideoOff data-icon="inline-start" aria-hidden="true" />
             )}
             {cameraOn ? 'Camera on' : 'Camera off'}
+          </Button>
+          <Button
+            type="button"
+            size="lg"
+            variant="outline"
+            className="h-11 px-5 font-heading text-base"
+            onClick={onToggleMic}
+            aria-pressed={micOn}
+            // Nothing to mute without a mic.
+            disabled={micError !== null}
+          >
+            {micOn && !micError ? (
+              <Mic data-icon="inline-start" aria-hidden="true" />
+            ) : (
+              <MicOff data-icon="inline-start" aria-hidden="true" />
+            )}
+            {micLabel(micError, micOn)}
           </Button>
           <Button
             type="button"

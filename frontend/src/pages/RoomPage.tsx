@@ -10,16 +10,20 @@ export function RoomPage({ code }: { code: string }) {
   const [joined, setJoined] = useState(false)
   const [cameraOn, setCameraOn] = useState(true)
   const camera = useCamera(cameraOn)
-  const mic = useMic()
+  const [micOn, setMicOn] = useState(true)
+  const mic = useMic(micOn)
 
   if (!joined) {
     return (
       <Lobby
         code={code}
         stream={camera.stream}
-        error={camera.error}
+        cameraError={camera.error}
         cameraOn={cameraOn}
         onToggleCamera={() => setCameraOn((on) => !on)}
+        micError={mic.error}
+        micOn={micOn}
+        onToggleMic={() => setMicOn((on) => !on)}
         onJoin={() => setJoined(true)}
       />
     )
@@ -30,9 +34,12 @@ export function RoomPage({ code }: { code: string }) {
       code={code}
       camStream={camera.stream}
       micStream={mic.stream}
-      error={camera.error}
+      cameraError={camera.error}
       cameraOn={cameraOn}
       onToggleCamera={() => setCameraOn((on) => !on)}
+      micError={mic.error}
+      micOn={micOn}
+      onToggleMic={() => setMicOn((on) => !on)}
     />
   )
 }

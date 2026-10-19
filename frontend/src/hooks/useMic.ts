@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 
 /**
  * The microphone, asked for once while the room page is open. Muting
- * flips `track.enabled` (mic toggle step); leaving the page stops it.
+ * flips `track.enabled`: the mic keeps running and the call keeps the
+ * same track, it just carries silence. Leaving the page stops it.
  */
-export function useMic() {
+export function useMic(on: boolean) {
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [error, setError] = useState<'denied' | 'unavailable' | null>(null)
 
@@ -40,6 +41,13 @@ export function useMic() {
       cancelled = true
     }
   }, [])
+
+  // Also runs when the stream arrives, so a mute pressed before then holds.
+  useEffect(() => {
+    stream?.getAudioTracks().forEach((track) => {
+      track.enabled = on
+    })
+  }, [stream, on])
 
   return { stream, error }
 }

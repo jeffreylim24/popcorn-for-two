@@ -2,7 +2,15 @@ import { useState } from 'react'
 import { useRoomSocket, type RoomStatus } from '@/hooks/useRoomSocket'
 import { useSync } from '@/hooks/useSync'
 import { useCall } from '@/hooks/useCall'
-import { Eye, EyeOff, Popcorn, Video, VideoOff } from 'lucide-react'
+import {
+  Eye,
+  EyeOff,
+  Mic,
+  MicOff,
+  Popcorn,
+  Video,
+  VideoOff,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createAndJoinRoom } from '@/rooms'
 import { SelfView } from '@/components/SelfView'
@@ -10,6 +18,7 @@ import { PartnerView } from '@/components/PartnerView'
 import { VideoPicker } from '@/components/VideoPicker'
 import { CopyLinkButton } from '@/components/CopyLinkButton'
 import { DraggableCam, type CamBox } from '@/components/DraggableCam'
+import { micLabel } from '@/mic'
 
 /** Dummy video ID for testing. */
 const VIDEO_ID = 'kzcI5F4tGiU'
@@ -50,9 +59,12 @@ type RoomViewProps = {
   code: string
   camStream: MediaStream | null
   micStream: MediaStream | null
-  error: 'denied' | 'unavailable' | null
+  cameraError: 'denied' | 'unavailable' | null
   cameraOn: boolean
   onToggleCamera: () => void
+  micError: 'denied' | 'unavailable' | null
+  micOn: boolean
+  onToggleMic: () => void
 }
 
 /**
@@ -64,9 +76,12 @@ export function RoomView({
   code,
   camStream,
   micStream,
-  error,
+  cameraError,
   cameraOn,
   onToggleCamera,
+  micError,
+  micOn,
+  onToggleMic,
 }: RoomViewProps) {
   const socket = useRoomSocket(code)
   const { status, reconnect } = socket
@@ -121,6 +136,23 @@ export function RoomView({
               <VideoOff data-icon="inline-start" aria-hidden="true" />
             )}
             {cameraOn ? 'Camera on' : 'Camera off'}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="rounded-full font-heading text-xs"
+            onClick={onToggleMic}
+            aria-pressed={micOn}
+            // Nothing to mute without a mic.
+            disabled={micError !== null}
+          >
+            {micOn && !micError ? (
+              <Mic data-icon="inline-start" aria-hidden="true" />
+            ) : (
+              <MicOff data-icon="inline-start" aria-hidden="true" />
+            )}
+            {micLabel(micError, micOn)}
           </Button>
           <Button
             type="button"
@@ -191,9 +223,9 @@ export function RoomView({
           box={selfBox}
           onBoxChange={setSelfBox}
           // Only when there's a box to resize (SelfView draws nothing otherwise).
-          showHandle={camStream !== null || error === 'denied'}
+          showHandle={camStream !== null || cameraError === 'denied'}
         >
-          <SelfView stream={camStream} error={error} className="w-full" />
+          <SelfView stream={camStream} error={cameraError} className="w-full" />
         </DraggableCam>
         <DraggableCam
           box={partnerBox}
