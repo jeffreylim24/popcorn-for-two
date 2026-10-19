@@ -4,17 +4,14 @@ import type { PlaybackMessage } from '../sync'
 
 declare global {
   interface Window {
+    /** Called by the YouTube API script once `YT.Player` is ready to use. */
     onYouTubeIframeAPIReady?: () => void
   }
 }
 
-/**
- * How often to check for a seek while paused (YouTube fires no event for it).
- */
+/** How often to check for a seek while paused (YouTube fires no event for it). */
 const PAUSED_CHECK_INTERVAL_MS = 500
-/**
- * How often to send our position to the partner while playing.
- */
+/** How often to send our position to the partner while playing. */
 const SYNC_INTERVAL_MS = 2000
 
 /**
@@ -96,8 +93,8 @@ export function useYouTubePlayer(
       })
     }
 
-    // index.html loads the API script without waiting. If it hasn't loaded
-    // yet, it calls this global when it has.
+    // index.html's API script defines `YT` at once but loads `YT.Player` in
+    // the background. If that isn't done yet, it calls this global when it is.
     if (YT.Player) {
       createYouTubePlayer()
     } else {

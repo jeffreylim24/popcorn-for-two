@@ -1,7 +1,9 @@
 import './CozyRoom.css'
 
-// Isometric scene: x runs to the lower right, y to the lower left, z up.
-// One unit is one floor tile.
+/**
+ * A point in the isometric scene: x runs to the lower right, y to the lower
+ * left, z up. One unit is one floor tile.
+ */
 type Point3 = [number, number, number]
 
 /** SVG pixels per scene unit. */
@@ -28,7 +30,10 @@ function shade(hex: string, factor: number) {
   return `rgb(${channel(16)} ${channel(8)} ${channel(0)})`
 }
 
-// Same-colour stroke hides hairline seams between neighbouring faces.
+/**
+ * One flat face. The same-colour stroke hides hairline seams between
+ * neighbouring faces.
+ */
 function Face({ points, fill }: { points: Point3[]; fill: string }) {
   return (
     <polygon
@@ -50,7 +55,10 @@ type BoxProps = {
   right?: string
 }
 
-// Only the three faces the camera can see: +y (lower left), +x (lower right), top.
+/**
+ * A shaded box. Draws only the three faces the camera can see: +y (lower
+ * left), +x (lower right), top.
+ */
 function Box({
   at: [x, y, z],
   size: [w, d, h],
