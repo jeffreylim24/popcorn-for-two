@@ -9,7 +9,6 @@ import {
   Maximize,
   Mic,
   MicOff,
-  Minimize,
   Popcorn,
   Video,
   VideoOff,
@@ -22,6 +21,7 @@ import { VideoPicker } from '@/components/VideoPicker'
 import { CopyLinkButton } from '@/components/CopyLinkButton'
 import { DraggableCam, type CamBox } from '@/components/DraggableCam'
 import { MutedBadge } from '@/components/MutedBadge'
+import { FullscreenControls } from '@/components/FullscreenControls'
 import { micLabel } from '@/mic'
 import { cn } from '@/lib/utils'
 
@@ -112,6 +112,8 @@ export function RoomView({
    * The partner still sees me: the camera keeps sending.
    */
   const [camsHidden, setCamsHidden] = useState(false)
+  /** Shared by the header button and the fullscreen bar. */
+  const toggleCams = () => setCamsHidden((hidden) => !hidden)
   // Live here, not in the cams: SelfView and PartnerView draw nothing when
   // there's no stream, and the box should keep its place until it's back.
   /** My cam's box. Starts top-left. */
@@ -172,7 +174,7 @@ export function RoomView({
             size="sm"
             variant="outline"
             className="rounded-full font-heading text-xs"
-            onClick={() => setCamsHidden((hidden) => !hidden)}
+            onClick={toggleCams}
             aria-pressed={camsHidden}
           >
             {camsHidden ? (
@@ -275,18 +277,19 @@ export function RoomView({
               )}
             </DraggableCam>
           </div>
-          {/* The header isn't in fullscreen, so the way out lives here (Esc works too). */}
+          {/* The header isn't in fullscreen, so its buttons and the way out
+              live here (Esc works too). */}
           {isFullscreen && (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="absolute top-3 left-1/2 z-20 -translate-x-1/2 rounded-full font-heading text-xs opacity-40 transition-opacity hover:opacity-100 focus-visible:opacity-100"
-              onClick={toggleFullscreen}
-            >
-              <Minimize data-icon="inline-start" aria-hidden="true" />
-              Exit fullscreen
-            </Button>
+            <FullscreenControls
+              cameraOn={cameraOn}
+              onToggleCamera={onToggleCamera}
+              micError={micError}
+              micOn={micOn}
+              onToggleMic={onToggleMic}
+              camsHidden={camsHidden}
+              onToggleCams={toggleCams}
+              onExit={toggleFullscreen}
+            />
           )}
         </div>
         <VideoPicker onPick={pickVideo} />
