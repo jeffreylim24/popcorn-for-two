@@ -16,6 +16,8 @@ type RoomControlsProps = {
   onToggleCamera: () => void
   micError: 'denied' | 'unavailable' | null
   micOn: boolean
+  /** Can the partner hear me? Drives the icon, so it matches my muted badge. */
+  micLive: boolean
   onToggleMic: () => void
   camsHidden: boolean
   onToggleCams: () => void
@@ -70,13 +72,12 @@ export function RoomControls({
   onToggleCamera,
   micError,
   micOn,
+  micLive,
   onToggleMic,
   camsHidden,
   onToggleCams,
   onFullscreen,
 }: RoomControlsProps) {
-  const micLive = micOn && !micError
-
   return (
     <div className="flex items-center justify-between gap-2 rounded-b-2xl bg-foreground/90 px-2 py-2 sm:px-3">
       <div className="flex items-center gap-1">

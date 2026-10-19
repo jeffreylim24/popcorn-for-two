@@ -19,6 +19,8 @@ type FullscreenControlsProps = {
   onToggleCamera: () => void
   micError: 'denied' | 'unavailable' | null
   micOn: boolean
+  /** Can the partner hear me? Drives the icon, so it matches my muted badge. */
+  micLive: boolean
   onToggleMic: () => void
   camsHidden: boolean
   onToggleCams: () => void
@@ -70,6 +72,7 @@ export function FullscreenControls({
   onToggleCamera,
   micError,
   micOn,
+  micLive,
   onToggleMic,
   camsHidden,
   onToggleCams,
@@ -106,7 +109,7 @@ export function FullscreenControls({
             // Nothing to mute without a mic.
             disabled={micError !== null}
           >
-            {micOn && !micError ? (
+            {micLive ? (
               <Mic aria-hidden="true" />
             ) : (
               <MicOff aria-hidden="true" />

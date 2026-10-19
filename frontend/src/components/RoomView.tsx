@@ -231,6 +231,7 @@ export function RoomView({
                 onToggleCamera={onToggleCamera}
                 micError={micError}
                 micOn={micOn}
+                micLive={micLive}
                 onToggleMic={onToggleMic}
                 camsHidden={camsHidden}
                 onToggleCams={toggleCams}
@@ -243,6 +244,7 @@ export function RoomView({
             onToggleCamera={onToggleCamera}
             micError={micError}
             micOn={micOn}
+            micLive={micLive}
             onToggleMic={onToggleMic}
             camsHidden={camsHidden}
             onToggleCams={toggleCams}
