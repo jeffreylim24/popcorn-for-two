@@ -1,8 +1,13 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import type { RoomSocket } from './useRoomSocket'
 
-/** Free public STUN: tells each browser its public address. */
-const ICE_SERVERS: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }]
+/**
+ * Fallback when TURN credentials can't be fetched: free public STUN only,
+ * which tells each browser its public address. Most calls still connect.
+ */
+const FALLBACK_ICE_SERVERS: RTCIceServer[] = [
+  { urls: 'stun:stun.l.google.com:19302' },
+]
 
 /** The fields a call message may carry. Anything else is ignored. */
 type CallMessage = {
@@ -46,6 +51,13 @@ export function useCall(
 ) {
   const { send, subscribe } = socket
   const pcRef = useRef<RTCPeerConnection | null>(null)
+  /**
+   * The servers each new phone gathers routes from. Starts as the fallback;
+   * replaced by Cloudflare's STUN + TURN list once fetched on Join.
+   */
+  const iceServersRef = useRef<RTCIceServer[]>(FALLBACK_ICE_SERVERS)
+  /** Settles when the ICE server fetch is done, either way. Never rejects. */
+  const iceReadyRef = useRef<Promise<void>>(Promise.resolve())
   const [partnerStream, setPartnerStream] = useState<MediaStream | null>(null)
   /**
    * Whether the partner's camera is on, from their `camera` messages.
@@ -78,10 +90,14 @@ export function useCall(
     setPartnerMicOn(true)
   }
 
-  /** Throws away any old phone and gets a new one. */
+  /** Throws away any old phone and gets a new one, but keeps the partner's camera/mic state. */
   const newPhone = () => {
-    closePhone()
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS })
+    // Don't call closePhone: that would reset the partner's camera/mic state, which is not stale in this case.
+    pcRef.current?.close()
+    pcRef.current = null
+    setPartnerStream(null)
+
+    const pc = new RTCPeerConnection({ iceServers: iceServersRef.current })
     pc.onsignalingstatechange = () => {
       console.log('call: signalingState', pc.signalingState)
     }
@@ -116,6 +132,8 @@ export function useCall(
     switch (msg.type) {
       // I'm the newcomer: I offer.
       case 'partner-present': {
+        // Safe to wait: the partner holds a phone ready for my offer.
+        await iceReadyRef.current
         const pc = newPhone()
         // They may not know my camera is off or I'm muted: say so now.
         sendCamera()
@@ -129,7 +147,8 @@ export function useCall(
         break
       }
 
-      // I was here first: get a phone and wait for the offer.
+      // I was here first: get a phone and wait for the offer. No waiting for
+      // the ICE fetch: the offer may arrive any moment and needs a phone.
       case 'partner-joined':
         newPhone()
         // They missed any camera/mic message sent before they arrived.
@@ -184,6 +203,24 @@ export function useCall(
         break
     }
   })
+
+  // Fetch STUN + TURN on Join, before any partner shows up. A failure keeps
+  // the fallback, so the promise never rejects and the newcomer can await it.
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch('/api/ice-servers')
+        if (!res.ok) throw new Error(`status ${res.status}`)
+        const data: { iceServers?: RTCIceServer[] } = await res.json()
+        if (Array.isArray(data.iceServers)) {
+          iceServersRef.current = data.iceServers
+        }
+      } catch (err) {
+        console.warn('call: no TURN, using STUN only', err)
+      }
+    }
+    iceReadyRef.current = load()
+  }, [])
 
   // Plug into the socket; the cleanup unplugs on unmount.
   useEffect(() => subscribe((data) => handleMessage(data)), [subscribe])
