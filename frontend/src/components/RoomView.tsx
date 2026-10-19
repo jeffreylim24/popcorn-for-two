@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useRoomSocket, type RoomStatus } from '@/hooks/useRoomSocket'
 import { useSync } from '@/hooks/useSync'
 import { useCall } from '@/hooks/useCall'
-import { Popcorn, Video, VideoOff } from 'lucide-react'
+import { Eye, EyeOff, Popcorn, Video, VideoOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createAndJoinRoom } from '@/rooms'
 import { SelfView } from '@/components/SelfView'
@@ -79,6 +79,11 @@ export function RoomView({
     audioTrack,
   )
   const statusText = STATUS_TEXT[status]
+  /**
+   * Hides both cams on my screen only, for a clear view of the movie.
+   * The partner still sees me: the camera keeps sending.
+   */
+  const [camsHidden, setCamsHidden] = useState(false)
   // Live here, not in the cams: SelfView and PartnerView draw nothing when
   // there's no stream, and the box should keep its place until it's back.
   /** My cam's box. Starts top-left. */
@@ -116,6 +121,21 @@ export function RoomView({
               <VideoOff data-icon="inline-start" aria-hidden="true" />
             )}
             {cameraOn ? 'Camera on' : 'Camera off'}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="rounded-full font-heading text-xs"
+            onClick={() => setCamsHidden((hidden) => !hidden)}
+            aria-pressed={camsHidden}
+          >
+            {camsHidden ? (
+              <EyeOff data-icon="inline-start" aria-hidden="true" />
+            ) : (
+              <Eye data-icon="inline-start" aria-hidden="true" />
+            )}
+            {camsHidden ? 'Cams hidden' : 'Cams shown'}
           </Button>
           <span className="flex items-center gap-1.5 rounded-full border border-primary/30 px-3 py-1 font-heading text-xs">
             <Popcorn className="size-3.5 text-primary" aria-hidden="true" />
@@ -163,27 +183,31 @@ export function RoomView({
           sync.
         </p>
       </section>
-      {/* Outside the player wrapper: its overflow-hidden would clip the box. */}
-      <DraggableCam
-        box={selfBox}
-        onBoxChange={setSelfBox}
-        // Only when there's a box to resize (SelfView draws nothing otherwise).
-        showHandle={camStream !== null || error === 'denied'}
-      >
-        <SelfView stream={camStream} error={error} className="w-full" />
-      </DraggableCam>
-      <DraggableCam
-        box={partnerBox}
-        onBoxChange={setPartnerBox}
-        // PartnerView draws nothing until the partner's stream arrives.
-        showHandle={partnerStream !== null}
-      >
-        <PartnerView
-          stream={partnerStream}
-          cameraOn={partnerCameraOn}
-          className="w-full"
-        />
-      </DraggableCam>
+      {/* Outside the player wrapper: its overflow-hidden would clip the box.
+          Hidden, not removed: the partner's voice keeps playing, and each box
+          keeps its place for when the cams come back. */}
+      <div hidden={camsHidden}>
+        <DraggableCam
+          box={selfBox}
+          onBoxChange={setSelfBox}
+          // Only when there's a box to resize (SelfView draws nothing otherwise).
+          showHandle={camStream !== null || error === 'denied'}
+        >
+          <SelfView stream={camStream} error={error} className="w-full" />
+        </DraggableCam>
+        <DraggableCam
+          box={partnerBox}
+          onBoxChange={setPartnerBox}
+          // PartnerView draws nothing until the partner's stream arrives.
+          showHandle={partnerStream !== null}
+        >
+          <PartnerView
+            stream={partnerStream}
+            cameraOn={partnerCameraOn}
+            className="w-full"
+          />
+        </DraggableCam>
+      </div>
     </main>
   )
 }
