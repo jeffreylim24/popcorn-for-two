@@ -45,6 +45,9 @@ export function useYouTubePlayer(
     const createYouTubePlayer = () => {
       player = new YT.Player(elementId, {
         videoId,
+        // No YouTube fullscreen button: it fullscreens only the iframe, which
+        // hides our cams. RoomView has its own that keeps them.
+        playerVars: { fs: 0 },
         events: {
           // The player's methods only exist from here on, so the ref stays
           // null until now and callers' `if (!player)` guards hold.

@@ -1,12 +1,15 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRoomSocket, type RoomStatus } from '@/hooks/useRoomSocket'
 import { useSync } from '@/hooks/useSync'
 import { useCall } from '@/hooks/useCall'
+import { useFullscreen } from '@/hooks/useFullscreen'
 import {
   Eye,
   EyeOff,
+  Maximize,
   Mic,
   MicOff,
+  Minimize,
   Popcorn,
   Video,
   VideoOff,
@@ -20,6 +23,7 @@ import { CopyLinkButton } from '@/components/CopyLinkButton'
 import { DraggableCam, type CamBox } from '@/components/DraggableCam'
 import { MutedBadge } from '@/components/MutedBadge'
 import { micLabel } from '@/mic'
+import { cn } from '@/lib/utils'
 
 /** Dummy video ID for testing. */
 const VIDEO_ID = 'kzcI5F4tGiU'
@@ -100,6 +104,9 @@ export function RoomView({
   /** SelfView draws a box: my stream, or the "camera blocked" card. */
   const selfBoxShown = camStream !== null || cameraError === 'denied'
   const statusText = STATUS_TEXT[status]
+  /** The player and both cams: what goes fullscreen, so the cams stay on top. */
+  const stageRef = useRef<HTMLDivElement | null>(null)
+  const { isFullscreen, toggleFullscreen } = useFullscreen(stageRef)
   /**
    * Hides both cams on my screen only, for a clear view of the movie.
    * The partner still sees me: the camera keeps sending.
@@ -175,6 +182,16 @@ export function RoomView({
             )}
             {camsHidden ? 'Cams hidden' : 'Cams shown'}
           </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="rounded-full font-heading text-xs"
+            onClick={toggleFullscreen}
+          >
+            <Maximize data-icon="inline-start" aria-hidden="true" />
+            Fullscreen
+          </Button>
           <span className="flex items-center gap-1.5 rounded-full border border-primary/30 px-3 py-1 font-heading text-xs">
             <Popcorn className="size-3.5 text-primary" aria-hidden="true" />
             room {code}
@@ -182,37 +199,94 @@ export function RoomView({
         </div>
       </header>
       <section className="flex flex-1 flex-col justify-center gap-4 py-8">
-        {/* YouTube replaces #player with an iframe, so the wrapper does the sizing. */}
-        <div className="relative aspect-video w-full overflow-hidden rounded-2xl border-4 border-foreground/80 bg-foreground shadow-xl [&>iframe]:size-full">
-          <div id="player" />
-          {/* Drawn over the player, not instead of it: YouTube keeps hold of #player. */}
-          {statusText && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-foreground/90 p-6 text-center text-background">
-              <p className="font-heading text-xl">{statusText.title}</p>
-              <p className="font-heading text-sm opacity-80">
-                {statusText.detail}
-              </p>
-              {statusText.action === 'create' && (
-                <Button
-                  type="button"
-                  size="lg"
-                  className="mt-3 h-11 px-6 font-heading text-base"
-                  onClick={createAndJoinRoom}
-                >
-                  Create a new room
-                </Button>
+        <div ref={stageRef} className={cn(isFullscreen && 'bg-foreground')}>
+          {/* YouTube replaces #player with an iframe, so the wrapper does the sizing. */}
+          <div
+            className={cn(
+              'relative w-full overflow-hidden bg-foreground [&>iframe]:size-full',
+              // Fullscreen: fill the screen; YouTube letterboxes the video itself.
+              isFullscreen
+                ? 'h-full'
+                : 'aspect-video rounded-2xl border-4 border-foreground/80 shadow-xl',
+            )}
+          >
+            <div id="player" />
+            {/* Drawn over the player, not instead of it: YouTube keeps hold of #player. */}
+            {statusText && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-foreground/90 p-6 text-center text-background">
+                <p className="font-heading text-xl">{statusText.title}</p>
+                <p className="font-heading text-sm opacity-80">
+                  {statusText.detail}
+                </p>
+                {statusText.action === 'create' && (
+                  <Button
+                    type="button"
+                    size="lg"
+                    className="mt-3 h-11 px-6 font-heading text-base"
+                    onClick={createAndJoinRoom}
+                  >
+                    Create a new room
+                  </Button>
+                )}
+                {statusText.action === 'reconnect' && (
+                  <Button
+                    type="button"
+                    size="lg"
+                    className="mt-3 h-11 px-6 font-heading text-base"
+                    onClick={reconnect}
+                  >
+                    Reconnect
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+          {/* Outside the player wrapper: its overflow-hidden would clip the box.
+            Inside the stage: fullscreen shows only the stage, and the cams
+            must come along. Hidden, not removed: the partner's voice keeps
+            playing, and each box keeps its place for when the cams come back. */}
+          <div hidden={camsHidden}>
+            <DraggableCam
+              box={selfBox}
+              onBoxChange={setSelfBox}
+              // Only when there's a box to resize (SelfView draws nothing otherwise).
+              showHandle={selfBoxShown}
+            >
+              <SelfView
+                stream={camStream}
+                error={cameraError}
+                className="w-full"
+              />
+              {selfBoxShown && !micLive && <MutedBadge who="You are" />}
+            </DraggableCam>
+            <DraggableCam
+              box={partnerBox}
+              onBoxChange={setPartnerBox}
+              // PartnerView draws nothing until the partner's stream arrives.
+              showHandle={partnerStream !== null}
+            >
+              <PartnerView
+                stream={partnerStream}
+                cameraOn={partnerCameraOn}
+                className="w-full"
+              />
+              {partnerStream !== null && !partnerMicOn && (
+                <MutedBadge who="Your partner is" />
               )}
-              {statusText.action === 'reconnect' && (
-                <Button
-                  type="button"
-                  size="lg"
-                  className="mt-3 h-11 px-6 font-heading text-base"
-                  onClick={reconnect}
-                >
-                  Reconnect
-                </Button>
-              )}
-            </div>
+            </DraggableCam>
+          </div>
+          {/* The header isn't in fullscreen, so the way out lives here (Esc works too). */}
+          {isFullscreen && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="absolute top-3 left-1/2 z-20 -translate-x-1/2 rounded-full font-heading text-xs opacity-40 transition-opacity hover:opacity-100 focus-visible:opacity-100"
+              onClick={toggleFullscreen}
+            >
+              <Minimize data-icon="inline-start" aria-hidden="true" />
+              Exit fullscreen
+            </Button>
           )}
         </div>
         <VideoPicker onPick={pickVideo} />
@@ -221,35 +295,6 @@ export function RoomView({
           sync.
         </p>
       </section>
-      {/* Outside the player wrapper: its overflow-hidden would clip the box.
-          Hidden, not removed: the partner's voice keeps playing, and each box
-          keeps its place for when the cams come back. */}
-      <div hidden={camsHidden}>
-        <DraggableCam
-          box={selfBox}
-          onBoxChange={setSelfBox}
-          // Only when there's a box to resize (SelfView draws nothing otherwise).
-          showHandle={selfBoxShown}
-        >
-          <SelfView stream={camStream} error={cameraError} className="w-full" />
-          {selfBoxShown && !micLive && <MutedBadge who="You are" />}
-        </DraggableCam>
-        <DraggableCam
-          box={partnerBox}
-          onBoxChange={setPartnerBox}
-          // PartnerView draws nothing until the partner's stream arrives.
-          showHandle={partnerStream !== null}
-        >
-          <PartnerView
-            stream={partnerStream}
-            cameraOn={partnerCameraOn}
-            className="w-full"
-          />
-          {partnerStream !== null && !partnerMicOn && (
-            <MutedBadge who="Your partner is" />
-          )}
-        </DraggableCam>
-      </div>
     </main>
   )
 }
