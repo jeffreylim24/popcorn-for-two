@@ -151,5 +151,9 @@ export function useCall(
     putTracks(pc, videoTrack, audioTrack)
   }, [videoTrack, audioTrack])
 
+  // Hang up when the room goes away. Its own effect, not the subscribe one:
+  // that cleanup also runs if `subscribe` ever changes, which would drop a live call.
+  useEffect(() => closePhone, [])
+
   return partnerStream
 }
