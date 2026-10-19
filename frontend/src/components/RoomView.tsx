@@ -73,7 +73,11 @@ export function RoomView({
   const { pickVideo } = useSync(socket, 'player', VIDEO_ID)
   const videoTrack = camStream?.getVideoTracks()[0] ?? null
   const audioTrack = micStream?.getAudioTracks()[0] ?? null
-  const partnerStream = useCall(socket, videoTrack, audioTrack)
+  const { partnerStream, partnerCameraOn } = useCall(
+    socket,
+    videoTrack,
+    audioTrack,
+  )
   const statusText = STATUS_TEXT[status]
   // Live here, not in the cams: SelfView and PartnerView draw nothing when
   // there's no stream, and the box should keep its place until it's back.
@@ -174,7 +178,11 @@ export function RoomView({
         // PartnerView draws nothing until the partner's stream arrives.
         showHandle={partnerStream !== null}
       >
-        <PartnerView stream={partnerStream} className="w-full" />
+        <PartnerView
+          stream={partnerStream}
+          cameraOn={partnerCameraOn}
+          className="w-full"
+        />
       </DraggableCam>
     </main>
   )

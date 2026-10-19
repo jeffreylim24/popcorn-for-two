@@ -1,15 +1,23 @@
+import { VideoOff } from 'lucide-react'
 import { useEffect, useRef, type CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
 
 type PartnerViewProps = {
   /** The partner's camera and mic from the call. Null = no call yet. */
   stream: MediaStream | null
+  /** False = show "camera off" over the video (their last frame is frozen). */
+  cameraOn: boolean
   className?: string
   style?: CSSProperties
 }
 
 /** The partner's facecam, with their sound. */
-export function PartnerView({ stream, className, style }: PartnerViewProps) {
+export function PartnerView({
+  stream,
+  cameraOn,
+  className,
+  style,
+}: PartnerViewProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
 
   useEffect(() => {
@@ -22,18 +30,27 @@ export function PartnerView({ stream, className, style }: PartnerViewProps) {
   if (!stream) return null
 
   return (
-    <video
-      ref={videoRef}
-      autoPlay
-      playsInline
-      // Not muted: this element plays the partner's voice. Not mirrored
-      // either: you see them as they really are. Unmuted autoplay is
-      // allowed because clicking Join counts as interacting with the page.
-      className={cn(
-        'aspect-video rounded-xl border-2 border-background/80 bg-foreground object-cover shadow-lg',
-        className,
+    <div className={cn('relative', className)} style={style}>
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        // Not muted: this element plays the partner's voice. Not mirrored
+        // either: you see them as they really are. Unmuted autoplay is
+        // allowed because clicking Join counts as interacting with the page.
+        // Hidden, not removed, when their camera is off: it still plays
+        // their voice.
+        className={cn(
+          'aspect-video w-full rounded-xl border-2 border-background/80 bg-foreground object-cover shadow-lg',
+          !cameraOn && 'invisible',
+        )}
+      />
+      {!cameraOn && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-background/80 bg-foreground/90 p-3 text-center text-background shadow-lg">
+          <VideoOff className="size-5 text-primary" aria-hidden="true" />
+          <p className="font-heading text-xs">Camera off</p>
+        </div>
       )}
-      style={style}
-    />
+    </div>
   )
 }
