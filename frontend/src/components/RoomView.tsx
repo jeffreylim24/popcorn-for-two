@@ -6,6 +6,7 @@ import { Popcorn, Video, VideoOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createAndJoinRoom } from '@/rooms'
 import { SelfView } from '@/components/SelfView'
+import { PartnerView } from '@/components/PartnerView'
 import { VideoPicker } from '@/components/VideoPicker'
 import { CopyLinkButton } from '@/components/CopyLinkButton'
 
@@ -81,7 +82,7 @@ export function RoomView({
   const { pickVideo } = useSync(socket, 'player', VIDEO_ID)
   const videoTrack = camStream?.getVideoTracks()[0] ?? null
   const audioTrack = micStream?.getAudioTracks()[0] ?? null
-  useCall(socket, videoTrack, audioTrack)
+  const partnerStream = useCall(socket, videoTrack, audioTrack)
   const statusText = STATUS_TEXT[status]
   // Lives here, not in SelfView: SelfView unmounts when the camera is off.
   const [camBox, setCamBox] = useState<CamBox>({ x: 0.02, y: 0.1, width: 0.2 })
@@ -254,6 +255,11 @@ export function RoomView({
           </div>
         )}
       </div>
+      {/* Top-right, mirroring the self cam's start. Fixed for now. */}
+      <PartnerView
+        stream={partnerStream}
+        className="fixed top-[10vh] right-[2vw] z-10 w-[20vw]"
+      />
     </main>
   )
 }

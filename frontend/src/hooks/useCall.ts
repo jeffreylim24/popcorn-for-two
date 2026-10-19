@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import type { RoomSocket } from './useRoomSocket'
 
 /** Free public STUN: tells each browser its public address. */
@@ -41,13 +41,14 @@ export function useCall(
   audioTrack: MediaStreamTrack | null,
 ) {
   const { send, subscribe } = socket
-  /** This tab's phone: its half of the call. `null` when there's no call. */
   const pcRef = useRef<RTCPeerConnection | null>(null)
+  const [partnerStream, setPartnerStream] = useState<MediaStream | null>(null)
 
-  /** Hangs up and forgets the phone, if there is one. */
+  /** Hangs up and forgets the phone and the partner's stream, if any. */
   const closePhone = () => {
     pcRef.current?.close()
     pcRef.current = null
+    setPartnerStream(null)
   }
 
   /** Throws away any old phone and gets a new one. */
@@ -59,6 +60,13 @@ export function useCall(
     }
     pc.onconnectionstatechange = () => {
       console.log('call: connectionState', pc.connectionState)
+    }
+    pc.ontrack = (e) => {
+      console.log('call: partner track', e.track.kind)
+      // Updater form: fill the stream with the new track.
+      setPartnerStream(
+        (prev) => new MediaStream([...(prev?.getTracks() ?? []), e.track]),
+      )
     }
     pc.onicecandidate = (e) => {
       if (e.candidate) {
@@ -142,4 +150,6 @@ export function useCall(
     if (!pc) return
     putTracks(pc, videoTrack, audioTrack)
   }, [videoTrack, audioTrack])
+
+  return partnerStream
 }
