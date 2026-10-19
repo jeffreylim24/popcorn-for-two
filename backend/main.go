@@ -25,7 +25,7 @@ func main() {
 
 	http.HandleFunc("GET /api/health", healthHandler)
 	http.HandleFunc("POST /api/rooms", createRoomHandler)
-	http.HandleFunc("GET /api/rooms/{code}/ws", joinRoomHandler)
+	http.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(turnKeyID, turnKeyAPI))
 	// "GET /" is the catch-all: the more specific /api/ patterns win. The
 	// path is relative to the working directory, which is backend/ both in
 	// dev and in the Docker image.

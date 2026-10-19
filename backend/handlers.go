@@ -21,6 +21,13 @@ type peekMessage struct {
 	VideoID string `json:"videoId,omitempty"`
 }
 
+// iceServersMessage tells the browser which STUN + TURN servers to use. A
+// missing iceServers means Cloudflare failed: keep your own fallback.
+type iceServersMessage struct {
+	Type       string           `json:"type"`
+	IceServers []map[string]any `json:"iceServers,omitempty"`
+}
+
 // sendJSON marshals v and writes it to c as one text message, giving up
 // after 5 seconds.
 func sendJSON(ctx context.Context, c *websocket.Conn, v any) error {
@@ -46,119 +53,137 @@ func createRoomHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // joinRoomHandler upgrades GET /api/rooms/{code}/ws to a WebSocket and
-// puts the caller in that room. It tells both people when a partner is
-// present, sends the room's current video, then relays every message to
-// the partner until the connection drops. A full or unknown room is
-// closed with statusRoomFull or statusRoomNotFound.
-func joinRoomHandler(w http.ResponseWriter, r *http.Request) {
-	code := r.PathValue("code")
-	conn, err := websocket.Accept(w, r, nil)
-	if err != nil {
-		log.Println("Failed to accept websocket connection:", err)
-		return
-	}
-	// Safety net: every return path below ends the connection.
-	defer conn.CloseNow()
-
-	partner, err := joinRoom(code, conn)
-	if errors.Is(err, errRoomNotFound) {
-		log.Println("Room not found:", code)
-		conn.Close(statusRoomNotFound, "Room not found")
-		return
-	}
-	if errors.Is(err, errRoomFull) {
-		log.Println("Room is full:", code)
-		conn.Close(statusRoomFull, "Room is full")
-		return
-	}
-	if err != nil {
-		log.Println("Error joining room:", err)
-		conn.Close(websocket.StatusInternalError, "Internal error")
-		return
-	}
-	log.Println("Client joined room:", code)
-	defer func() {
-		// Tell whoever is still here, so they can close the call.
-		if p := leaveRoom(code, conn); p != nil {
-			err := sendJSON(r.Context(), p, peekMessage{Type: "partner-left"})
-			if err != nil {
-				log.Println("Error writing partner-left:", err)
-			}
-		}
-	}()
-
-	// Someone was here first: they wait, and the newcomer makes the WebRTC
-	// offer. Different messages give each side its role, so they never both
-	// offer at once.
-	if partner != nil {
-		err = sendJSON(r.Context(), partner, peekMessage{Type: "partner-joined"})
+// puts the caller in that room. It sends the caller short-lived STUN +
+// TURN servers, tells both people when a partner is present, sends the
+// room's current video, then relays every message to the partner until the
+// connection drops. A full or unknown room is closed with statusRoomFull
+// or statusRoomNotFound, and gets no TURN credentials.
+func joinRoomHandler(turnKeyID, turnKeyAPI string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		code := r.PathValue("code")
+		conn, err := websocket.Accept(w, r, nil)
 		if err != nil {
-			log.Println("Error writing partner-joined:", err)
-		}
-		err = sendJSON(r.Context(), conn, peekMessage{Type: "partner-present"})
-		if err != nil {
-			log.Println("Error writing partner-present:", err)
-		}
-	}
-
-	// A newcomer loads the video the room is already on. Failing here is
-	// not fatal: the call works without it.
-	id := getRoomVideo(code)
-	if id != "" {
-		data, err := json.Marshal(peekMessage{Type: "video", VideoID: id})
-		if err != nil {
-			log.Println("Error marshaling message:", err)
-		} else {
-			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-			err = conn.Write(ctx, websocket.MessageText, data)
-			cancel()
-			if err != nil {
-				log.Println("Error writing video message:", err)
-			}
-		}
-	}
-
-	// Relay loop. Read errors include a normal close, so returning here is
-	// how a client leaves; the deferred leaveRoom then runs.
-	for {
-		typ, msg, err := conn.Read(r.Context())
-		if err != nil {
-			log.Println("Error reading message:", err)
+			log.Println("Failed to accept websocket connection:", err)
 			return
 		}
+		// Safety net: every return path below ends the connection.
+		defer conn.CloseNow()
 
-		var peek peekMessage
-		err = json.Unmarshal(msg, &peek)
-		if err != nil {
-			log.Println("Error unmarshaling message:", err)
-			continue
+		partner, err := joinRoom(code, conn)
+		if errors.Is(err, errRoomNotFound) {
+			log.Println("Room not found:", code)
+			conn.Close(statusRoomNotFound, "Room not found")
+			return
 		}
-		// Remember the video for whoever joins later. An invalid ID is
-		// dropped, not forwarded, so both sides stay on the same video.
-		if peek.Type == "video" {
-			err = setRoomVideo(code, peek.VideoID)
+		if errors.Is(err, errRoomFull) {
+			log.Println("Room is full:", code)
+			conn.Close(statusRoomFull, "Room is full")
+			return
+		}
+		if err != nil {
+			log.Println("Error joining room:", err)
+			conn.Close(websocket.StatusInternalError, "Internal error")
+			return
+		}
+		log.Println("Client joined room:", code)
+		defer func() {
+			// Tell whoever is still here, so they can close the call.
+			if p := leaveRoom(code, conn); p != nil {
+				err := sendJSON(r.Context(), p, peekMessage{Type: "partner-left"})
+				if err != nil {
+					log.Println("Error writing partner-left:", err)
+				}
+			}
+		}()
+
+		// Only a seat holder reaches this line, so it doubles as the seat
+		// check for TURN. Sent before the partner notices, so the newcomer
+		// always gets ice-servers first. On failure the list is left out
+		// and the browser keeps its STUN fallback.
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		iceServers, err := getICEServers(ctx, turnKeyID, turnKeyAPI)
+		cancel()
+		if err != nil {
+			log.Println("Error getting ICE servers:", err)
+		}
+		err = sendJSON(r.Context(), conn, iceServersMessage{Type: "ice-servers", IceServers: iceServers})
+		if err != nil {
+			log.Println("Error writing ice-servers:", err)
+		}
+
+		// Someone was here first: they wait, and the newcomer makes the WebRTC
+		// offer. Different messages give each side its role, so they never both
+		// offer at once.
+		if partner != nil {
+			err = sendJSON(r.Context(), partner, peekMessage{Type: "partner-joined"})
 			if err != nil {
-				log.Println("Error setting room video:", err)
-				continue
+				log.Println("Error writing partner-joined:", err)
+			}
+			err = sendJSON(r.Context(), conn, peekMessage{Type: "partner-present"})
+			if err != nil {
+				log.Println("Error writing partner-present:", err)
 			}
 		}
 
-		// Look the partner up per message: they may have left or joined
-		// since we arrived.
-		partner := getPartnerConn(code, conn)
-		if partner == nil {
-			continue
+		// A newcomer loads the video the room is already on. Failing here is
+		// not fatal: the call works without it.
+		id := getRoomVideo(code)
+		if id != "" {
+			data, err := json.Marshal(peekMessage{Type: "video", VideoID: id})
+			if err != nil {
+				log.Println("Error marshaling message:", err)
+			} else {
+				ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+				err = conn.Write(ctx, websocket.MessageText, data)
+				cancel()
+				if err != nil {
+					log.Println("Error writing video message:", err)
+				}
+			}
 		}
 
-		// Timeout so a stalled partner can't freeze this loop; cancel now,
-		// not with defer, which would pile up until the handler returns.
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-		err = partner.Write(ctx, typ, msg)
-		cancel()
-		if err != nil {
-			log.Println("Error writing message to partner:", err)
+		// Relay loop. Read errors include a normal close, so returning here is
+		// how a client leaves; the deferred leaveRoom then runs.
+		for {
+			typ, msg, err := conn.Read(r.Context())
+			if err != nil {
+				log.Println("Error reading message:", err)
+				return
+			}
+
+			var peek peekMessage
+			err = json.Unmarshal(msg, &peek)
+			if err != nil {
+				log.Println("Error unmarshaling message:", err)
+				continue
+			}
+			// Remember the video for whoever joins later. An invalid ID is
+			// dropped, not forwarded, so both sides stay on the same video.
+			if peek.Type == "video" {
+				err = setRoomVideo(code, peek.VideoID)
+				if err != nil {
+					log.Println("Error setting room video:", err)
+					continue
+				}
+			}
+
+			// Look the partner up per message: they may have left or joined
+			// since we arrived.
+			partner := getPartnerConn(code, conn)
+			if partner == nil {
+				continue
+			}
+
+			// Timeout so a stalled partner can't freeze this loop; cancel now,
+			// not with defer, which would pile up until the handler returns.
+			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+			err = partner.Write(ctx, typ, msg)
+			cancel()
+			if err != nil {
+				log.Println("Error writing message to partner:", err)
+			}
 		}
-	}
+	})
 }
 
 // iceServersHandler sends the browser short-lived STUN + TURN servers as
