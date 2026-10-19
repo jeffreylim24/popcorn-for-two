@@ -5,6 +5,9 @@ MVP: two people on a video call watch a YouTube video in sync.
 Approach: build each piece when the previous one makes me need it.
 Every milestone ends in something I can demo and commit.
 
+**MVP done (session 38):** M1–M10 shipped and tested live. Everything
+else is a future enhancement, tracked as GitHub issues.
+
 ## Milestones
 
 - [x] **M1: YouTube player (solo)**
@@ -459,7 +462,7 @@ Every milestone ends in something I can demo and commit.
     - Known: a height-only window resize can push the cam off the
       bottom (see "Later").
 
-- [ ] **M10: Call**
+- [x] **M10: Call**
   - Done when: my partner and I see and hear each other in the app on
     the live site, both facecams can be dragged and resized, and we no
     longer need FaceTime.
@@ -600,12 +603,18 @@ Every milestone ends in something I can demo and commit.
     - "Room full" in dev: StrictMode's throwaway socket took the last
       seat. `useRoomSocket` opens the socket one tick later
       (`setTimeout` 0, cleared in the cleanup).
-    - Next: `fly secrets set`, deploy, live test on two networks
-      (one on mobile data), check `chrome://webrtc-internals` for a
-      relay route → M10 done.
+  - Done (session 38): deployed with the secrets set first
+    (`fly secrets import --stage < backend/.env`: no values in shell
+    history, no pointless restart). Live test, laptop on Wi-Fi + phone
+    on mobile data: see + hear each other, drags, toggles all work.
+    `chrome://webrtc-internals` showed a `relay` pair and Cloudflare's
+    dashboard showed traffic: mobile carriers' shared NAT often blocks
+    direct routes, so expect many calls with a phone on mobile data to
+    use TURN (~1–2 GB per 2-hour call; 1,000 GB/month free).
 
-- [ ] **M11: Devices** _(discuss again when we get here: scope and
-  order are a first guess from session 31)_
+## Later
+- **Devices** (was M11; moved here in session 38 to use the app first
+  and let real date nights pick what's next)
   - Done when: I can pick my camera, mic and speakers, in the lobby
     and mid-call, and balance my partner's voice against the movie.
   - Why next: Zoom-style settings; the wrong mic or a loud movie
@@ -614,8 +623,6 @@ Every milestone ends in something I can demo and commit.
     `getUserMedia` with a `deviceId`; mid-call, swap the sent track
     (`replaceTrack`); speakers via `setSinkId`; volume via YouTube's
     `setVolume` + the partner video's `volume`.
-
-## Later
 - ICE restart on a network change (Wi-Fi → hotspot) to keep the call
   instead of starting fresh: a renegotiation, so it needs a rule for
   who restarts, and auto-retry for the socket first (below).
@@ -663,6 +670,9 @@ Every milestone ends in something I can demo and commit.
 - Font flash on slow networks: Pixelify Sans downloads only once
   text using it renders, so "Finding your room…" shows the fallback
   first. Fix: `<link rel="preload">` the .woff2 in `index.html`.
+
+- Phone layout: the app works on a phone but wasn't designed for one.
+  The fullscreen button does nothing there (session 38).
 
 ## Not in the MVP
 - Mini-games, movies beyond YouTube (separate brainstorming session)

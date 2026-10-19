@@ -20,14 +20,22 @@ A web app for long-distance couples to have date nights together: movies, videos
 - `frontend/`: Vite + React + TS, ESLint, Prettier. `bun run dev` (port 5173), `bun run lint`, `bun run format` / `bun run format:check`, `bun run test` (Vitest), `bun run build`. Imports use the `@/` alias (`@/*` → `src/*`, no `baseUrl`: TS 6 rejects it). `src/components/ui/` is shadcn CLI output (add with `bunx --bun shadcn@latest add <name>`); `src/components/CozyRoom.tsx` is the home-page scene. `src/pages/` holds only routed pages: `HomePage`, `RoomPage`, `NotFoundPage`. `RoomPage` owns `useCamera` and swaps `components/Lobby` for `components/RoomView` (which owns `useRoomSocket` and passes it to `useSync` and `useCall`; hooks plug in with `subscribe`) on Join, at the same URL; pure, tested logic lives in `src/sync.ts` (playback + video message parsers, sync rules) `src/youtube.ts` (`parseVideoId`) and `src/mic.ts` (`micLabel`); `App.tsx` matches the path by hand (`/`, `/room/{code}`, else not found; no router library).
 - `backend/`: Go module `github.com/jeffreylim24/popcorn-for-two/backend`, flat layout, one `package main`: `main.go` (required env vars + routes), `rooms.go`, `handlers.go`, `spa.go`, `rooms_test.go`. Run with `set -a; source .env; set +a; go run .` (port 8080): it refuses to start without `TURN_KEY_ID` and `TURN_KEY_API` (`backend/.env` in dev, gitignored; `fly secrets` in prod). `go test ./...` needs no env.
 - API routes live under `/api/`; in dev, Vite proxies `/api` to `:8080` (one origin, no CORS code in Go).
-- `ROADMAP.md`: MVP milestones M1–M11, each with a "done when" demo and the design questions to settle at its start.
-- Root: `README.md`, `Dockerfile` (Bun → Go → Alpine), `fly.toml`. Deploy by hand: `fly deploy --ha=false` (one machine; rooms live in memory).
+- `ROADMAP.md`: MVP milestones M1–M10 (done, session 38) with their decisions; "Later" lists future work. New work is tracked as GitHub issues.
+- Root: `README.md`, `Dockerfile` (Bun → Go → Alpine), `fly.toml`. Deploy by hand from an up-to-date `main`: `fly deploy --ha=false` (one machine; rooms live in memory). New secrets go in before the deploy that needs them: `fly secrets import --stage < backend/.env` (no values in shell history); `fly secrets list` shows digests only.
 - Review checks Claude may run (read-only): `go test ./...`, `go vet ./...` and `gofmt -l .` in `backend/`.
 - Visual check Claude may run: `bun run build`, `bunx vite preview --port <p>`, then headless Chrome `--screenshot=<scratchpad>/x.png <url>`.
 
 **The learner:** has done full-stack work before but is very rusty. Treat them as a beginner who picks concepts up fast. Ask what they remember before explaining from zero.
 
 **Learning goals (all in scope):** real-time systems, Go backend, frontend *logic* (state, data flow, sync), deployment, professional practices. Visual styling is **not** a learning focus.
+
+## Git workflow (session 38, after the MVP)
+
+- Every code change starts from a GitHub issue (labels in use: `bug`, `SEVERITY: …`). Code never goes straight to `main`.
+- One branch per issue, off an up-to-date `main` (`git switch main && git pull` first): `feat/…`, `fix/…` (Conventional Commits types).
+- The PR body says `Closes #N`; merge it, then deploy from `main`.
+- Claude drafts issue text, branch names, and PR titles/bodies; the user runs all `git`/`gh` commands.
+- Docs commits (Claude's, wrap-up included): on the active feature branch, so they ride in its PR. No feature in progress → straight to `main`.
 
 ## Core rule: the user designs the logic, then types it from a syntax sheet
 
@@ -110,7 +118,7 @@ Coach these one at a time, when they become relevant. Don't front-load them.
   - Teaching formats: keep a short, refined list of what works and what doesn't.
   - Tick finished milestones in `ROADMAP.md`, and add any design decisions to the milestone they belong to.
   - If the file is over budget, move old decisions and detail to `docs/learning-archive.md`.
-  - Last step: commit only the learning files with `git commit LEARNING.md -m "docs: update learning log"` (add `ROADMAP.md` or the archive path if they changed). This leaves the user's staged work untouched. Don't push; the user's next push includes it. Tell the user it was committed.
+  - Last step: commit only the learning files (on the current branch, see Git workflow) with `git commit LEARNING.md -m "docs: update learning log"` (add `ROADMAP.md` or the archive path if they changed). This leaves the user's staged work untouched. Don't push; the user's next push includes it. Tell the user it was committed.
 - Git history keeps every past version, so trimming loses nothing.
 
 ## Tone
