@@ -1,34 +1,35 @@
 # Learning Snapshot
 
-_Last updated: 2026-10-19 (session 36)_
+_Last updated: 2026-10-19 (session 37)_
 
 ## Concepts
 
 ### Shaky
-- **WebRTC (s. 32–34):** offer/answer, ICE, slots (`addTransceiver`), `replaceTrack`, `ontrack`. S. 34: wanted to drop the video track from the partner stream on "camera off"; a two-row trace showed `ontrack` fires once per slot, so the track never comes back. Fill-in blanks that look like API slots still go wrong; keep them "in words", 2–3 per turn.
-- **Work it out vs store it (s. 34, new):** got "camera on = `videoTrack !== null`" right, then proposed a ref that buffers the camera state for late joiners, and a new toggle for `showHandle`. A table showing the ref always equals the live value didn't land ("idk"). Next time: ask "who else could change this value?" before they pick state/ref.
-- **Stale closures + updater form (s. 33–34):** s. 34 over-applied it (wanted `prev =>` because "window resize changes the width"). Told: the box is in fractions, so a resize changes nothing, and handlers are rebuilt every render. Rule given: you need the updater form when an old function reads state that something else changed since.
-- **Client vs server (s. 32, s. 34):** thought the Go server would notice `cameraOn` changing; it's a relay that never reads it. Draw both tabs + server before multi-tab logic.
-- **`useState` vs `useRef` (s. 33):** rule given: does the screen change when it changes? S. 34: explained the drag refs correctly ("each wrapper handles its own drag").
-- **Effect cleanup (s. 29–33):** improving; wrote `useEffect(() => closePhone, [])` unprompted.
-- **Check-then-act races (s. 32):** ticket-booth analogy landed.
-- **Go (the language):** relearning. Used once each: `func`, `for`, `:=`/`=`, maps + comma ok, closures, typed constants, sets, structs, `regexp`, table tests, `json` tags.
-- **Units / coordinate spaces (s. 31):** ask "which unit is each value in?" first.
-- **`context.Context`**, **two kinds of "ready"**, **TS types vanish at runtime:** not explained back.
-- **Env vars + secrets (s. 36, new):** knew `.env` in dev and Fly secrets in prod. Gaps: thought an env var is secret by itself (it's a named string the process is started with; safety = not in git, not in the frontend), and that Go "searches `.env`" in dev vs Fly secrets in prod, so wanted an `if dev / else prod` branch. Told: `os.Getenv` reads the process env the same way everywhere; only *who sets it* differs; missing = `""`, not null. Diagram (`.env`/Fly → environment → `os.Getenv`) given. Open question left: crash at startup vs warn + no TURN when the token is `""` (A/B table shown, unanswered).
+- **WebRTC (s. 32–37):** offer/answer, slots (`addTransceiver`), `replaceTrack`, `ontrack`. Fill-in blanks that look like API slots still go wrong; keep them "in words", 2–3 per turn.
+- **ICE: STUN vs TURN (s. 37, new):** thought TURN is fetched *after* a direct route fails, so "fetch after creating the phone". Fixed with a gathering diagram (host / STUN / relay all gathered once, at phone creation) + "a spare tire goes in the trunk before the trip". Then thought only one side needs credentials; a two-car picture (each phone gathers its own routes) fixed it. Got the STUN-vs-TURN table (mirror vs relay, why TURN needs a password).
+- **Pauses at `await` / check-then-act (s. 37):** strong on the camera bug: filled the trace's blank (`closePhone` → `false`) and, unprompted, suspected the same race existed before today (it did, via Go's two goroutines). Designed the fix rule themselves: "a new phone isn't stale partner info". The second case (partner leaves during the newcomer's await) landed as "confusing" when bundled with other points; parked in "Later". Rule given: after an `await`, re-check before acting.
+- **Work it out vs store it (s. 34):** proposed a buffered ref for a value derivable from live state. Next time: ask "who else could change this value?" before they pick state/ref.
+- **Stale closures + updater form (s. 33–34):** rule given: the updater form is for an old function reading state that something else changed since.
+- **Client vs server (s. 32, s. 34):** draw both tabs + server before multi-tab logic. S. 37 used this (two-tab traces) and it worked.
+- **Effect cleanup (s. 29–33):** improving.
+- **Go (the language):** relearning. Used once each: `func`, `for`, `:=`/`=`, maps + comma ok, closures, typed constants, sets, structs, `regexp`, table tests, `json` tags. S. 37: typed `main.go` (env + closure handler) right; `TURN_KEY_ID` as a local name (Go uses camelCase), wrote `go.GetEnv` for `os.Getenv`.
+- **HTTP status codes (s. 37):** picked 501 from a 500/502/503 table; told 501 = Not Implemented, 502 = upstream failed. Unclear if typo.
+- **Units / coordinate spaces (s. 31)**, **two kinds of "ready"**, **TS types vanish at runtime:** not explained back.
 
 ### Learning (introduced, used or explained back once)
-- **Controlled components (s. 34):** picked a controlled wrapper over a hook. Their reason was half right; told "hooks share logic; components share logic *and* markup".
-- **Passing a setter down as a callback prop (s. 34):** got there from a pointer at `VideoPicker onPick`. Named `onBoxChange`, not `setX`, so it can later also send over the socket.
-- **Local vs remote UI state (s. 34):** after one swap of terms, explained that hide cams sends nothing and touches no tracks.
-- **Null cases of a value (s. 33–34):** picked `false` as the default for `partnerCameraOn` by comparing the two wrong-for-a-moment rows.
+- **Env vars + secrets (s. 36–37):** chose fail fast (`log.Fatal` when missing) with a reason; typed the check. `.env` in `.gitignore` before creating it; `set -a; source .env; set +a`.
+- **`context.Context` (s. 37):** picked `context.WithTimeout` (5 s) for the Cloudflare call unprompted. Was shaky since s. 2x.
+- **Go `err` vs a bad status (s. 37):** knew to check 201; told a 4xx/5xx is not an `err` in Go (and `fetch` only rejects on network failure too).
+- **Promise in a ref (s. 37):** "a receipt": awaiting a finished one is instant. Claude wrote it.
+- **`useRef` vs `useState` (s. 33, s. 37):** s. 37 picked a ref for the ICE list with the right reason.
+- **Controlled components**, **callback props**, **local vs remote UI state**, **null cases of a value** (s. 33–34).
 - **Pub/sub (s. 32)**, **message order on one socket**, **debugging WebRTC**, **single responsibility**, **`git commit --amend`**.
-- **`useRef` for drags**, **pointer events**, **start + change**, **clamping**, **event bubbling** (s. 31).
-- **Defensive guards**, **round-trip tests**, **`test.each`**, **Go `testing`**, **debugging a race** (s. 30). M2–M7 detail in `docs/learning-archive.md`.
+- **`useRef` for drags**, **pointer events**, **clamping**, **event bubbling** (s. 31). M2–M7 detail in `docs/learning-archive.md`.
 
 ### Solid
-- **Product / design reasoning:** s. 34 proposed "hide cams" (local) separately from camera off (remote), and asked whether to hide the partner cam instead of a placeholder; weighed it against Zoom/Discord.
-- **Edge-case analysis + triage.** **Unit tests with Vitest.** **Callbacks.** **Debugging by isolation.** **Manual test plans.**
+- **Debugging from evidence (s. 37):** read Go logs + the WS frames and correctly named StrictMode's throwaway socket as the "Room full" cause. **Debugging by isolation.**
+- **Product / design reasoning:** s. 37 TTL (4 h from movie lengths), "TURN is a fallback" applied to the failed-fetch case.
+- **Edge-case analysis + triage.** **Unit tests with Vitest.** **Callbacks.** **Manual test plans.**
 - **Errors as return values**; log-and-continue when the error is someone else's.
 - **Deploying by hand:** commit → push → `fly deploy --ha=false` → `fly status`.
 - **Git:** four areas, Conventional Commits, one logical change per commit, selective staging.
@@ -41,35 +42,34 @@ _Last updated: 2026-10-19 (session 36)_
 - **Toolchain:** Go 1.27.1, Bun 1.4.2, Node 26, React 19.3, Vite 8, TS 6. Ports 5173 / 8080.
 - **Raw YouTube IFrame API**; sync rules in `src/sync.ts`, tested.
 - **Hosting:** Fly.io, one machine, `--ha=false`; rooms in memory.
-- **Workflow (s. 31):** pseudocode first, then a syntax sheet, they type. S. 32–34: they design the logic and often ask Claude to write it.
+- **Workflow:** pseudocode first, then a syntax sheet, they type. They often say "write it for me" for frontend steps.
 - **Styling is delegated** to Claude.
-- **Socket plumbing (s. 32):** `RoomView` owns `useRoomSocket`; `useSync` and `useCall` plug in with `subscribe`.
-- **M10 call (s. 32–36):** signalling over the room socket, slots up front + `replaceTrack`, separate `useMic`, `DraggableCam` controlled wrapper, `camera` + `mic` messages from `useCall`, "camera off" placeholder kept, local hide-cams toggle, muted badges, our own fullscreen (player + cams), control strip under the player. Details in `ROADMAP.md`.
-- **Echo (s. 36):** tested on two devices; faint movie leak, masked in normal use. The headphones note is enough for the MVP.
+- **M10 call (s. 32–37):** signalling over the room socket, slots + `replaceTrack`, `useMic`, `DraggableCam`, `camera`/`mic` messages, hide-cams, muted badges, own fullscreen, control strip. Details in `ROADMAP.md`.
+- **TURN (s. 37):** Cloudflare; Go fetches 4-hour credentials (`GET /api/ice-servers`); missing env → crash at startup; the frontend fetches on Join and falls back to Google STUN. `newPhone()` keeps partner camera/mic state. Details in `ROADMAP.md`.
+- **`partnerMicOn` starts `true` (s. 36, re-confirmed s. 37):** a wrong "muted" is worse.
 - **The app is public:** many couples' rooms.
-- **Deferred to "Later":** ICE restart, hide-my-IP toggle, room-code hardening; cam off-screen after a height-only resize, room expiry, bfcache ghost seat, auto-retry, shared close codes, CI/CD, font preload; z-order of overlapping cams; "Starting mic…" label; shared `getUserMedia` helper.
+- **Deferred to "Later":** see `ROADMAP.md` (s. 37 added: phone made for a partner who left during the ICE await).
 
 ## Open questions
 
+- Move M11 (Devices) to "Later" and use the app once M10 ships? Undecided.
 - Worldwide users: room routing (`fly-replay`) vs shared state. Post-MVP.
 - After M10: synced drags (seats, clashing drags, different screen shapes).
 
 ## Teaching formats
 
-- Works: **comparison tables**, **traces with state per row**, **ASCII diagrams** (s. 34: two-tab story with the late-joiner trap), **concrete analogies**.
-- Works: **options table + recommendation**; they pick quickly and give a reason (s. 34: C for the wrapper, keep the placeholder).
+- Works: **traces with state per row, one blank row to fill** (s. 37: the camera bug, solved at once), **comparison tables**, **ASCII diagrams**, **concrete analogies** (s. 37: spare tire, two cars, concierge with a master key).
+- Works: **options table + recommendation**; they pick quickly with a reason.
 - **New domain: story first, then API.** Blanks must read as "say it in words".
-- **"I'm confused" → restart from the model** with a picture and a table, then one narrow question (s. 34: the default-value table fixed blank 3).
-- **Hint ladder rung 2 that landed:** point at their own code (s. 34: `VideoPicker onPick` for the callback prop).
-- **Time pressure (s. 34–36):** s. 34 said "do it for me" on 4 steps; s. 35–36 were "Claude writes, I review" (s. 36: UI touch-ups late in the day, "don't ask me any questions"). Design blanks still worth asking; offer "write it" sooner when time is short. UI polish fits the styling fast lane anyway.
-- **Fast pace:** one step per turn, why → exact commands → "it worked if…".
-- **Doesn't work:** compound or abstract questions; predicting output; docs to learn a step; many API-level blanks at once.
+- **"idk" / "I'm confused" → restart from the model** with a picture + a table that slots in their partial answers, then one narrow question (s. 37: the "box" picture after two "idk"s).
+- **Doesn't work:** several open questions in one turn (s. 37: four → "idk" ×2); bundling a side bug with the main one ("I'm getting confused"); predicting output; docs to learn a step.
+- **Pace:** one step per turn, why → exact commands → "it worked if…". Offer "write it" when they stall; s. 37 used it for the frontend fetch and the socket fix.
 - **Don't record a decision until they say so.** **"Break it on purpose" only after Vitest steps.**
 
 ## Next step
 
-**Back to the normal workflow** (user designs the logic, Claude gives a syntax sheet) unless they say otherwise.
-
-**M10: Cloudflare TURN, then deploy + live test → M10 done.** Env vars already covered (s. 36). Resume at the open A/B question: token missing (`""`) → crash at startup, or warn and serve no TURN? Then show the shape of Cloudflare's credentials API and of `RTCPeerConnection`'s `iceServers`; they design the Go endpoint and the frontend side. New: `.gitignore` has no `.env` yet; `fly secrets set`.
-
-**MVP left (~3–4 sessions):** M10 (~1) + M11 Devices (~2–3). Offered: move M11 to "Later" and use the app after M10. Undecided.
+**M10 Step 3: deploy + live test → M10 done.** All code is committed (TURN backend, frontend fetch + `newPhone` fix, socket fix). Next:
+1. `fly secrets set TURN_KEY_ID=… TURN_KEY_API=…` **before** deploying (the server crashes without them).
+2. Push, `fly deploy --ha=false`, `fly status`.
+3. Live test on two networks (one phone on mobile data); in `chrome://webrtc-internals`, look for a relay candidate pair.
+Then settle: M11 now, or move it to "Later" and use the app.

@@ -573,6 +573,36 @@ Every milestone ends in something I can demo and commit.
       only while alone.
     - Frontend JSDoc/comment pass; `useHealth` deleted.
     - Next: Cloudflare TURN, deploy + live test → M10 done.
+  - Progress + decisions (session 37): TURN done locally; deploy left.
+    - Missing `TURN_KEY_ID` / `TURN_KEY_API` → `log.Fatal` at startup
+      (fail fast), even though TURN is only a fallback: a forgotten
+      secret shows up as a failed deploy, not as silent call failures.
+      So the secrets must be set **before** the deploy.
+    - `GET /api/ice-servers`: Go POSTs to Cloudflare's
+      `generate-ice-servers` (expects **201**) with `ttl` 14400 (4 h,
+      longer than a long movie), 5 s timeout from `r.Context()`; any
+      failure → log + 502. Returns `{"iceServers": [...]}`.
+    - Dev: `backend/.env` (gitignored), loaded with
+      `set -a; source .env; set +a; go run .`.
+    - Frontend: all routes (STUN + TURN) are gathered once, when the
+      phone is made, so the list must be ready **before** `newPhone()`.
+      Fetch on Join into `iceServersRef` (starts as Google STUN, kept on
+      failure) + `iceReadyRef` (a promise that never rejects). The
+      newcomer awaits it before `newPhone()` (safe: the partner holds a
+      phone ready for the offer); the one here first can't wait (the
+      offer may arrive any moment), so it uses whatever list is ready.
+    - Bug found: that `await` let a `camera` message land before
+      `newPhone()`, whose `closePhone()` reset it to "off". Rule:
+      `newPhone()` forgets only what came from the old phone (pc,
+      stream); camera/mic state came over the socket and is cleared
+      only on `partner-left` and unmount. Also fixes an older,
+      rarer version of the same race.
+    - "Room full" in dev: StrictMode's throwaway socket took the last
+      seat. `useRoomSocket` opens the socket one tick later
+      (`setTimeout` 0, cleared in the cleanup).
+    - Next: `fly secrets set`, deploy, live test on two networks
+      (one on mobile data), check `chrome://webrtc-internals` for a
+      relay route → M10 done.
 
 - [ ] **M11: Devices** _(discuss again when we get here: scope and
   order are a first guess from session 31)_
@@ -614,6 +644,15 @@ Every milestone ends in something I can demo and commit.
   The top edge stays on screen, so it can't be lost, and the next drag
   fixes it. Fix: re-clamp in a window `resize` listener (an effect with
   cleanup).
+
+- Phone for a partner who already left: the newcomer pauses on
+  `await iceReadyRef` (~200 ms); if `partner-left` lands in that
+  pause, it resumes and makes a phone + offer for nobody. Harmless
+  today (Go drops it; the next `newPhone()` closes it). **Fix first
+  if** the server ever queues messages for absent partners (the stale
+  offer would reach the next partner), something reads "has a phone"
+  as "in a call", or longer awaits join this path (M11, auto-retry).
+  Fix: remember "partner here" in a ref, re-check after the await.
 
 - "Starting mic…" label: while the mic starts, the button says
   "Mic on" next to a crossed-out icon (`micLabel` reads the toggle,
