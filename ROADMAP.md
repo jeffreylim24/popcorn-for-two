@@ -549,8 +549,30 @@ Every milestone ends in something I can demo and commit.
       you get ready). Echo test on two devices with speakers: not yet.
     - Next: echo test, Cloudflare TURN, deploy + live test.
   - Echo: show a note that headphones are recommended, or the movie
-    may echo. Test whether Chrome's echo cancellation catches the
-    YouTube audio before deciding anything more.
+    may echo. Echo test (session 36, two devices on speakers, separate
+    rooms): voice no echo; partner's movie leaks faintly (heard only
+    with your own player muted); normal listening fine, since your own
+    synced copy masks it. **The note is enough for the MVP.**
+  - Progress + decisions (session 36, Claude wrote, user reviewed):
+    UI touch-ups; TURN moved to next session.
+    - Muted badge: `{type: 'mic', on}` sent like `camera` (both join
+      cases + an effect). `micLive = micOn && audioTrack !== null`,
+      worked out once in `RoomView` and passed to `useCall`, the strip,
+      the fullscreen bar and my badge. `partnerMicOn` starts `true`
+      (a wrong "muted" is worse) and only `on === false` mutes.
+    - Drags released outside the window: end on `e.buttons === 0` in
+      the move handlers, plus `onLostPointerCapture`.
+    - Fullscreen: YouTube's (`fs: 0`) fullscreens only the iframe, so
+      the cams vanished. `useFullscreen` fullscreens our own "stage"
+      (player + cams); state follows `fullscreenchange` (Esc too).
+      In fullscreen, a chevron drops down icon controls (hand-made:
+      shadcn's dropdown portals into `document.body`, outside it).
+    - Room layout: a cocoa control strip under the player (mic +
+      camera left, fill terracotta when off; cams + fullscreen right).
+      Header: room chip + Copy link. "Waiting for your partner" line
+      only while alone.
+    - Frontend JSDoc/comment pass; `useHealth` deleted.
+    - Next: Cloudflare TURN, deploy + live test → M10 done.
 
 - [ ] **M11: Devices** _(discuss again when we get here: scope and
   order are a first guess from session 31)_
@@ -592,6 +614,12 @@ Every milestone ends in something I can demo and commit.
   The top edge stays on screen, so it can't be lost, and the next drag
   fixes it. Fix: re-clamp in a window `resize` listener (an effect with
   cleanup).
+
+- "Starting mic…" label: while the mic starts, the button says
+  "Mic on" next to a crossed-out icon (`micLabel` reads the toggle,
+  the icon reads `micLive`).
+- `useCamera` and `useMic` repeat the same `getUserMedia` logic: one
+  shared helper.
 
 - Font flash on slow networks: Pixelify Sans downloads only once
   text using it renders, so "Finding your room…" shows the fallback

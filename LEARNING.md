@@ -1,6 +1,6 @@
 # Learning Snapshot
 
-_Last updated: 2026-10-18 (session 35)_
+_Last updated: 2026-10-19 (session 36)_
 
 ## Concepts
 
@@ -15,6 +15,7 @@ _Last updated: 2026-10-18 (session 35)_
 - **Go (the language):** relearning. Used once each: `func`, `for`, `:=`/`=`, maps + comma ok, closures, typed constants, sets, structs, `regexp`, table tests, `json` tags.
 - **Units / coordinate spaces (s. 31):** ask "which unit is each value in?" first.
 - **`context.Context`**, **two kinds of "ready"**, **TS types vanish at runtime:** not explained back.
+- **Env vars + secrets (s. 36, new):** knew `.env` in dev and Fly secrets in prod. Gaps: thought an env var is secret by itself (it's a named string the process is started with; safety = not in git, not in the frontend), and that Go "searches `.env`" in dev vs Fly secrets in prod, so wanted an `if dev / else prod` branch. Told: `os.Getenv` reads the process env the same way everywhere; only *who sets it* differs; missing = `""`, not null. Diagram (`.env`/Fly → environment → `os.Getenv`) given. Open question left: crash at startup vs warn + no TURN when the token is `""` (A/B table shown, unanswered).
 
 ### Learning (introduced, used or explained back once)
 - **Controlled components (s. 34):** picked a controlled wrapper over a hook. Their reason was half right; told "hooks share logic; components share logic *and* markup".
@@ -43,9 +44,10 @@ _Last updated: 2026-10-18 (session 35)_
 - **Workflow (s. 31):** pseudocode first, then a syntax sheet, they type. S. 32–34: they design the logic and often ask Claude to write it.
 - **Styling is delegated** to Claude.
 - **Socket plumbing (s. 32):** `RoomView` owns `useRoomSocket`; `useSync` and `useCall` plug in with `subscribe`.
-- **M10 call (s. 32–34):** signalling over the room socket, slots up front + `replaceTrack`, separate `useMic`, `DraggableCam` controlled wrapper, `camera` messages from `useCall`, "camera off" placeholder kept, local hide-cams toggle. Details in `ROADMAP.md`.
+- **M10 call (s. 32–36):** signalling over the room socket, slots up front + `replaceTrack`, separate `useMic`, `DraggableCam` controlled wrapper, `camera` + `mic` messages from `useCall`, "camera off" placeholder kept, local hide-cams toggle, muted badges, our own fullscreen (player + cams), control strip under the player. Details in `ROADMAP.md`.
+- **Echo (s. 36):** tested on two devices; faint movie leak, masked in normal use. The headphones note is enough for the MVP.
 - **The app is public:** many couples' rooms.
-- **Deferred to "Later":** ICE restart, hide-my-IP toggle, room-code hardening; cam off-screen after a height-only resize, room expiry, bfcache ghost seat, auto-retry, shared close codes, CI/CD, font preload; z-order of overlapping cams.
+- **Deferred to "Later":** ICE restart, hide-my-IP toggle, room-code hardening; cam off-screen after a height-only resize, room expiry, bfcache ghost seat, auto-retry, shared close codes, CI/CD, font preload; z-order of overlapping cams; "Starting mic…" label; shared `getUserMedia` helper.
 
 ## Open questions
 
@@ -59,7 +61,7 @@ _Last updated: 2026-10-18 (session 35)_
 - **New domain: story first, then API.** Blanks must read as "say it in words".
 - **"I'm confused" → restart from the model** with a picture and a table, then one narrow question (s. 34: the default-value table fixed blank 3).
 - **Hint ladder rung 2 that landed:** point at their own code (s. 34: `VideoPicker onPick` for the callback prop).
-- **Time pressure (s. 34–35):** s. 34 said "do it for me" on 4 steps; s. 35 was a whole "Claude writes, I review" session (mic toggle, headphones note). Design blanks still worth asking; offer "write it" sooner when time is short.
+- **Time pressure (s. 34–36):** s. 34 said "do it for me" on 4 steps; s. 35–36 were "Claude writes, I review" (s. 36: UI touch-ups late in the day, "don't ask me any questions"). Design blanks still worth asking; offer "write it" sooner when time is short. UI polish fits the styling fast lane anyway.
 - **Fast pace:** one step per turn, why → exact commands → "it worked if…".
 - **Doesn't work:** compound or abstract questions; predicting output; docs to learn a step; many API-level blanks at once.
 - **Don't record a decision until they say so.** **"Break it on purpose" only after Vitest steps.**
@@ -68,6 +70,6 @@ _Last updated: 2026-10-18 (session 35)_
 
 **Back to the normal workflow** (user designs the logic, Claude gives a syntax sheet) unless they say otherwise.
 
-**M10: echo test, then Cloudflare TURN.** Echo test: two devices on speakers, no headphones; does Chrome's echo cancellation catch the movie? TURN: a Go endpoint fetches short-lived credentials with a secret (new: env vars + `fly secrets`), the frontend puts them in `RTCPeerConnection`'s `iceServers`. Then deploy + live test → M10 done. Ask what they remember about secrets / env vars first.
+**M10: Cloudflare TURN, then deploy + live test → M10 done.** Env vars already covered (s. 36). Resume at the open A/B question: token missing (`""`) → crash at startup, or warn and serve no TURN? Then show the shape of Cloudflare's credentials API and of `RTCPeerConnection`'s `iceServers`; they design the Go endpoint and the frontend side. New: `.gitignore` has no `.env` yet; `fly secrets set`.
 
-**MVP left (s. 35 estimate, ~4–5 sessions):** M10 (~2) + M11 Devices (~2–3). Offered: move M11 to "Later" and use the app after M10. Undecided.
+**MVP left (~3–4 sessions):** M10 (~1) + M11 Devices (~2–3). Offered: move M11 to "Later" and use the app after M10. Undecided.
