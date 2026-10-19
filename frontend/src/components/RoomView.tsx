@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent } from 'react'
+import { useState } from 'react'
 import { useRoomSocket, type RoomStatus } from '@/hooks/useRoomSocket'
 import { useSync } from '@/hooks/useSync'
 import { useCall } from '@/hooks/useCall'
@@ -9,6 +9,7 @@ import { SelfView } from '@/components/SelfView'
 import { PartnerView } from '@/components/PartnerView'
 import { VideoPicker } from '@/components/VideoPicker'
 import { CopyLinkButton } from '@/components/CopyLinkButton'
+import { DraggableCam, type CamBox } from '@/components/DraggableCam'
 
 /** Dummy video ID for testing. */
 const VIDEO_ID = 'kzcI5F4tGiU'
@@ -45,16 +46,6 @@ const STATUS_TEXT: Record<
   },
 }
 
-/**
- * The cam box as fractions of the window: x and y are its top-left corner.
- * No height: the box is 16:9, so the browser works it out from the width.
- */
-type CamBox = { x: number; y: number; width: number }
-
-/** `value`, pulled into the range `min`..`max`. */
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(Math.max(value, min), max)
-
 type RoomViewProps = {
   code: string
   camStream: MediaStream | null
@@ -84,80 +75,20 @@ export function RoomView({
   const audioTrack = micStream?.getAudioTracks()[0] ?? null
   const partnerStream = useCall(socket, videoTrack, audioTrack)
   const statusText = STATUS_TEXT[status]
-  // Lives here, not in SelfView: SelfView unmounts when the camera is off.
-  const [camBox, setCamBox] = useState<CamBox>({ x: 0.02, y: 0.1, width: 0.2 })
-  /**
-   * Where the pointer (px) and the cam (fractions) were at pointerdown.
-   * null = no drag in progress, so moves while hovering do nothing.
-   */
-  const dragRef = useRef<{
-    pointerX: number
-    pointerY: number
-    boxX: number
-    boxY: number
-  } | null>(null)
-
-  const handlePointerDown = (e: PointerEvent<HTMLDivElement>) => {
-    // Every move goes to this box until release, even over the YouTube iframe.
-    e.currentTarget.setPointerCapture(e.pointerId)
-    dragRef.current = {
-      pointerX: e.clientX,
-      pointerY: e.clientY,
-      boxX: camBox.x,
-      boxY: camBox.y,
-    }
-  }
-
-  const handlePointerMove = (e: PointerEvent<HTMLDivElement>) => {
-    const drag = dragRef.current
-    if (!drag) return
-    const { innerWidth, innerHeight } = window
-    // Measured, not worked out from 16:9: the "camera blocked" box isn't 16:9.
-    const box = e.currentTarget.getBoundingClientRect()
-    const left = drag.boxX * innerWidth + (e.clientX - drag.pointerX)
-    const top = drag.boxY * innerHeight + (e.clientY - drag.pointerY)
-    setCamBox({
-      ...camBox,
-      x: clamp(left, 0, innerWidth - box.width) / innerWidth,
-      y: clamp(top, 0, innerHeight - box.height) / innerHeight,
-    })
-  }
-
-  const handlePointerUp = () => {
-    dragRef.current = null
-  }
-
-  /**
-   * Where the pointer (px) was and the cam's width (fraction) at pointerdown
-   * on the resize handle. null = not resizing.
-   */
-  const resizeRef = useRef<{ pointerX: number; boxWidth: number } | null>(null)
-
-  const handleResizeDown = (e: PointerEvent<HTMLDivElement>) => {
-    // Stop here, or the wrapper's handlePointerDown starts a drag too.
-    e.stopPropagation()
-    e.currentTarget.setPointerCapture(e.pointerId)
-    resizeRef.current = { pointerX: e.clientX, boxWidth: camBox.width }
-  }
-
-  const handleResizeMove = (e: PointerEvent<HTMLDivElement>) => {
-    const resize = resizeRef.current
-    if (!resize) return
-    const { innerWidth, innerHeight } = window
-    const width = resize.boxWidth * innerWidth + (e.clientX - resize.pointerX)
-    const roomRight = (1 - camBox.x) * innerWidth
-    const roomBelow = innerHeight - camBox.y * innerHeight
-    const maxWidth = Math.min(roomRight, (roomBelow * 16) / 9)
-    const minWidth = 0.1 * innerWidth
-    setCamBox({
-      ...camBox,
-      width: clamp(width, minWidth, maxWidth) / innerWidth,
-    })
-  }
-
-  const handleResizeUp = () => {
-    resizeRef.current = null
-  }
+  // Live here, not in the cams: SelfView and PartnerView draw nothing when
+  // there's no stream, and the box should keep its place until it's back.
+  /** My cam's box. Starts top-left. */
+  const [selfBox, setSelfBox] = useState<CamBox>({
+    x: 0.02,
+    y: 0.1,
+    width: 0.2,
+  })
+  /** The partner's box. Starts top-right: x = 1 - 0.02 margin - 0.2 width. */
+  const [partnerBox, setPartnerBox] = useState<CamBox>({
+    x: 0.78,
+    y: 0.1,
+    width: 0.2,
+  })
 
   return (
     <main className="mx-auto flex min-h-svh max-w-5xl flex-col px-6 py-8">
@@ -229,37 +160,22 @@ export function RoomView({
         </p>
       </section>
       {/* Outside the player wrapper: its overflow-hidden would clip the box. */}
-      <div
-        className="group fixed z-10 cursor-grab touch-none select-none active:cursor-grabbing"
-        style={{
-          left: `${camBox.x * 100}vw`,
-          top: `${camBox.y * 100}vh`,
-          width: `${camBox.width * 100}vw`,
-        }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
+      <DraggableCam
+        box={selfBox}
+        onBoxChange={setSelfBox}
+        // Only when there's a box to resize (SelfView draws nothing otherwise).
+        showHandle={camStream !== null || error === 'denied'}
       >
         <SelfView stream={camStream} error={error} className="w-full" />
-        {/* Only when there's a box to resize (SelfView draws nothing otherwise). */}
-        {(camStream || error === 'denied') && (
-          <div
-            aria-hidden="true"
-            className="absolute right-0 bottom-0 size-6 cursor-nwse-resize p-1.5"
-            onPointerDown={handleResizeDown}
-            onPointerMove={handleResizeMove}
-            onPointerUp={handleResizeUp}
-          >
-            {/* A thin corner bracket, shown on hover; the padding keeps the grab area bigger than what's drawn. */}
-            <div className="size-full rounded-br-md border-r-2 border-b-2 border-background/90 opacity-0 transition-opacity group-hover:opacity-100" />
-          </div>
-        )}
-      </div>
-      {/* Top-right, mirroring the self cam's start. Fixed for now. */}
-      <PartnerView
-        stream={partnerStream}
-        className="fixed top-[10vh] right-[2vw] z-10 w-[20vw]"
-      />
+      </DraggableCam>
+      <DraggableCam
+        box={partnerBox}
+        onBoxChange={setPartnerBox}
+        // PartnerView draws nothing until the partner's stream arrives.
+        showHandle={partnerStream !== null}
+      >
+        <PartnerView stream={partnerStream} className="w-full" />
+      </DraggableCam>
     </main>
   )
 }
