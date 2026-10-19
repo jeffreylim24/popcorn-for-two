@@ -614,24 +614,30 @@ else is a future enhancement, tracked as GitHub issues.
 
 ## Backlog
 
-Everything after the MVP, by priority (session 38). Rows with an issue
+Everything after the MVP, by priority (session 38; re-ranked after the
+2026-10-19 codebase review). Rows with an issue
 link are tracked there; the issue holds the details. Priorities change
 as real date nights show what matters.
 
 | # | Item | Priority | Why |
 |---|---|---|---|
+| | Only give TURN credentials to someone in a room | HIGH | `/api/ice-servers` is open: anyone can mint 4 h creds on our Cloudflare quota, or flood it so every call loses TURN |
 | [#4](https://github.com/jeffreylim24/popcorn-for-two/issues/4) | WebSocket heartbeat (ping 15 s, free the seat after 30 s) | HIGH | A sleeping laptop or dropped Wi-Fi can hold a seat; the partner can't rejoin |
 | [#5](https://github.com/jeffreylim24/popcorn-for-two/issues/5) | Synced drags (same cam layout on both screens) | HIGH | The M10 end goal; a key priority |
 | [#6](https://github.com/jeffreylim24/popcorn-for-two/issues/6) | Ghost seat after editing the URL (bfcache) | MEDIUM | Same "room full" symptom; the heartbeat won't catch it (socket alive) |
 | [#7](https://github.com/jeffreylim24/popcorn-for-two/issues/7) | Socket auto-retry with backoff | MEDIUM | A blip needs a manual Reconnect; ICE restart builds on it |
-| [#8](https://github.com/jeffreylim24/popcorn-for-two/issues/8) | Room expiry + rate-limit room creation | MEDIUM | Public server: rooms never go away, creation can be spammed |
+| [#8](https://github.com/jeffreylim24/popcorn-for-two/issues/8) | Room expiry + rate-limit room creation | HIGH | Rooms are never deleted and anyone can create them: a `curl` loop fills the 256 MB machine and the OOM drops every room. Delete-when-empty first |
 | [#9](https://github.com/jeffreylim24/popcorn-for-two/issues/9) | Room-code hardening (rate-limit joins) | MEDIUM | The code is the only gate to a partner's camera |
+| | Tests for `joinRoomHandler` (`httptest` + `websocket.Dial`) | MEDIUM | The biggest Go function has no tests; #4 and #8 both change it, so tests go first |
 | [#10](https://github.com/jeffreylim24/popcorn-for-two/issues/10) | CI: run the checks on every PR | MEDIUM | The habit that goes with PRs; deploys stay manual |
 | [#11](https://github.com/jeffreylim24/popcorn-for-two/issues/11) | Call status indicator | MEDIUM | A failed call is mostly silent today |
 | [#12](https://github.com/jeffreylim24/popcorn-for-two/issues/12) | Devices: pick cam/mic/speakers, voice vs movie volume (was M11) | MEDIUM | Wait for real use; volume balance is the likely first slice |
 | [#13](https://github.com/jeffreylim24/popcorn-for-two/issues/13) | Phone layout (fullscreen broken there) | MEDIUM | Partners on phones are common |
 | | Relay message size/rate limit | LOW | The server relays anything; one client could flood its partner |
 | | Unknown `GET /api/...` returns `index.html` with 200 | LOW | Should be a 404; confusing when debugging |
+| | Server hardening: `http.Server` timeouts, no `/assets/` dir listing | LOW | `ListenAndServe` has no timeouts (slowloris); `FileServer` lists directories |
+| | Don't relay server-only message types (`partner-*`) | LOW | A partner can fake a hang-up |
+| | Container: non-root user; keep room codes out of logs | LOW | Defense in depth; codes are secrets |
 | | Send a `sync` right when buffering ends | LOW | Small sync-quality gain |
 | | ICE restart on a network change | LOW | Reconnect works; needs #7 first |
 | | Auto-switch devices on unplug (`devicechange`) | LOW | Belongs with #12 |
@@ -645,6 +651,7 @@ as real date nights show what matters.
 | | Phone made for a partner who already left | VERY LOW | Harmless today; see notes |
 | | "Starting mic…" label mismatch | VERY LOW | Brief cosmetic glitch |
 | | Font flash on slow networks | VERY LOW | Cosmetic |
+| | `bun audit` (`braces` via shadcn CLI, dev-only) | VERY LOW | Not in the bundle; `bun audit fix` |
 | | Shared close codes (Go ↔ TS) | VERY LOW | Two numbers that rarely change |
 | | Refactors: `useCamera`/`useMic` helper, `useCall` send duplication, `VIDEO_ID` name clash, `joinRoomHandler` vs `sendJSON` | VERY LOW | Readability only |
 | | Playback speed sync | VERY LOW | Rarely used on date nights |
@@ -652,6 +659,12 @@ as real date nights show what matters.
 | | Background blur / replace | VERY LOW | Needs a per-frame ML model (CPU heavy) |
 
 ### Notes for untracked rows
+
+- **TURN credentials:** CORS doesn't stop a non-browser client, so the
+  check must be server-side. Options: send ICE servers over the room
+  socket after a successful join, or check the code has a live seat.
+  Per-IP limit too (Fly sets `Fly-Client-IP`; verify). Keep the STUN
+  fallback.
 
 - **ICE restart:** keeps the call instead of starting fresh; a
   renegotiation, so it needs a rule for who restarts.
