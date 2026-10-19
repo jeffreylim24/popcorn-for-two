@@ -13,9 +13,8 @@ import (
 	"github.com/coder/websocket"
 )
 
-// peekMessage is the part of a client message the server reads: just the
-// type, plus videoId for "video" messages. Other fields are ignored here
-// and forwarded untouched, since the server only relays them.
+// peekMessage is a message the server sends: a type, plus videoId for
+// "video" messages. Client messages are read with jsonFields instead.
 type peekMessage struct {
 	Type    string `json:"type"`
 	VideoID string `json:"videoId,omitempty"`
@@ -26,6 +25,45 @@ type peekMessage struct {
 type iceServersMessage struct {
 	Type       string           `json:"type"`
 	IceServers []map[string]any `json:"iceServers,omitempty"`
+}
+
+// serverOnlyTypes are message types only the server may send. A client
+// sending one is dropped, not relayed: a faked ice-servers could route the
+// partner's call through a TURN server the sender runs, and a faked
+// partner-left could end their call.
+var serverOnlyTypes = map[string]bool{
+	"ice-servers":     true,
+	"partner-joined":  true,
+	"partner-present": true,
+	"partner-left":    true,
+}
+
+// isServerOnlyType reports whether only the server may send messages of
+// type t.
+func isServerOnlyType(t string) bool {
+	return serverOnlyTypes[t]
+}
+
+// jsonFields splits a JSON object into its raw fields, keyed exactly as
+// sent; a repeated key keeps its last value. That is how the browser's
+// JSON.parse reads it. Unmarshaling into a struct instead matches keys
+// ignoring case, so {"type":"partner-left","Type":"offer"} would read as
+// "offer" here but "partner-left" in the browser.
+func jsonFields(msg []byte) (map[string]json.RawMessage, error) {
+	var fields map[string]json.RawMessage
+	err := json.Unmarshal(msg, &fields)
+	return fields, err
+}
+
+// stringField returns fields[name] as a string. ok is false if it is
+// missing or not a string.
+func stringField(fields map[string]json.RawMessage, name string) (string, bool) {
+	var s string
+	err := json.Unmarshal(fields[name], &s)
+	if err != nil {
+		return "", false
+	}
+	return s, true
 }
 
 // sendJSON marshals v and writes it to c as one text message, giving up
@@ -151,16 +189,28 @@ func joinRoomHandler(turnKeyID, turnKeyAPI string) http.Handler {
 				return
 			}
 
-			var peek peekMessage
-			err = json.Unmarshal(msg, &peek)
+			fields, err := jsonFields(msg)
 			if err != nil {
 				log.Println("Error unmarshaling message:", err)
 				continue
 			}
+			// No readable type: drop it rather than guess what the browser
+			// will make of it.
+			msgType, ok := stringField(fields, "type")
+			if !ok {
+				log.Println("Dropped message with no string type")
+				continue
+			}
+			// Clients can't speak for the server.
+			if isServerOnlyType(msgType) {
+				log.Println("Dropped server-only message from client:", msgType)
+				continue
+			}
 			// Remember the video for whoever joins later. An invalid ID is
 			// dropped, not forwarded, so both sides stay on the same video.
-			if peek.Type == "video" {
-				err = setRoomVideo(code, peek.VideoID)
+			if msgType == "video" {
+				videoID, _ := stringField(fields, "videoId")
+				err = setRoomVideo(code, videoID)
 				if err != nil {
 					log.Println("Error setting room video:", err)
 					continue
