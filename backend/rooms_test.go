@@ -7,6 +7,11 @@ import (
 	"github.com/coder/websocket"
 )
 
+// These tests share the package-level rooms map, so each one makes its own
+// room with createRoom instead of reusing a code. The zero-value
+// &websocket.Conn{} values never send anything: rooms.go only compares
+// them by pointer, so they work as distinct stand-ins.
+
 func TestJoinRoom_UnknownCodeRejected(t *testing.T) {
 	conn := &websocket.Conn{}
 	_, err := joinRoom("unknown", conn)
@@ -165,6 +170,8 @@ func TestIsValidVideoID(t *testing.T) {
 	}
 }
 
+// TestSetRoomVideo also reads back with getRoomVideo, to check that a
+// rejected ID leaves the room's video unchanged.
 func TestSetRoomVideo(t *testing.T) {
 	tests := []struct {
 		roomExists bool
@@ -179,7 +186,7 @@ func TestSetRoomVideo(t *testing.T) {
 	for _, tt := range tests {
 		c := createRoom()
 		if !tt.roomExists {
-			// Overwrite with invalid room code to test unknown room case
+			// A code createRoom never returns: 15 characters, not 6.
 			c = "invalidRoomCode"
 		}
 		err := setRoomVideo(c, tt.videoID)

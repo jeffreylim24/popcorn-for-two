@@ -50,6 +50,7 @@ export function useCall(
   micLive: boolean,
 ) {
   const { send, subscribe } = socket
+  /** The "phone": this tab's connection to the partner. null = no partner. */
   const pcRef = useRef<RTCPeerConnection | null>(null)
   /**
    * The servers each new phone gathers routes from. Starts as the fallback;
@@ -90,9 +91,13 @@ export function useCall(
     setPartnerMicOn(true)
   }
 
-  /** Throws away any old phone and gets a new one, but keeps the partner's camera/mic state. */
+  /**
+   * Throws away any old phone and gets a new one. Keeps the partner's
+   * camera/mic state: their `camera`/`mic` messages can land before this runs
+   * (the newcomer waits for the ICE fetch first), and a reset would lose them.
+   */
   const newPhone = () => {
-    // Don't call closePhone: that would reset the partner's camera/mic state, which is not stale in this case.
+    // Not closePhone: that would also reset the partner's camera/mic state.
     pcRef.current?.close()
     pcRef.current = null
     setPartnerStream(null)

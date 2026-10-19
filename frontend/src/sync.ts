@@ -1,13 +1,15 @@
 import { VIDEO_ID } from './youtube'
 
-/**
- * Positions further apart than this count as a seek, and get corrected.
- */
+/** Positions further apart than this (seconds) count as a seek, and get corrected. */
 export const SEEK_THRESHOLD_S = 1
 
-// Allowed values live once, as runtime arrays; the types are derived from
-// them, so the parser's checks and the types can't drift apart.
+/**
+ * Allowed playback message types. The values live once, as a runtime array,
+ * and the type is derived from it, so the parser's checks and the type can't
+ * drift apart.
+ */
 export const PLAYBACK_MESSAGE_TYPES = ['action', 'sync'] as const
+/** Allowed playback states. Same pattern: the type is derived from this. */
 export const PLAYBACK_STATES = ['playing', 'paused'] as const
 
 export type PlaybackMessageType = (typeof PLAYBACK_MESSAGE_TYPES)[number]

@@ -35,11 +35,10 @@ export function PartnerView({
         ref={videoRef}
         autoPlay
         playsInline
-        // Not muted: this element plays the partner's voice. Not mirrored
-        // either: you see them as they really are. Unmuted autoplay is
-        // allowed because clicking Join counts as interacting with the page.
-        // Hidden, not removed, when their camera is off: it still plays
-        // their voice.
+        // Not muted: this element plays the partner's voice (unmuted autoplay
+        // is allowed because clicking Join counts as interacting with the
+        // page). Not mirrored: you see them as they really are. Hidden, not
+        // removed, when their camera is off, so their voice keeps playing.
         className={cn(
           'aspect-video w-full rounded-xl border-2 border-background/80 bg-foreground object-cover shadow-lg',
           !cameraOn && 'invisible',
