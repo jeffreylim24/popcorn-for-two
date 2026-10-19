@@ -48,7 +48,7 @@ export function PartnerView({
       {!cameraOn && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-background/80 bg-foreground/90 p-3 text-center text-background shadow-lg">
           <VideoOff className="size-5 text-primary" aria-hidden="true" />
-          <p className="font-heading text-xs">Camera off</p>
+          <p className="font-heading text-xs">Your partner's camera is off</p>
         </div>
       )}
     </div>
