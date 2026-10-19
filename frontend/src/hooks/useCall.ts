@@ -9,7 +9,7 @@ type CallMessage = {
   type?: string
   sdp?: string
   candidate?: RTCIceCandidateInit
-  /** On a `camera` message: is the partner's camera on? */
+  /** On a `camera` or `mic` message: is the partner's camera / mic on? */
   on?: boolean
 }
 
@@ -35,12 +35,14 @@ function putTracks(
 
 /**
  * The video call with the partner, over the room's `socket`. The newcomer
- * offers; the one already in the room answers.
+ * offers; the one already in the room answers. `micLive` = the partner can
+ * hear me (mic button on and a mic to send).
  */
 export function useCall(
   socket: RoomSocket,
   videoTrack: MediaStreamTrack | null,
   audioTrack: MediaStreamTrack | null,
+  micLive: boolean,
 ) {
   const { send, subscribe } = socket
   const pcRef = useRef<RTCPeerConnection | null>(null)
@@ -50,10 +52,20 @@ export function useCall(
    * Starts false: a moment of "camera off" while video loads beats a black box.
    */
   const [partnerCameraOn, setPartnerCameraOn] = useState(false)
+  /**
+   * Whether the partner's mic is on, from their `mic` messages. Starts true:
+   * a wrong "muted" badge would make you think they can't hear you.
+   */
+  const [partnerMicOn, setPartnerMicOn] = useState(true)
 
   /** Tells the partner whether my camera is on: on = there's a video track. */
   const sendCamera = () => {
     send(JSON.stringify({ type: 'camera', on: videoTrack !== null }))
+  }
+
+  /** Tells the partner whether they can hear me. */
+  const sendMic = () => {
+    send(JSON.stringify({ type: 'mic', on: micLive }))
   }
 
   /** Hangs up and forgets the phone and the partner's stream, if any. */
@@ -63,6 +75,7 @@ export function useCall(
     setPartnerStream(null)
     // Back to the default, so the next partner starts fresh.
     setPartnerCameraOn(false)
+    setPartnerMicOn(true)
   }
 
   /** Throws away any old phone and gets a new one. */
@@ -104,8 +117,9 @@ export function useCall(
       // I'm the newcomer: I offer.
       case 'partner-present': {
         const pc = newPhone()
-        // They may not know my camera is off: say so now.
+        // They may not know my camera is off or I'm muted: say so now.
         sendCamera()
+        sendMic()
         pc.addTransceiver('video')
         pc.addTransceiver('audio')
         await putTracks(pc, videoTrack, audioTrack)
@@ -118,14 +132,21 @@ export function useCall(
       // I was here first: get a phone and wait for the offer.
       case 'partner-joined':
         newPhone()
-        // They missed any camera message sent before they arrived.
+        // They missed any camera/mic message sent before they arrived.
         sendCamera()
+        sendMic()
         break
 
       // The partner turned their camera on or off. Strict check: only a real
       // `true` counts, so a malformed message reads as "off".
       case 'camera':
         setPartnerCameraOn(msg.on === true)
+        break
+
+      // The partner muted or unmuted. Only a real `false` counts, so a
+      // malformed message never shows a wrong "muted" badge.
+      case 'mic':
+        setPartnerMicOn(msg.on !== false)
         break
 
       case 'offer': {
@@ -182,9 +203,15 @@ export function useCall(
     send(JSON.stringify({ type: 'camera', on: videoTrack !== null }))
   }, [videoTrack, send])
 
+  // Muted, unmuted, or the mic arrived or failed mid-call: tell the partner.
+  useEffect(() => {
+    if (!pcRef.current) return
+    send(JSON.stringify({ type: 'mic', on: micLive }))
+  }, [micLive, send])
+
   // Hang up when the room goes away. Its own effect, not the subscribe one:
   // that cleanup also runs if `subscribe` ever changes, which would drop a live call.
   useEffect(() => closePhone, [])
 
-  return { partnerStream, partnerCameraOn }
+  return { partnerStream, partnerCameraOn, partnerMicOn }
 }

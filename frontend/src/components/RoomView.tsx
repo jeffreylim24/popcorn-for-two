@@ -18,6 +18,7 @@ import { PartnerView } from '@/components/PartnerView'
 import { VideoPicker } from '@/components/VideoPicker'
 import { CopyLinkButton } from '@/components/CopyLinkButton'
 import { DraggableCam, type CamBox } from '@/components/DraggableCam'
+import { MutedBadge } from '@/components/MutedBadge'
 import { micLabel } from '@/mic'
 
 /** Dummy video ID for testing. */
@@ -88,11 +89,16 @@ export function RoomView({
   const { pickVideo } = useSync(socket, 'player', VIDEO_ID)
   const videoTrack = camStream?.getVideoTracks()[0] ?? null
   const audioTrack = micStream?.getAudioTracks()[0] ?? null
-  const { partnerStream, partnerCameraOn } = useCall(
+  /** Can the partner hear me? Only with the button on and a mic to send. */
+  const micLive = micOn && audioTrack !== null
+  const { partnerStream, partnerCameraOn, partnerMicOn } = useCall(
     socket,
     videoTrack,
     audioTrack,
+    micLive,
   )
+  /** SelfView draws a box: my stream, or the "camera blocked" card. */
+  const selfBoxShown = camStream !== null || cameraError === 'denied'
   const statusText = STATUS_TEXT[status]
   /**
    * Hides both cams on my screen only, for a clear view of the movie.
@@ -223,9 +229,10 @@ export function RoomView({
           box={selfBox}
           onBoxChange={setSelfBox}
           // Only when there's a box to resize (SelfView draws nothing otherwise).
-          showHandle={camStream !== null || cameraError === 'denied'}
+          showHandle={selfBoxShown}
         >
           <SelfView stream={camStream} error={cameraError} className="w-full" />
+          {selfBoxShown && !micLive && <MutedBadge who="You are" />}
         </DraggableCam>
         <DraggableCam
           box={partnerBox}
@@ -238,6 +245,9 @@ export function RoomView({
             cameraOn={partnerCameraOn}
             className="w-full"
           />
+          {partnerStream !== null && !partnerMicOn && (
+            <MutedBadge who="Your partner is" />
+          )}
         </DraggableCam>
       </div>
     </main>
