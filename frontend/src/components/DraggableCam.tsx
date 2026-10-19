@@ -10,6 +10,12 @@ export type CamBox = { x: number; y: number; width: number }
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max)
 
+/**
+ * True once the button is up. Catches a release outside the browser window,
+ * where Chrome may never send pointerup: the next move back in ends the drag.
+ */
+const noButtonHeld = (e: PointerEvent) => e.buttons === 0
+
 type DraggableCamProps = {
   /** Where the box is and how wide. The parent owns it. */
   box: CamBox
@@ -56,6 +62,10 @@ export function DraggableCam({
   const handlePointerMove = (e: PointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current
     if (!drag) return
+    if (noButtonHeld(e)) {
+      dragRef.current = null
+      return
+    }
     const { innerWidth, innerHeight } = window
     // Measured, not worked out from 16:9: the "camera blocked" box isn't 16:9.
     const rect = e.currentTarget.getBoundingClientRect()
@@ -88,6 +98,10 @@ export function DraggableCam({
   const handleResizeMove = (e: PointerEvent<HTMLDivElement>) => {
     const resize = resizeRef.current
     if (!resize) return
+    if (noButtonHeld(e)) {
+      resizeRef.current = null
+      return
+    }
     const { innerWidth, innerHeight } = window
     const width = resize.boxWidth * innerWidth + (e.clientX - resize.pointerX)
     const roomRight = (1 - box.x) * innerWidth
@@ -115,6 +129,9 @@ export function DraggableCam({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      // Capture ends for any reason (release, cancelled touch, window lost
+      // focus): end the drag too, in case pointerup never comes.
+      onLostPointerCapture={handlePointerUp}
     >
       {children}
       {showHandle && (
@@ -124,6 +141,7 @@ export function DraggableCam({
           onPointerDown={handleResizeDown}
           onPointerMove={handleResizeMove}
           onPointerUp={handleResizeUp}
+          onLostPointerCapture={handleResizeUp}
         >
           {/* A thin corner bracket, shown on hover; the padding keeps the grab area bigger than what's drawn. */}
           <div className="size-full rounded-br-md border-r-2 border-b-2 border-background/90 opacity-0 transition-opacity group-hover:opacity-100" />
