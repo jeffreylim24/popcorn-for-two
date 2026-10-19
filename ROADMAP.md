@@ -460,7 +460,7 @@ else is a future enhancement, tracked as GitHub issues.
       drag starts. Max width = min(room to the right, room below × 16/9).
       Hover-only corner bracket.
     - Known: a height-only window resize can push the cam off the
-      bottom (see "Later").
+      bottom (see Backlog, #1).
 
 - [x] **M10: Call**
   - Done when: my partner and I see and hear each other in the app on
@@ -612,71 +612,62 @@ else is a future enhancement, tracked as GitHub issues.
     direct routes, so expect many calls with a phone on mobile data to
     use TURN (~1–2 GB per 2-hour call; 1,000 GB/month free).
 
-## Later
-- **Devices** (was M11; moved here in session 38 to use the app first
-  and let real date nights pick what's next)
-  - Done when: I can pick my camera, mic and speakers, in the lobby
-    and mid-call, and balance my partner's voice against the movie.
-  - Why next: Zoom-style settings; the wrong mic or a loud movie
-    spoils a date night.
-  - Rough notes: list devices (`enumerateDevices`); pick one via
-    `getUserMedia` with a `deviceId`; mid-call, swap the sent track
-    (`replaceTrack`); speakers via `setSinkId`; volume via YouTube's
-    `setVolume` + the partner video's `volume`.
-- ICE restart on a network change (Wi-Fi → hotspot) to keep the call
-  instead of starting fresh: a renegotiation, so it needs a rule for
-  who restarts, and auto-retry for the socket first (below).
-- "Hide my IP" toggle: relay-only calls (`iceTransportPolicy:
-  'relay'`), like WhatsApp and Signal. Needs TURN.
-- Room-code hardening: the code is the only gate to a room (and a
-  partner's camera). Rate-limit join attempts; consider longer codes.
-- Switch devices by themselves when one is unplugged mid-call
-  (headphones out): listen for `devicechange`.
-- Search YouTube from the app (like watch2gether): needs the YouTube
-  Data API and an API key kept server-side (a secret, plus quota).
-- CI/CD: when manual deploys get annoying
-- Room expiry: empty rooms stay in memory until restart. Delete after
-  N minutes empty (not at once: a refresh before the partner joins
-  would kill the room).
-- Ghost seat after navigating away: Chrome 149+ puts pages with an
-  open WebSocket into the bfcache, so editing the URL in a room tab
-  freezes the old page with its socket still open. Go never sees a
-  leave and the room stays "full" until that tab is closed. React's
-  effect cleanup doesn't run (nothing unmounts). Fix: close the socket
-  on `pagehide`; on `pageshow` with `persisted`, rejoin (or reload).
-  Workaround: close the tab, or create a new room.
+## Backlog
 
-- Facecam off the bottom after a height-only resize (e.g. opening
-  DevTools docked at the bottom): the clamp runs only on drag moves.
-  The top edge stays on screen, so it can't be lost, and the next drag
-  fixes it. Fix: re-clamp in a window `resize` listener (an effect with
-  cleanup).
+Everything after the MVP, by priority (session 38). Rows with an issue
+link are tracked there; the issue holds the details. Priorities change
+as real date nights show what matters.
 
-- Phone for a partner who already left: the newcomer pauses on
-  `await iceReadyRef` (~200 ms); if `partner-left` lands in that
-  pause, it resumes and makes a phone + offer for nobody. Harmless
-  today (Go drops it; the next `newPhone()` closes it). **Fix first
-  if** the server ever queues messages for absent partners (the stale
-  offer would reach the next partner), something reads "has a phone"
-  as "in a call", or longer awaits join this path (M11, auto-retry).
-  Fix: remember "partner here" in a ref, re-check after the await.
+| # | Item | Priority | Why |
+|---|---|---|---|
+| [#4](https://github.com/jeffreylim24/popcorn-for-two/issues/4) | WebSocket heartbeat (ping 15 s, free the seat after 30 s) | HIGH | A sleeping laptop or dropped Wi-Fi can hold a seat; the partner can't rejoin |
+| [#5](https://github.com/jeffreylim24/popcorn-for-two/issues/5) | Synced drags (same cam layout on both screens) | HIGH | The M10 end goal; a key priority |
+| [#6](https://github.com/jeffreylim24/popcorn-for-two/issues/6) | Ghost seat after editing the URL (bfcache) | MEDIUM | Same "room full" symptom; the heartbeat won't catch it (socket alive) |
+| [#7](https://github.com/jeffreylim24/popcorn-for-two/issues/7) | Socket auto-retry with backoff | MEDIUM | A blip needs a manual Reconnect; ICE restart builds on it |
+| [#8](https://github.com/jeffreylim24/popcorn-for-two/issues/8) | Room expiry + rate-limit room creation | MEDIUM | Public server: rooms never go away, creation can be spammed |
+| [#9](https://github.com/jeffreylim24/popcorn-for-two/issues/9) | Room-code hardening (rate-limit joins) | MEDIUM | The code is the only gate to a partner's camera |
+| [#10](https://github.com/jeffreylim24/popcorn-for-two/issues/10) | CI: run the checks on every PR | MEDIUM | The habit that goes with PRs; deploys stay manual |
+| [#11](https://github.com/jeffreylim24/popcorn-for-two/issues/11) | Call status indicator | MEDIUM | A failed call is mostly silent today |
+| [#12](https://github.com/jeffreylim24/popcorn-for-two/issues/12) | Devices: pick cam/mic/speakers, voice vs movie volume (was M11) | MEDIUM | Wait for real use; volume balance is the likely first slice |
+| [#13](https://github.com/jeffreylim24/popcorn-for-two/issues/13) | Phone layout (fullscreen broken there) | MEDIUM | Partners on phones are common |
+| | Relay message size/rate limit | LOW | The server relays anything; one client could flood its partner |
+| | Unknown `GET /api/...` returns `index.html` with 200 | LOW | Should be a 404; confusing when debugging |
+| | Send a `sync` right when buffering ends | LOW | Small sync-quality gain |
+| | ICE restart on a network change | LOW | Reconnect works; needs #7 first |
+| | Auto-switch devices on unplug (`devicechange`) | LOW | Belongs with #12 |
+| | "Hide my IP" (relay-only) toggle | LOW | Privacy nicety; costs TURN bandwidth |
+| | Search YouTube in-app | LOW | Pasting a link works; needs an API key + quota |
+| | Emoji reactions / text chat | LOW | Fun, cheap over the existing socket |
+| | Mini-games, non-YouTube movies | LOW | Big; needs its own brainstorm |
+| | Other browsers (incl. iPhone: every browser there is Safari underneath) | LOW | Matters if a partner is on an iPhone |
+| | Logging / uptime alerts (`slog`, Fly health check on `/api/health`) | LOW | Otherwise outages are reported by your partner |
+| [#1](https://github.com/jeffreylim24/popcorn-for-two/issues/1) | Facecam off-screen after a height-only resize | VERY LOW | The next drag fixes it |
+| | Phone made for a partner who already left | VERY LOW | Harmless today; see notes |
+| | "Starting mic…" label mismatch | VERY LOW | Brief cosmetic glitch |
+| | Font flash on slow networks | VERY LOW | Cosmetic |
+| | Shared close codes (Go ↔ TS) | VERY LOW | Two numbers that rarely change |
+| | Refactors: `useCamera`/`useMic` helper, `useCall` send duplication, `VIDEO_ID` name clash, `joinRoomHandler` vs `sendJSON` | VERY LOW | Readability only |
+| | Playback speed sync | VERY LOW | Rarely used on date nights |
+| | Accounts / login | VERY LOW | Links work fine for two people |
+| | Background blur / replace | VERY LOW | Needs a per-frame ML model (CPU heavy) |
 
-- "Starting mic…" label: while the mic starts, the button says
-  "Mic on" next to a crossed-out icon (`micLabel` reads the toggle,
-  the icon reads `micLive`).
-- `useCamera` and `useMic` repeat the same `getUserMedia` logic: one
-  shared helper.
+### Notes for untracked rows
 
-- Font flash on slow networks: Pixelify Sans downloads only once
-  text using it renders, so "Finding your room…" shows the fallback
-  first. Fix: `<link rel="preload">` the .woff2 in `index.html`.
-
-- Phone layout: the app works on a phone but wasn't designed for one.
-  The fullscreen button does nothing there (session 38).
-
-## Not in the MVP
-- Mini-games, movies beyond YouTube (separate brainstorming session)
-- Accounts and login
-- Background blur / replace: needs an ML model splitting you from the
-  background on every frame (CPU heavy).
-- Browsers other than Chrome
+- **ICE restart:** keeps the call instead of starting fresh; a
+  renegotiation, so it needs a rule for who restarts.
+- **"Hide my IP":** `iceTransportPolicy: 'relay'`, like WhatsApp and
+  Signal.
+- **Search YouTube:** the YouTube Data API key stays server-side (a
+  secret, plus quota).
+- **Phone made for a partner who already left:** the newcomer pauses on
+  `await iceReadyRef` (~200 ms); if `partner-left` lands in that pause,
+  it makes a phone + offer for nobody. Harmless today (Go drops it; the
+  next `newPhone()` closes it). **Fix first if** the server ever queues
+  messages for absent partners, something reads "has a phone" as "in a
+  call", or longer awaits join this path (#7, #12). Fix: remember
+  "partner here" in a ref, re-check after the await.
+- **"Starting mic…" label:** while the mic starts, the button says
+  "Mic on" next to a crossed-out icon (`micLabel` reads the toggle, the
+  icon reads `micLive`).
+- **Font flash:** Pixelify Sans downloads only once text using it
+  renders. Fix: `<link rel="preload">` the .woff2 in `index.html`.

@@ -4,7 +4,7 @@ Date night for long-distance couples: a video call and a YouTube video, perfectl
 
 **Live:** https://popcorn-for-two.fly.dev (Chrome)
 
-**Status:** MVP done. Synced playback plus an in-app video call with draggable, resizable facecams. Future work lives in [GitHub issues](https://github.com/jeffreylim24/popcorn-for-two/issues) and the "Later" list in [ROADMAP.md](ROADMAP.md).
+**Status:** MVP done. Synced playback plus an in-app video call with draggable, resizable facecams. Future work lives in [GitHub issues](https://github.com/jeffreylim24/popcorn-for-two/issues) and the backlog table in [ROADMAP.md](ROADMAP.md).
 
 ## How to use it
 
