@@ -35,7 +35,7 @@ A web app for long-distance couples to have date nights together: movies, videos
 - One branch per issue, off an up-to-date `main` (`git switch main && git pull` first): `feat/…`, `fix/…` (Conventional Commits types).
 - The PR body says `Closes #N`; merge it, then deploy from `main`.
 - Claude drafts issue text, branch names, and PR titles/bodies; the user runs all `git`/`gh` commands.
-- Docs commits (Claude's, wrap-up included): on the active feature branch, so they ride in its PR. No feature in progress → straight to `main`.
+- Docs-only changes (docs files, or comment-only edits in code; Claude's wrap-up included) need no issue or branch: commit them on the active feature branch so they ride in its PR, or straight to `main` if no feature is in progress.
 
 ## Core rule: the user designs the logic, then types it from a syntax sheet
 
