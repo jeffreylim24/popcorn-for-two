@@ -3,16 +3,7 @@ import { useRoomSocket, type RoomStatus } from '@/hooks/useRoomSocket'
 import { useSync } from '@/hooks/useSync'
 import { useCall } from '@/hooks/useCall'
 import { useFullscreen } from '@/hooks/useFullscreen'
-import {
-  Eye,
-  EyeOff,
-  Maximize,
-  Mic,
-  MicOff,
-  Popcorn,
-  Video,
-  VideoOff,
-} from 'lucide-react'
+import { Popcorn } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createAndJoinRoom } from '@/rooms'
 import { SelfView } from '@/components/SelfView'
@@ -22,7 +13,7 @@ import { CopyLinkButton } from '@/components/CopyLinkButton'
 import { DraggableCam, type CamBox } from '@/components/DraggableCam'
 import { MutedBadge } from '@/components/MutedBadge'
 import { FullscreenControls } from '@/components/FullscreenControls'
-import { micLabel } from '@/mic'
+import { RoomControls } from '@/components/RoomControls'
 import { cn } from '@/lib/utils'
 
 /** Dummy video ID for testing. */
@@ -136,167 +127,125 @@ export function RoomView({
           popcorn for <span className="text-primary">two</span>
         </a>
         <div className="flex items-center gap-2">
-          <CopyLinkButton />
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="rounded-full font-heading text-xs"
-            onClick={onToggleCamera}
-            aria-pressed={cameraOn}
-          >
-            {cameraOn ? (
-              <Video data-icon="inline-start" aria-hidden="true" />
-            ) : (
-              <VideoOff data-icon="inline-start" aria-hidden="true" />
-            )}
-            {cameraOn ? 'Camera on' : 'Camera off'}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="rounded-full font-heading text-xs"
-            onClick={onToggleMic}
-            aria-pressed={micOn}
-            // Nothing to mute without a mic.
-            disabled={micError !== null}
-          >
-            {micOn && !micError ? (
-              <Mic data-icon="inline-start" aria-hidden="true" />
-            ) : (
-              <MicOff data-icon="inline-start" aria-hidden="true" />
-            )}
-            {micLabel(micError, micOn)}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="rounded-full font-heading text-xs"
-            onClick={toggleCams}
-            aria-pressed={camsHidden}
-          >
-            {camsHidden ? (
-              <EyeOff data-icon="inline-start" aria-hidden="true" />
-            ) : (
-              <Eye data-icon="inline-start" aria-hidden="true" />
-            )}
-            {camsHidden ? 'Cams hidden' : 'Cams shown'}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="rounded-full font-heading text-xs"
-            onClick={toggleFullscreen}
-          >
-            <Maximize data-icon="inline-start" aria-hidden="true" />
-            Fullscreen
-          </Button>
-          <span className="flex items-center gap-1.5 rounded-full border border-primary/30 px-3 py-1 font-heading text-xs">
+          <span className="flex h-7 items-center gap-1.5 rounded-full border border-primary/30 px-3 font-heading text-xs">
             <Popcorn className="size-3.5 text-primary" aria-hidden="true" />
             room {code}
           </span>
+          <CopyLinkButton />
         </div>
       </header>
       <section className="flex flex-1 flex-col justify-center gap-4 py-8">
-        <div ref={stageRef} className={cn(isFullscreen && 'bg-foreground')}>
-          {/* YouTube replaces #player with an iframe, so the wrapper does the sizing. */}
-          <div
-            className={cn(
-              'relative w-full overflow-hidden bg-foreground [&>iframe]:size-full',
-              // Fullscreen: fill the screen; YouTube letterboxes the video itself.
-              isFullscreen
-                ? 'h-full'
-                : 'aspect-video rounded-2xl border-4 border-foreground/80 shadow-xl',
-            )}
-          >
-            <div id="player" />
-            {/* Drawn over the player, not instead of it: YouTube keeps hold of #player. */}
-            {statusText && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-foreground/90 p-6 text-center text-background">
-                <p className="font-heading text-xl">{statusText.title}</p>
-                <p className="font-heading text-sm opacity-80">
-                  {statusText.detail}
-                </p>
-                {statusText.action === 'create' && (
-                  <Button
-                    type="button"
-                    size="lg"
-                    className="mt-3 h-11 px-6 font-heading text-base"
-                    onClick={createAndJoinRoom}
-                  >
-                    Create a new room
-                  </Button>
-                )}
-                {statusText.action === 'reconnect' && (
-                  <Button
-                    type="button"
-                    size="lg"
-                    className="mt-3 h-11 px-6 font-heading text-base"
-                    onClick={reconnect}
-                  >
-                    Reconnect
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
-          {/* Outside the player wrapper: its overflow-hidden would clip the box.
+        {/* The screen and its control strip, one object like an old TV. */}
+        <div className="rounded-2xl shadow-xl">
+          <div ref={stageRef} className={cn(isFullscreen && 'bg-foreground')}>
+            {/* YouTube replaces #player with an iframe, so the wrapper does the sizing. */}
+            <div
+              className={cn(
+                'relative w-full overflow-hidden bg-foreground [&>iframe]:size-full',
+                // Fullscreen: fill the screen; YouTube letterboxes the video itself.
+                isFullscreen
+                  ? 'h-full'
+                  : 'aspect-video rounded-t-2xl border-4 border-b-0 border-foreground/90',
+              )}
+            >
+              <div id="player" />
+              {/* Drawn over the player, not instead of it: YouTube keeps hold of #player. */}
+              {statusText && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-foreground/90 p-6 text-center text-background">
+                  <p className="font-heading text-xl">{statusText.title}</p>
+                  <p className="font-heading text-sm opacity-80">
+                    {statusText.detail}
+                  </p>
+                  {statusText.action === 'create' && (
+                    <Button
+                      type="button"
+                      size="lg"
+                      className="mt-3 h-11 px-6 font-heading text-base"
+                      onClick={createAndJoinRoom}
+                    >
+                      Create a new room
+                    </Button>
+                  )}
+                  {statusText.action === 'reconnect' && (
+                    <Button
+                      type="button"
+                      size="lg"
+                      className="mt-3 h-11 px-6 font-heading text-base"
+                      onClick={reconnect}
+                    >
+                      Reconnect
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+            {/* Outside the player wrapper: its overflow-hidden would clip the box.
             Inside the stage: fullscreen shows only the stage, and the cams
             must come along. Hidden, not removed: the partner's voice keeps
             playing, and each box keeps its place for when the cams come back. */}
-          <div hidden={camsHidden}>
-            <DraggableCam
-              box={selfBox}
-              onBoxChange={setSelfBox}
-              // Only when there's a box to resize (SelfView draws nothing otherwise).
-              showHandle={selfBoxShown}
-            >
-              <SelfView
-                stream={camStream}
-                error={cameraError}
-                className="w-full"
-              />
-              {selfBoxShown && !micLive && <MutedBadge who="You are" />}
-            </DraggableCam>
-            <DraggableCam
-              box={partnerBox}
-              onBoxChange={setPartnerBox}
-              // PartnerView draws nothing until the partner's stream arrives.
-              showHandle={partnerStream !== null}
-            >
-              <PartnerView
-                stream={partnerStream}
-                cameraOn={partnerCameraOn}
-                className="w-full"
-              />
-              {partnerStream !== null && !partnerMicOn && (
-                <MutedBadge who="Your partner is" />
-              )}
-            </DraggableCam>
-          </div>
-          {/* The header isn't in fullscreen, so its buttons and the way out
+            <div hidden={camsHidden}>
+              <DraggableCam
+                box={selfBox}
+                onBoxChange={setSelfBox}
+                // Only when there's a box to resize (SelfView draws nothing otherwise).
+                showHandle={selfBoxShown}
+              >
+                <SelfView
+                  stream={camStream}
+                  error={cameraError}
+                  className="w-full"
+                />
+                {selfBoxShown && !micLive && <MutedBadge who="You are" />}
+              </DraggableCam>
+              <DraggableCam
+                box={partnerBox}
+                onBoxChange={setPartnerBox}
+                // PartnerView draws nothing until the partner's stream arrives.
+                showHandle={partnerStream !== null}
+              >
+                <PartnerView
+                  stream={partnerStream}
+                  cameraOn={partnerCameraOn}
+                  className="w-full"
+                />
+                {partnerStream !== null && !partnerMicOn && (
+                  <MutedBadge who="Your partner is" />
+                )}
+              </DraggableCam>
+            </div>
+            {/* The header isn't in fullscreen, so its buttons and the way out
               live here (Esc works too). */}
-          {isFullscreen && (
-            <FullscreenControls
-              cameraOn={cameraOn}
-              onToggleCamera={onToggleCamera}
-              micError={micError}
-              micOn={micOn}
-              onToggleMic={onToggleMic}
-              camsHidden={camsHidden}
-              onToggleCams={toggleCams}
-              onExit={toggleFullscreen}
-            />
-          )}
+            {isFullscreen && (
+              <FullscreenControls
+                cameraOn={cameraOn}
+                onToggleCamera={onToggleCamera}
+                micError={micError}
+                micOn={micOn}
+                onToggleMic={onToggleMic}
+                camsHidden={camsHidden}
+                onToggleCams={toggleCams}
+                onExit={toggleFullscreen}
+              />
+            )}
+          </div>
+          <RoomControls
+            cameraOn={cameraOn}
+            onToggleCamera={onToggleCamera}
+            micError={micError}
+            micOn={micOn}
+            onToggleMic={onToggleMic}
+            camsHidden={camsHidden}
+            onToggleCams={toggleCams}
+            onFullscreen={toggleFullscreen}
+          />
         </div>
         <VideoPicker onPick={pickVideo} />
-        <p className="text-center font-heading text-sm text-muted-foreground">
-          Send this page's link to your person. Play, pause and seek stay in
-          sync.
-        </p>
+        {/* Last, so the picker doesn't jump when it goes away. */}
+        {status === 'connected' && partnerStream === null && (
+          <p className="text-center font-heading text-sm text-muted-foreground">
+            Waiting for your partner. Copy the link and send it to them.
+          </p>
+        )}
       </section>
     </main>
   )
