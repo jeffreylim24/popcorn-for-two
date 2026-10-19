@@ -516,9 +516,25 @@ Every milestone ends in something I can demo and commit.
     - Hang up on unmount: its own `[]` effect, not the subscribe one.
     - Mic toggle step: lobby likely gets `micOn` / `onToggleMic` /
       `micError` (not the stream); rename `error` → `cameraError`.
-    - Next: partner cam draggable + resizable (reuse the drag code),
-      then mic toggle, camera-off message, headphones note, TURN,
-      deploy.
+  - Progress + decisions (session 34): partner cam drags/resizes,
+    camera-off message, hide-cams toggle.
+    - Drag reuse: a controlled `DraggableCam` wrapper (`box`,
+      `onBoxChange`, `showHandle`, `children`); refs + handlers inside,
+      each box's state in `RoomView`. Why: shares logic *and* markup,
+      and the state sits where synced drags will need it. Partner
+      starts at `x: 0.78` (top-right).
+    - Camera off: `{type: 'camera', on}` sent from `useCall` when
+      `videoTrack` changes (if there's a phone) and on both
+      `partner-joined` and `partner-present`. "On" is worked out as
+      `videoTrack !== null`, no new param, no buffered ref.
+      `partnerCameraOn` starts `false` (a moment of "camera off" beats
+      a black box) and resets in `closePhone`.
+    - `PartnerView` hides the `<video>` (keeps it mounted, so the voice
+      plays) under a "Your partner's camera is off" box. Kept the box
+      over hiding the cam: no box looks like a dropped call.
+    - Hide cams: a local `camsHidden` toggle in the header; both
+      wrappers stay mounted under `<div hidden>`. Nothing sent.
+    - Next: mic toggle (lobby + room), headphones note, TURN, deploy.
   - Echo: show a note that headphones are recommended, or the movie
     may echo. Test whether Chrome's echo cancellation catches the
     YouTube audio before deciding anything more.
