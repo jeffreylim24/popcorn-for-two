@@ -1,4 +1,4 @@
-import { Mic, MicOff, Popcorn, Video, VideoOff } from 'lucide-react'
+import { Headphones, Mic, MicOff, Popcorn, Video, VideoOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SelfView } from '@/components/SelfView'
 import { micLabel } from '@/mic'
@@ -107,6 +107,11 @@ export function Lobby({
             Join room
           </Button>
         </div>
+        <p className="flex items-center gap-2 font-heading text-sm text-muted-foreground">
+          <Headphones className="size-4" aria-hidden="true" />
+          Headphones recommended, so the movie doesn't echo back to your
+          partner.
+        </p>
       </section>
     </main>
   )
