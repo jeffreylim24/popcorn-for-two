@@ -496,10 +496,29 @@ Every milestone ends in something I can demo and commit.
       `useCall` get the socket and plug in with `subscribe`. Passing a
       handler in instead loops (`react-hooks/immutability`).
   - Progress (session 32): join/leave notices (Go), offer/answer, and
-    ICE candidates are done; two tabs reach `connected`. Next: media in
-    the slots. Testing two tabs on one Mac needs Chrome's Local Network
+    ICE candidates are done; two tabs reach `connected`. Testing two tabs on one Mac needs Chrome's Local Network
     permission (System Settings → Privacy & Security), or `.local`
     candidates can't be resolved and the call fails.
+  - Progress + decisions (session 33): media flows both ways.
+    - Mic: its own `useMic` in `RoomPage` (not `{ video, audio }` in
+      one stream): camera and mic fail and toggle independently, and
+      the self-view never holds your voice. No `enabled`: asked once,
+      stopped only on unmount.
+    - `RoomView` gets both streams; `useCall(socket, videoTrack,
+      audioTrack)` gets tracks, since `replaceTrack` takes a track.
+    - `putTracks` finds each slot's kind from `receiver.track` (the
+      sender's is null until filled). Called after `addTransceiver`
+      (offerer) and after `setRemoteDescription` (answerer), plus an
+      effect on track changes that skips when there's no phone.
+    - Partner stream: state (the screen depends on it), built in
+      `ontrack` with the updater form; cleared in `closePhone`.
+      `PartnerView` is unmuted and not mirrored, fixed top-right.
+    - Hang up on unmount: its own `[]` effect, not the subscribe one.
+    - Mic toggle step: lobby likely gets `micOn` / `onToggleMic` /
+      `micError` (not the stream); rename `error` → `cameraError`.
+    - Next: partner cam draggable + resizable (reuse the drag code),
+      then mic toggle, camera-off message, headphones note, TURN,
+      deploy.
   - Echo: show a note that headphones are recommended, or the movie
     may echo. Test whether Chrome's echo cancellation catches the
     YouTube audio before deciding anything more.
