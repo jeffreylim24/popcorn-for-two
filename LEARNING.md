@@ -1,6 +1,6 @@
 # Learning Snapshot
 
-_Last updated: 2026-10-18 (session 34)_
+_Last updated: 2026-10-18 (session 35)_
 
 ## Concepts
 
@@ -59,13 +59,15 @@ _Last updated: 2026-10-18 (session 34)_
 - **New domain: story first, then API.** Blanks must read as "say it in words".
 - **"I'm confused" → restart from the model** with a picture and a table, then one narrow question (s. 34: the default-value table fixed blank 3).
 - **Hint ladder rung 2 that landed:** point at their own code (s. 34: `VideoPicker onPick` for the callback prop).
-- **Time pressure (s. 34):** said "do it for me" on 4 steps, usually after one hint round. Design blanks still worth asking; offer "write it" sooner when time is short.
+- **Time pressure (s. 34–35):** s. 34 said "do it for me" on 4 steps; s. 35 was a whole "Claude writes, I review" session (mic toggle, headphones note). Design blanks still worth asking; offer "write it" sooner when time is short.
 - **Fast pace:** one step per turn, why → exact commands → "it worked if…".
 - **Doesn't work:** compound or abstract questions; predicting output; docs to learn a step; many API-level blanks at once.
 - **Don't record a decision until they say so.** **"Break it on purpose" only after Vitest steps.**
 
 ## Next step
 
-**Next session only (user's call, s. 34): Claude writes the code, the user reviews it.** Short on time. Back to the normal workflow after that.
+**Back to the normal workflow** (user designs the logic, Claude gives a syntax sheet) unless they say otherwise.
 
-**M10: mic toggle (lobby + room).** Mute = `track.enabled = false` (mic keeps running). Open from s. 34: does muting need `replaceTrack`, and does the partner need a socket message? Lobby gets `micOn` / `onToggleMic` / `micError`; rename `error` → `cameraError`. Then: headphones note, Cloudflare TURN, deploy.
+**M10: echo test, then Cloudflare TURN.** Echo test: two devices on speakers, no headphones; does Chrome's echo cancellation catch the movie? TURN: a Go endpoint fetches short-lived credentials with a secret (new: env vars + `fly secrets`), the frontend puts them in `RTCPeerConnection`'s `iceServers`. Then deploy + live test → M10 done. Ask what they remember about secrets / env vars first.
+
+**MVP left (s. 35 estimate, ~4–5 sessions):** M10 (~2) + M11 Devices (~2–3). Offered: move M11 to "Later" and use the app after M10. Undecided.

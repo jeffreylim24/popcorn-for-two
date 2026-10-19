@@ -534,7 +534,20 @@ Every milestone ends in something I can demo and commit.
       over hiding the cam: no box looks like a dropped call.
     - Hide cams: a local `camsHidden` toggle in the header; both
       wrappers stay mounted under `<div hidden>`. Nothing sent.
-    - Next: mic toggle (lobby + room), headphones note, TURN, deploy.
+  - Progress + decisions (session 35, Claude wrote, user reviewed):
+    mic toggle and headphones note done.
+    - Mute: `micOn` in `RoomPage` (survives Join); `useMic(on)` sets
+      `track.enabled` in an effect on `[stream, on]`, so a mute pressed
+      before the mic is ready still holds. No `replaceTrack`: the same
+      track stays in the slot and carries silence.
+    - No socket message for mute: the silence travels in the audio. A
+      "partner is muted" badge would need `{type: 'mic', on}`; not
+      done (optional).
+    - Mic button disabled on `micError`; `micLabel` in `src/mic.ts`,
+      tested. `error` renamed `cameraError` in `Lobby` and `RoomView`.
+    - Headphones note: one line in the lobby only (said once, where
+      you get ready). Echo test on two devices with speakers: not yet.
+    - Next: echo test, Cloudflare TURN, deploy + live test.
   - Echo: show a note that headphones are recommended, or the movie
     may echo. Test whether Chrome's echo cancellation catches the
     YouTube audio before deciding anything more.
