@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { Check, Link } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
+/** How long the button says "Copied!" before it switches back. */
 const COPIED_FOR_MS = 2000
 
-// Copies the room's URL, the thing you send your person to join.
+/** Copies the room's URL: the link you send your partner so they can join. */
 export function CopyLinkButton() {
   const [copied, setCopied] = useState(false)
 

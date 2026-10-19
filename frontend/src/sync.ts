@@ -13,14 +13,23 @@ export const PLAYBACK_STATES = ['playing', 'paused'] as const
 export type PlaybackMessageType = (typeof PLAYBACK_MESSAGE_TYPES)[number]
 export type PlaybackState = (typeof PLAYBACK_STATES)[number]
 
+/**
+ * A playback message. `action`: the user played, paused or seeked.
+ * `sync`: the periodic position check sent while playing.
+ */
 export type PlaybackMessage = {
   type: PlaybackMessageType
   position: number
   state: PlaybackState
 }
 
+/** Switches both tabs to a new video. */
 export type VideoMessage = { type: 'video'; videoId: string }
 
+/**
+ * The last playback state both tabs agreed on. `at` is when, in ms
+ * (`Date.now()`), so a playing position can be worked out for any later time.
+ */
 export type AgreedState = {
   state: PlaybackMessage['state']
   position: number

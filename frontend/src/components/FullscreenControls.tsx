@@ -60,10 +60,10 @@ function IconButton({
 }
 
 /**
- * The header's camera, mic and cams buttons, for fullscreen (the header isn't
- * in it). A chevron at the top centre drops them down. Hand-made, not a shadcn
- * dropdown: that draws its menu in document.body, outside the fullscreen
- * element, where it can't be seen.
+ * The control strip's camera, mic and cams buttons, for fullscreen (the
+ * strip isn't in it). A chevron at the top centre drops them down.
+ * Hand-made, not a shadcn dropdown: that draws its menu in document.body,
+ * outside the fullscreen element, where it can't be seen.
  */
 export function FullscreenControls({
   cameraOn,

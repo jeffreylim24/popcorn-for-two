@@ -1,3 +1,7 @@
+/**
+ * Creates a room on the server and goes to its page. If the server refuses,
+ * logs the status and stays on the current page.
+ */
 export async function createAndJoinRoom() {
   const response = await fetch('/api/rooms', { method: 'POST' })
   if (!response.ok) {

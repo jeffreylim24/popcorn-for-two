@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Clapperboard } from 'lucide-react'
 
+/** Shown for any path `App` doesn't recognize. */
 export function NotFoundPage() {
   return (
     <main className="mx-auto flex min-h-svh max-w-5xl flex-col px-6 py-8">

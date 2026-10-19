@@ -17,6 +17,12 @@ const PAUSED_CHECK_INTERVAL_MS = 500
  */
 const SYNC_INTERVAL_MS = 2000
 
+/**
+ * Creates the YouTube player in the element with id `elementId` and reports
+ * what the user does: `onLocalChange` on play, pause or a seek, and
+ * `onPlayingTick` every few seconds while playing. `playerRef` holds the
+ * player once it's ready, and null before.
+ */
 export function useYouTubePlayer(
   playerRef: RefObject<YT.Player | null>,
   elementId: string,
@@ -27,6 +33,7 @@ export function useYouTubePlayer(
     onReady: () => void
   },
 ) {
+  /** The interval for the current state: seek checks or sync ticks. */
   const timerRef = useRef<number | null>(null)
   const onLocalChange = useEffectEvent(callbacks.onLocalChange)
   const onPlayingTick = useEffectEvent(callbacks.onPlayingTick)
@@ -56,6 +63,7 @@ export function useYouTubePlayer(
             onReady()
           },
           onStateChange: (e) => {
+            // Each state starts its own timer, if any: drop the last one.
             stopTimer()
             if (
               e.data !== YT.PlayerState.PLAYING &&
@@ -88,6 +96,8 @@ export function useYouTubePlayer(
       })
     }
 
+    // index.html loads the API script without waiting. If it hasn't loaded
+    // yet, it calls this global when it has.
     if (YT.Player) {
       createYouTubePlayer()
     } else {

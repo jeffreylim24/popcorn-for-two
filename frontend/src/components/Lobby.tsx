@@ -15,8 +15,10 @@ type LobbyProps = {
   onJoin: () => void
 }
 
-// The check-your-hair screen before the room. It only draws; RoomPage owns
-// the camera and the joined flag.
+/**
+ * The check-your-hair screen before the room. It only draws; `RoomPage` owns
+ * the camera, the mic and the joined flag.
+ */
 export function Lobby({
   code,
   stream,
@@ -28,7 +30,7 @@ export function Lobby({
   onToggleMic,
   onJoin,
 }: LobbyProps) {
-  // Shown under the preview; the video or the blocked box covers it.
+  // Sits under the preview: the video or the "blocked" card covers it.
   const placeholder = !cameraOn
     ? 'Camera is off'
     : cameraError === 'unavailable'

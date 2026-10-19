@@ -10,6 +10,8 @@ export function useMic(on: boolean) {
   const [error, setError] = useState<'denied' | 'unavailable' | null>(null)
 
   useEffect(() => {
+    // Set by the cleanup. If it runs while the permission prompt is still
+    // open, the stream that arrives later is stopped instead of kept.
     let cancelled = false
     let ownStream: MediaStream | null = null
 

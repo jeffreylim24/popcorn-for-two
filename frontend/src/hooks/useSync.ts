@@ -23,13 +23,19 @@ export function useSync(
 ) {
   const { send, subscribe } = socket
   const playerRef = useRef<YT.Player | null>(null)
+  /** The last state both tabs agreed on. null until the first message. */
   const lastStateRef = useRef<AgreedState | null>(null)
-  // The server sends the room's video as soon as we join, usually before
-  // the player is ready. It waits here until onReady.
+  /**
+   * The server sends the room's video as soon as we join, usually before the
+   * player is ready. It waits here until `onReady`.
+   */
   const pendingVideoRef = useRef<string | null>(null)
 
-  // A new video starts paused at 0 on both tabs, so the agreed state resets
-  // with it.
+  /**
+   * Loads video `id` without playing it, or holds it until the player is
+   * ready. A new video starts paused at 0 on both tabs, so the agreed state
+   * resets with it.
+   */
   const cueVideo = (id: string) => {
     const player = playerRef.current
     if (!player) {
@@ -88,6 +94,7 @@ export function useSync(
   // Plug into the socket; the cleanup unplugs on unmount.
   useEffect(() => subscribe((data) => handleMessage(data)), [subscribe])
 
+  /** Tells the partner about a play, pause or seek, if it's news to them. */
   const sendAction = (position: number, state: PlaybackMessage['state']) => {
     if (!isNews(lastStateRef.current, state, position, Date.now())) return
     const msg: PlaybackMessage = { type: 'action', position, state }
@@ -95,13 +102,17 @@ export function useSync(
     lastStateRef.current = { state, position, at: Date.now() }
   }
 
+  /** Sends our position while playing, so a tab that fell behind catches up. */
   const sendSync = (position: number) => {
     const msg: PlaybackMessage = { type: 'sync', position, state: 'playing' }
     send(JSON.stringify(msg))
     lastStateRef.current = { state: 'playing', position, at: Date.now() }
   }
 
-  // Cues locally too: the server doesn't echo a message back to its sender.
+  /**
+   * Switches both tabs to `link`'s video. Returns false if it isn't a YouTube
+   * link. Cues here too: the server doesn't echo a message back to its sender.
+   */
   const pickVideo = (link: string) => {
     const id = parseVideoId(link)
     if (!id) return false
@@ -111,6 +122,7 @@ export function useSync(
     return true
   }
 
+  /** Cues the video that arrived before the player was ready, if any. */
   const cuePendingVideo = () => {
     const id = pendingVideoRef.current
     if (!id) return

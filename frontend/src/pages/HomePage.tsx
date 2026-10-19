@@ -3,6 +3,7 @@ import { CozyRoom } from '@/components/CozyRoom'
 import { ArrowUpRight, Moon } from 'lucide-react'
 import { createAndJoinRoom } from '@/rooms'
 
+/** The landing page: what the app is, and a button to create a room. */
 export function HomePage() {
   return (
     <main className="mx-auto flex min-h-svh max-w-6xl flex-col px-6 py-8">

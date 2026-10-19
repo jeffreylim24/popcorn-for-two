@@ -16,10 +16,16 @@ import { FullscreenControls } from '@/components/FullscreenControls'
 import { RoomControls } from '@/components/RoomControls'
 import { cn } from '@/lib/utils'
 
-/** Dummy video ID for testing. */
+/**
+ * The video a new player starts on. On join, the server sends the room's
+ * current video, if it has one, and that replaces it.
+ */
 const VIDEO_ID = 'kzcI5F4tGiU'
 
-/** Record forces an entry per status, so a new status can't be forgotten here. */
+/**
+ * The overlay shown over the player for each socket status (null: none).
+ * A `Record`, so adding a status without an entry here is a type error.
+ */
 const STATUS_TEXT: Record<
   RoomStatus,
   {
@@ -64,9 +70,9 @@ type RoomViewProps = {
 }
 
 /**
- * The room after Join. The socket lives here, not in RoomPage, so it opens
- * only once this mounts (and #player exists by then). Hooks that need it
- * (useSync, later the call) get it from here.
+ * The room after Join: the player, the call and the controls. The socket
+ * lives here, not in `RoomPage`, so it opens only once this mounts (and
+ * `#player` exists by then). `useSync` and `useCall` plug into it.
  */
 export function RoomView({
   code,
@@ -103,17 +109,21 @@ export function RoomView({
    * The partner still sees me: the camera keeps sending.
    */
   const [camsHidden, setCamsHidden] = useState(false)
-  /** Shared by the header button and the fullscreen bar. */
+  /** Shared by the control strip and the fullscreen bar. */
   const toggleCams = () => setCamsHidden((hidden) => !hidden)
-  // Live here, not in the cams: SelfView and PartnerView draw nothing when
-  // there's no stream, and the box should keep its place until it's back.
-  /** My cam's box. Starts top-left. */
+  /**
+   * My cam's box. Starts top-left. Kept here, not in the cam, so it keeps
+   * its place while the cam draws nothing (no stream).
+   */
   const [selfBox, setSelfBox] = useState<CamBox>({
     x: 0.02,
     y: 0.1,
     width: 0.2,
   })
-  /** The partner's box. Starts top-right: x = 1 - 0.02 margin - 0.2 width. */
+  /**
+   * The partner's box, kept here for the same reason. Starts top-right:
+   * x = 1 - 0.02 margin - 0.2 width.
+   */
   const [partnerBox, setPartnerBox] = useState<CamBox>({
     x: 0.78,
     y: 0.1,
@@ -213,8 +223,8 @@ export function RoomView({
                 )}
               </DraggableCam>
             </div>
-            {/* The header isn't in fullscreen, so its buttons and the way out
-              live here (Esc works too). */}
+            {/* The control strip isn't in fullscreen, so its buttons and the
+              way out live here (Esc works too). */}
             {isFullscreen && (
               <FullscreenControls
                 cameraOn={cameraOn}

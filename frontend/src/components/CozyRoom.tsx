@@ -4,19 +4,24 @@ import './CozyRoom.css'
 // One unit is one floor tile.
 type Point3 = [number, number, number]
 
+/** SVG pixels per scene unit. */
 const UNIT = 12
+/** The floor's side, in tiles. */
 const ROOM = 12
 const WALL_HEIGHT = 7
 const WALL_THICKNESS = 0.4
 
+/** Projects a scene point to 2D SVG coordinates (2:1 isometric). */
 function iso([x, y, z]: Point3): [number, number] {
   return [(x - y) * UNIT, (x + y) * (UNIT / 2) - z * UNIT]
 }
 
+/** An SVG `points` string through the given scene points. */
 function poly(points: Point3[]) {
   return points.map((p) => iso(p).join(',')).join(' ')
 }
 
+/** Scales a `#rrggbb` colour by `factor` (< 1 darkens), as `rgb()`. */
 function shade(hex: string, factor: number) {
   const n = parseInt(hex.slice(1), 16)
   const channel = (shift: number) => Math.round(((n >> shift) & 255) * factor)

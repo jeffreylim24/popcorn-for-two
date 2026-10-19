@@ -3,11 +3,14 @@ import { Clapperboard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 type VideoPickerProps = {
-  // Returns false if the link isn't a YouTube video, so the form can say so.
+  /**
+   * Called with the pasted link. Returns false if it isn't a YouTube video,
+   * so the form can say so.
+   */
   onPick: (link: string) => boolean
 }
 
-// The box under the player for pasting a YouTube link.
+/** The box under the player for pasting a YouTube link. */
 export function VideoPicker({ onPick }: VideoPickerProps) {
   const [link, setLink] = useState('')
   const [invalid, setInvalid] = useState(false)

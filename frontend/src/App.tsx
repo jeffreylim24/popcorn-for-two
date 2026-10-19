@@ -2,6 +2,10 @@ import { HomePage } from '@/pages/HomePage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { RoomPage } from '@/pages/RoomPage'
 
+/**
+ * Picks the page from the URL path: `/`, `/room/{code}`, or not found.
+ * Matched by hand, since three routes don't need a router library.
+ */
 function App() {
   const parts = window.location.pathname.split('/')
 

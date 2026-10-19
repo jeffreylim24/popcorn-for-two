@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+/**
+ * Where the socket stands. `not-found` and `full` come from the server's
+ * close codes.
+ */
 export type RoomStatus =
   'connecting' | 'connected' | 'not-found' | 'full' | 'disconnected'
 
@@ -19,6 +23,10 @@ export function useRoomSocket(code: string) {
   const listenersRef = useRef(new Set<Listener>())
 
   const [status, setStatus] = useState<RoomStatus>('connecting')
+  /**
+   * Bumped by `reconnect`. The effect depends on it, so a bump opens a new
+   * socket.
+   */
   const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
@@ -46,17 +54,20 @@ export function useRoomSocket(code: string) {
     return () => {
       const socket = socketRef.current
       if (!socket) return
+      // Detach first, so our own close doesn't show "Connection lost".
       socket.onclose = null
       socket.close()
       socketRef.current = null
     }
   }, [code, attempt])
 
+  /** Sends `data` if the socket is open; otherwise drops it (no queue). */
   const send = useCallback((data: string) => {
     if (socketRef.current?.readyState !== WebSocket.OPEN) return
     socketRef.current.send(data)
   }, [])
 
+  /** Opens a fresh socket to the same room, e.g. after "Connection lost". */
   const reconnect = useCallback(() => {
     setAttempt((prev) => prev + 1)
     setStatus('connecting')

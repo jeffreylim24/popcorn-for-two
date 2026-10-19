@@ -4,8 +4,11 @@ import { useMic } from '@/hooks/useMic'
 import { Lobby } from '@/components/Lobby'
 import { RoomView } from '@/components/RoomView'
 
-// Owns the camera so the stream survives Join: Lobby and RoomView swap
-// underneath, but this component stays mounted the whole time.
+/**
+ * The page at `/room/{code}`: the lobby, then the room after Join, at the
+ * same URL. Owns the camera and mic so their streams survive Join: `Lobby`
+ * and `RoomView` swap underneath, but this component stays mounted.
+ */
 export function RoomPage({ code }: { code: string }) {
   const [joined, setJoined] = useState(false)
   const [cameraOn, setCameraOn] = useState(true)

@@ -3,13 +3,15 @@ import { useEffect, useRef, type CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
 
 type SelfViewProps = {
+  /** My camera. null = draw nothing, unless `error` is `'denied'`. */
   stream: MediaStream | null
+  /** `'denied'` draws a card that says how to unblock the camera. */
   error: 'denied' | 'unavailable' | null
   className?: string
   style?: CSSProperties
 }
 
-/** Your own facecam. */
+/** Your own facecam, mirrored and muted. */
 export function SelfView({ stream, error, className, style }: SelfViewProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
 

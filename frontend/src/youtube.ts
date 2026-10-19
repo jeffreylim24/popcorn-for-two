@@ -1,4 +1,7 @@
+/** Hosts whose `/watch` and `/shorts/` links carry a video ID. */
 const YOUTUBE_HOSTS = ['youtube.com', 'www.youtube.com', 'm.youtube.com']
+
+/** A YouTube video ID: exactly 11 URL-safe characters. */
 export const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/
 
 /**
