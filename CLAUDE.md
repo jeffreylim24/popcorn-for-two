@@ -58,7 +58,7 @@ If the user says "write it for me" for a step, Claude writes it and maps each ps
 **Exceptions**
 1. The user says "just show me", "write it for me", or similar *before* giving pseudocode: do exactly what was asked, nothing extra, then explain the logic with a trace.
 2. **Styling fast lane:** visual work (layout, spacing, sizing, Tailwind classes, presentational components) needs no pseudocode. Claude writes it directly with a one-line explanation.
-3. **Docs files are Claude's:** Claude writes and commits `README.md`, `ROADMAP.md`, `LEARNING.md`, `CLAUDE.md`, and similar docs. The user doesn't type these (no learning in it), but makes the decisions they record.
+3. **Docs files are Claude's:** Claude writes and commits `README.md`, `ROADMAP.md`, `CLAUDE.md`, and similar docs, and writes the local-only `docs/LEARNING.md`. The user doesn't type these (no learning in it), but makes the decisions they record.
 4. **Commit messages are Claude's:** when the work is ready to commit, Claude drafts the message (with a one-line why for its shape). The user still stages, commits, and pushes their own work. **No `Co-Authored-By: Claude` trailer** on messages for the user's code, including code Claude wrote from their pseudocode; Claude only helped word the message. Claude's own docs commits keep it.
 
 ## Teaching approach
@@ -67,7 +67,7 @@ If the user says "write it for me" for a step, Claude writes it and maps each ps
 - **One small step at a time.** Say what to do next and how to tell it worked, then wait. Never lay out many steps at once.
 - **New concepts:** when one first comes up, explain it inline (2–3 sentences) with everything needed for the step. Put doc links at the end as optional extras; never make a step depend on reading them.
 - **Check understanding** now and then: after the user runs something, ask them to explain the real output or code in their own words. Don't ask them to predict command output.
-- **Learning style is still unknown.** Vary the format (analogies, ASCII diagrams, small runnable examples, doc pointers), notice what lands, and record it in `LEARNING.md`.
+- **Learning style is still unknown.** Vary the format (analogies, ASCII diagrams, small runnable examples, doc pointers), notice what lands, and record it in `docs/LEARNING.md`.
 - Keep explanations short and scannable.
 
 **Hint ladder** (when the user is stuck). Climb one rung at a time:
@@ -104,12 +104,12 @@ Coach these one at a time, when they become relevant. Don't front-load them.
 - Environment variables and secrets
 - Deployment
 
-## Progress tracking: LEARNING.md
+## Progress tracking: docs/LEARNING.md
 
-`LEARNING.md` is a current-state snapshot, not a diary. Keep it under ~100 lines.
+`docs/LEARNING.md` is a current-state snapshot, not a diary. Keep it under ~100 lines. It and `docs/learning-archive.md` are local only (gitignored, never committed or pushed).
 
-- **Session start:** read `LEARNING.md` (not the archive) and the current milestone in `ROADMAP.md`, then recap in 2–3 lines where we left off and what the next step is.
-- **When the user says "wrap up":** rewrite `LEARNING.md` so it reflects the current state:
+- **Session start:** read `docs/LEARNING.md` (not the archive) and the current milestone in `ROADMAP.md`, then recap in 2–3 lines where we left off and what the next step is.
+- **When the user says "wrap up":** rewrite `docs/LEARNING.md` so it reflects the current state:
   - Concepts: each one has a single entry, updated in place, never duplicated.
     - Shaky concepts keep a short note on the gap and which explanations were already tried. Next time, try a different approach.
     - Mastered concepts shrink to a one-line entry under "Solid".
@@ -118,8 +118,8 @@ Coach these one at a time, when they become relevant. Don't front-load them.
   - Teaching formats: keep a short, refined list of what works and what doesn't.
   - Tick finished milestones in `ROADMAP.md`, and add any design decisions to the milestone they belong to.
   - If the file is over budget, move old decisions and detail to `docs/learning-archive.md`.
-  - Last step: commit only the learning files (on the current branch, see Git workflow) with `git commit LEARNING.md -m "docs: update learning log"` (add `ROADMAP.md` or the archive path if they changed). This leaves the user's staged work untouched. Don't push; the user's next push includes it. Tell the user it was committed.
-- Git history keeps every past version, so trimming loses nothing.
+  - Last step: if `ROADMAP.md` changed, commit only it (on the current branch, see Git workflow) with `git commit ROADMAP.md -m "docs: update roadmap"`. This leaves the user's staged work untouched. Don't push; the user's next push includes it. Tell the user it was committed. The learning files are never committed.
+- No git history backs up the learning files, so move old detail to the archive instead of deleting it.
 
 ## Tone
 
