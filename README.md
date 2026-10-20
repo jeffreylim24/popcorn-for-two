@@ -65,7 +65,7 @@ To try the production setup instead, run `bun run build` in `frontend/` and `go 
 **Call**
 - WebRTC, peer to peer. The room WebSocket doubles as the signalling channel (`offer`, `answer`, `candidate`). The newcomer makes the offer.
 - Audio and video slots are created once, up front. Turning the camera off or on swaps the track (`replaceTrack`), so there's no renegotiation. The partner hears about it through `camera` / `mic` messages.
-- **Routes:** each browser fetches `GET /api/ice-servers` on Join. Go asks Cloudflare for TURN credentials that expire in 4 hours, so the long-term key never leaves the server. If that fails, the call falls back to Google STUN only.
+- **Routes:** when someone takes a seat, Go asks Cloudflare for TURN credentials that expire in 4 hours and sends them as the first message on the room socket (`ice-servers`). Only a seat holder gets them, the long-term key never leaves the server, and clients can't fake server-only messages. If Cloudflare fails, the call falls back to Google STUN only.
   - Most calls connect directly. When a network blocks that (common on mobile data), media goes through Cloudflare's TURN relay. Either way it's encrypted end to end (DTLS-SRTP).
 
 The reasoning behind each choice (and what was rejected) lives in [ROADMAP.md](ROADMAP.md).
