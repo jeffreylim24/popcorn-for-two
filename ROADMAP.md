@@ -621,14 +621,15 @@ as real date nights show what matters.
 
 | # | Item | Priority | Why |
 |---|---|---|---|
-| | Only give TURN credentials to someone in a room | HIGH | `/api/ice-servers` is open: anyone can mint 4 h creds on our Cloudflare quota, or flood it so every call loses TURN |
+| [#14](https://github.com/jeffreylim24/popcorn-for-two/issues/14) | Only give TURN credentials to someone in a room | HIGH | In review: creds go over the room socket to seat holders only, per-IP limit (`limiter.go`) |
 | [#4](https://github.com/jeffreylim24/popcorn-for-two/issues/4) | WebSocket heartbeat (ping 15 s, free the seat after 30 s) | HIGH | A sleeping laptop or dropped Wi-Fi can hold a seat; the partner can't rejoin |
 | [#5](https://github.com/jeffreylim24/popcorn-for-two/issues/5) | Synced drags (same cam layout on both screens) | HIGH | The M10 end goal; a key priority |
 | [#6](https://github.com/jeffreylim24/popcorn-for-two/issues/6) | Ghost seat after editing the URL (bfcache) | MEDIUM | Same "room full" symptom; the heartbeat won't catch it (socket alive) |
 | [#7](https://github.com/jeffreylim24/popcorn-for-two/issues/7) | Socket auto-retry with backoff | MEDIUM | A blip needs a manual Reconnect; ICE restart builds on it |
-| [#8](https://github.com/jeffreylim24/popcorn-for-two/issues/8) | Room expiry + rate-limit room creation | HIGH | Rooms are never deleted and anyone can create them: a `curl` loop fills the 256 MB machine and the OOM drops every room. Delete-when-empty first |
-| [#9](https://github.com/jeffreylim24/popcorn-for-two/issues/9) | Room-code hardening (rate-limit joins) | MEDIUM | The code is the only gate to a partner's camera |
-| | Tests for `joinRoomHandler` (`httptest` + `websocket.Dial`) | MEDIUM | The biggest Go function has no tests; #4 and #8 both change it, so tests go first |
+| [#8](https://github.com/jeffreylim24/popcorn-for-two/issues/8) | Room expiry + rate-limit room creation | HIGH | Rooms are never deleted and anyone can create them: a `curl` loop fills the 256 MB machine and the OOM drops every room. Delete-when-empty first; reuse `limiter.go` for the 429 |
+| [#9](https://github.com/jeffreylim24/popcorn-for-two/issues/9) | Room-code hardening (rate-limit joins) | MEDIUM | The code is the only gate to a partner's camera. Reuse `limiter.go`; count every attempt (incl. not found); tune with #7's backoff |
+| | Tests for `joinRoomHandler` (`httptest` + `websocket.Dial`) | MEDIUM | Harness exists since #14 (`startJoinServer`, fake TURN); join/ICE covered. Still untested: relay, partner notices, room video. #4 and #8 both change it |
+| | Revoke TURN credentials when the seat is freed | LOW | After #14 a seat holder's creds still work for the full 4 h TTL, even after leaving: create a room, join, take creds, relay your own traffic on our 1,000 GB. Check Cloudflare's TURN API for a revoke endpoint (unverified); alternatives: shorter TTL + mid-call refresh, or a usage alert |
 | [#10](https://github.com/jeffreylim24/popcorn-for-two/issues/10) | CI: run the checks on every PR | MEDIUM | The habit that goes with PRs; deploys stay manual |
 | [#11](https://github.com/jeffreylim24/popcorn-for-two/issues/11) | Call status indicator | MEDIUM | A failed call is mostly silent today |
 | [#12](https://github.com/jeffreylim24/popcorn-for-two/issues/12) | Devices: pick cam/mic/speakers, voice vs movie volume (was M11) | MEDIUM | Wait for real use; volume balance is the likely first slice |
@@ -659,12 +660,6 @@ as real date nights show what matters.
 | | Background blur / replace | VERY LOW | Needs a per-frame ML model (CPU heavy) |
 
 ### Notes for untracked rows
-
-- **TURN credentials:** CORS doesn't stop a non-browser client, so the
-  check must be server-side. Options: send ICE servers over the room
-  socket after a successful join, or check the code has a live seat.
-  Per-IP limit too (Fly sets `Fly-Client-IP`; verify). Keep the STUN
-  fallback.
 
 - **ICE restart:** keeps the call instead of starting fresh; a
   renegotiation, so it needs a rule for who restarts.
