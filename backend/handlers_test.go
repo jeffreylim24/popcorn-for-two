@@ -154,7 +154,7 @@ func readICEServers(t *testing.T, conn *websocket.Conn) iceServersMessage {
 
 func TestJoin_SeatHolderGetsICEServersFirst(t *testing.T) {
 	srv, fake := startJoinServer(t)
-	conn := dialRoom(t, srv, createRoom())
+	conn := dialRoom(t, srv, newTestRoom(t))
 
 	got := readICEServers(t, conn)
 	if len(got.IceServers) != 1 || got.IceServers[0]["urls"] != "turn:fake.example" {
@@ -169,7 +169,7 @@ func TestJoin_SeatHolderGetsICEServersFirst(t *testing.T) {
 // message, and the TURN API is never asked on their behalf.
 func TestJoin_FullRoomGetsNoCredentials(t *testing.T) {
 	srv, fake := startJoinServer(t)
-	code := createRoom()
+	code := newTestRoom(t)
 	readICEServers(t, dialRoom(t, srv, code))
 	readICEServers(t, dialRoom(t, srv, code))
 
@@ -206,7 +206,7 @@ func TestJoin_UnknownRoomGetsNoCredentials(t *testing.T) {
 // TURN API isn't asked.
 func TestJoin_OverTURNLimitGetsNoList(t *testing.T) {
 	srv, fake := startJoinServerWithLimit(t, newLimiter(1, time.Hour))
-	code := createRoom()
+	code := newTestRoom(t)
 
 	first := readICEServers(t, dialRoom(t, srv, code))
 	if len(first.IceServers) == 0 {
@@ -244,7 +244,7 @@ func TestJoin_SilentClientLosesSeat(t *testing.T) {
 	// dials; a short every keeps the test fast.
 	hb := heartbeat{every: 20 * time.Millisecond, timeout: 200 * time.Millisecond}
 	srv, _ := startJoinServerWith(t, newLimiter(100, time.Hour), hb)
-	code := createRoom()
+	code := newTestRoom(t)
 
 	a := dialRoom(t, srv, code)
 	readICEServers(t, a)
@@ -259,4 +259,29 @@ func TestJoin_SilentClientLosesSeat(t *testing.T) {
 	// statusRoomFull, and a (who kept answering) is still in the room.
 	readICEServers(t, dialRoom(t, srv, code))
 	readUntil(t, a, "partner-joined")
+}
+
+func postRoom(h http.Handler) *httptest.ResponseRecorder {
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest("POST", "/api/rooms", nil))
+	return rec
+}
+
+// Over the limit the caller gets 429 and no room is made.
+func TestCreateRoom_OverLimitGets429(t *testing.T) {
+	h := createRoomHandler(newLimiter(2, time.Hour))
+	for i := range 2 {
+		rec := postRoom(h)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("request %d: status = %d, want 200", i+1, rec.Code)
+		}
+	}
+	before := len(rooms)
+	rec := postRoom(h)
+	if rec.Code != http.StatusTooManyRequests {
+		t.Errorf("third request: status = %d, want 429", rec.Code)
+	}
+	if len(rooms) != before {
+		t.Errorf("rooms = %d, want %d (no room made)", len(rooms), before)
+	}
 }

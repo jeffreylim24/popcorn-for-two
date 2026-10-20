@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log"
 	"math/rand/v2"
 	"regexp"
 	"sync"
+	"time"
 
 	"github.com/coder/websocket"
 )
@@ -18,6 +20,9 @@ type room struct {
 	// videoID is the current YouTube video, or "" if none is picked yet.
 	// It is sent to whoever joins so they load the same video.
 	videoID string
+	// emptySince is when the room last had nobody in it: its creation, or
+	// the last seat leaving. It is the zero time while someone is in.
+	emptySince time.Time
 }
 
 // WebSocket close codes sent when a join is refused. Codes 4000-4999 are
@@ -29,6 +34,17 @@ const statusRoomFull websocket.StatusCode = 4005
 var errRoomNotFound = errors.New("room not found")
 var errRoomFull = errors.New("room full")
 var errInvalidVideoID = errors.New("invalid video ID")
+var errTooManyRooms = errors.New("too many rooms")
+
+// roomIdleTTL is how long a room may sit empty before the sweeper deletes
+// it. It is long enough for a refresh, a flaky connection, or a partner
+// who is late to the call.
+const roomIdleTTL = 10 * time.Minute
+
+// maxRooms caps how many rooms exist at once. The per-IP limit can't stop
+// an attacker with many IPs; this keeps memory bounded whatever they do.
+// It is a var so a test can lower it.
+var maxRooms = 5000
 
 // rooms maps a room code to its room. Every handler runs in its own
 // goroutine, so any read or write of rooms, or of a room's fields, must
@@ -53,22 +69,27 @@ func generateRoomCode() string {
 }
 
 // createRoom makes an empty room under a fresh, unused code and returns
-// the code. The uniqueness check and the insert share one lock, so two
-// rooms can't be given the same code.
-func createRoom() string {
+// the code, or errTooManyRooms if maxRooms rooms already exist. The cap
+// check, the uniqueness check and the insert share one lock, so two rooms
+// can't be given the same code or slip past the cap together.
+func createRoom() (string, error) {
 	roomCode := generateRoomCode()
 	roomsMutex.Lock()
 	defer roomsMutex.Unlock()
+	if len(rooms) >= maxRooms {
+		return "", errTooManyRooms
+	}
 	_, ok := rooms[roomCode]
 	for ok {
 		roomCode = generateRoomCode()
 		_, ok = rooms[roomCode]
 	}
 	rooms[roomCode] = &room{
-		conns:   map[*websocket.Conn]bool{},
-		videoID: "",
+		conns:      map[*websocket.Conn]bool{},
+		videoID:    "",
+		emptySince: time.Now(),
 	}
-	return roomCode
+	return roomCode, nil
 }
 
 // joinRoom adds conn to the room and returns whoever was already in it
@@ -91,6 +112,7 @@ func joinRoom(code string, conn *websocket.Conn) (*websocket.Conn, error) {
 		partner = c
 	}
 	r.conns[conn] = true
+	r.emptySince = time.Time{} // zero time means "not empty"
 	return partner, nil
 }
 
@@ -106,11 +128,48 @@ func leaveRoom(code string, conn *websocket.Conn) *websocket.Conn {
 	}
 	delete(r.conns, conn)
 	log.Println("Client left room:", code)
+	if len(r.conns) == 0 {
+		r.emptySince = time.Now()
+	}
 	var partner *websocket.Conn
 	for c := range r.conns {
 		partner = c
 	}
 	return partner
+}
+
+// sweepRooms deletes every room that has been empty for longer than ttl as
+// of now, and returns how many it deleted. The check and the delete share
+// one lock with joinRoom, so a room is either swept before a join (the
+// joiner gets errRoomNotFound) or has someone in it and is kept; never both.
+func sweepRooms(now time.Time, ttl time.Duration) int {
+	roomsMutex.Lock()
+	defer roomsMutex.Unlock()
+	deleted := 0
+	for code, r := range rooms {
+		if len(r.conns) == 0 && now.Sub(r.emptySince) > ttl {
+			delete(rooms, code)
+			deleted++
+		}
+	}
+	return deleted
+}
+
+// sweepRoomsEvery runs sweepRooms every interval until ctx ends. Rooms that
+// were never joined never trigger a leave, so they are only ever freed here.
+func sweepRoomsEvery(ctx context.Context, interval, ttl time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if n := sweepRooms(time.Now(), ttl); n > 0 {
+				log.Println("Swept empty rooms:", n)
+			}
+		}
+	}
 }
 
 // getPartnerConn returns the other connection in the room, or nil if conn
