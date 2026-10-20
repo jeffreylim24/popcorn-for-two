@@ -94,9 +94,19 @@ func startJoinServer(t *testing.T) (*httptest.Server, *fakeTURN) {
 // startJoinServerWithLimit is startJoinServer with a chosen TURN limit. All
 // test clients come from 127.0.0.1, so they share one count.
 func startJoinServerWithLimit(t *testing.T, turnLimit *limiter) (*httptest.Server, *fakeTURN) {
+	return startJoinServerWith(t, turnLimit, slowHeartbeat)
+}
+
+// slowHeartbeat never fires during a test, so clients that stop reading
+// keep their seats. Only the heartbeat test passes a fast one.
+var slowHeartbeat = heartbeat{every: time.Hour, timeout: time.Hour}
+
+// startJoinServerWith is startJoinServer with a chosen TURN limit and
+// heartbeat.
+func startJoinServerWith(t *testing.T, turnLimit *limiter, hb heartbeat) (*httptest.Server, *fakeTURN) {
 	fake := &fakeTURN{}
 	mux := http.NewServeMux()
-	mux.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(fake.getICE, turnLimit))
+	mux.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(fake.getICE, turnLimit, hb))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return srv, fake
@@ -209,4 +219,44 @@ func TestJoin_OverTURNLimitGetsNoList(t *testing.T) {
 	if n := fake.calls.Load(); n != 1 {
 		t.Errorf("TURN calls = %d, want 1", n)
 	}
+}
+
+// readUntil reads messages until one has type want, failing the test if
+// the connection errors or a read takes over 2 seconds.
+func readUntil(t *testing.T, conn *websocket.Conn, want string) {
+	for {
+		msg, err := readFirst(conn)
+		if err != nil {
+			t.Fatalf("waiting for %s: %v", want, err)
+		}
+		var got peekMessage
+		err = json.Unmarshal(msg, &got)
+		if err == nil && got.Type == want {
+			return
+		}
+	}
+}
+
+// A client that stops answering pings (laptop asleep, Wi-Fi off) loses its
+// seat: the partner hears partner-left, and someone new can take the seat.
+func TestJoin_SilentClientLosesSeat(t *testing.T) {
+	// The timeout is roomy because a also pauses reading while the test
+	// dials; a short every keeps the test fast.
+	hb := heartbeat{every: 20 * time.Millisecond, timeout: 200 * time.Millisecond}
+	srv, _ := startJoinServerWith(t, newLimiter(100, time.Hour), hb)
+	code := createRoom()
+
+	a := dialRoom(t, srv, code)
+	readICEServers(t, a)
+	b := dialRoom(t, srv, code)
+	readICEServers(t, b)
+	// From here on b never calls Read. The Go client only answers pings
+	// while reading, so b is now as silent as a dead network.
+
+	readUntil(t, a, "partner-left")
+
+	// The seat is really free: a newcomer is seated, not refused with
+	// statusRoomFull, and a (who kept answering) is still in the room.
+	readICEServers(t, dialRoom(t, srv, code))
+	readUntil(t, a, "partner-joined")
 }

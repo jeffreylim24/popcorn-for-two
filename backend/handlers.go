@@ -78,6 +78,46 @@ func sendJSON(ctx context.Context, c *websocket.Conn, v any) error {
 	return c.Write(ctx, websocket.MessageText, data)
 }
 
+// A heartbeat says how often the server pings each connection and how long
+// it waits for the pong. One missed pong closes the connection, so a dead
+// one is noticed within every + timeout.
+type heartbeat struct {
+	every   time.Duration
+	timeout time.Duration
+}
+
+// keepAlive pings conn every hb.every until ctx ends. If a pong doesn't
+// come back within hb.timeout, it closes conn: the handler's blocked Read
+// then fails and the usual leave path frees the seat. It never touches the
+// room itself, so leaving keeps one exit path. Ping needs a Read running at
+// the same time (that's what reads the pong), so start it beside the read
+// loop.
+func keepAlive(ctx context.Context, conn *websocket.Conn, hb heartbeat) {
+	ticker := time.NewTicker(hb.every)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			pingCtx, cancel := context.WithTimeout(ctx, hb.timeout)
+			err := conn.Ping(pingCtx)
+			cancel()
+			if err != nil {
+				// The handler already returned: not a missed pong.
+				if ctx.Err() != nil {
+					return
+				}
+				log.Println("No pong, closing connection:", err)
+				// CloseNow, not Close: Close waits for a goodbye that a dead
+				// peer will never send.
+				conn.CloseNow()
+				return
+			}
+		}
+	}
+}
+
 // healthHandler answers GET /api/health so you can check the server is up.
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Health check: OK")
@@ -96,8 +136,9 @@ func createRoomHandler(w http.ResponseWriter, r *http.Request) {
 // room's current video, then relays every message to the partner until the
 // connection drops. A full or unknown room is closed with statusRoomFull
 // or statusRoomNotFound, and gets no TURN credentials: getICE is only
-// called for a seat holder, and only while turnLimit allows their IP.
-func joinRoomHandler(getICE iceServersFunc, turnLimit *limiter) http.Handler {
+// called for a seat holder, and only while turnLimit allows their IP. A
+// connection that stops answering hb's pings is closed and loses its seat.
+func joinRoomHandler(getICE iceServersFunc, turnLimit *limiter, hb heartbeat) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		code := r.PathValue("code")
 		conn, err := websocket.Accept(w, r, nil)
@@ -189,8 +230,15 @@ func joinRoomHandler(getICE iceServersFunc, turnLimit *limiter) http.Handler {
 			}
 		}
 
-		// Relay loop. Read errors include a normal close, so returning here is
-		// how a client leaves; the deferred leaveRoom then runs.
+		// The heartbeat runs beside the relay loop's Read and stops when the
+		// handler returns.
+		hbCtx, stopHeartbeat := context.WithCancel(r.Context())
+		defer stopHeartbeat()
+		go keepAlive(hbCtx, conn, hb)
+
+		// Relay loop. Read errors include a normal close and a missed pong, so
+		// returning here is how a client leaves; the deferred leaveRoom then
+		// runs.
 		for {
 			typ, msg, err := conn.Read(r.Context())
 			if err != nil {

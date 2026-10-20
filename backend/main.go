@@ -37,9 +37,14 @@ func main() {
 	// for its whole TTL.
 	turnLimit := newLimiter(30, 10*time.Minute)
 
+	// Ping every 15 s, wait up to 15 s for the pong: a dead connection
+	// loses its seat within ~30 s. The wait must stay well above the relay
+	// loop's 5 s write timeout, since pongs are only read between writes.
+	hb := heartbeat{every: 15 * time.Second, timeout: 15 * time.Second}
+
 	http.HandleFunc("GET /api/health", healthHandler)
 	http.HandleFunc("POST /api/rooms", createRoomHandler)
-	http.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(getICE, turnLimit))
+	http.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(getICE, turnLimit, hb))
 	// "GET /" is the catch-all: the more specific /api/ patterns win. The
 	// path is relative to the working directory, which is backend/ both in
 	// dev and in the Docker image.
