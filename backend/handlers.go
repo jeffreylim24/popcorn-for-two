@@ -124,10 +124,23 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // createRoomHandler answers POST /api/rooms with the new room's code as
-// plain text.
-func createRoomHandler(w http.ResponseWriter, r *http.Request) {
-	roomCode := createRoom()
-	fmt.Fprint(w, roomCode)
+// plain text. A caller over createLimit gets 429, and 503 if the server is
+// already holding its maximum number of rooms.
+func createRoomHandler(createLimit *limiter) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !createLimit.allow(clientIP(r)) {
+			log.Println("Room creation limit reached:", clientIP(r))
+			http.Error(w, "Too many rooms created, try again later", http.StatusTooManyRequests)
+			return
+		}
+		roomCode, err := createRoom()
+		if err != nil {
+			log.Println("Error creating room:", err)
+			http.Error(w, "Server is full, try again later", http.StatusServiceUnavailable)
+			return
+		}
+		fmt.Fprint(w, roomCode)
+	})
 }
 
 // joinRoomHandler upgrades GET /api/rooms/{code}/ws to a WebSocket and

@@ -114,7 +114,8 @@ Every deploy restarts the server and wipes all rooms, so don't deploy during a d
 
 - Chrome only, and designed for a laptop or desktop. It runs on a phone, but the layout isn't made for one (fullscreen doesn't work there).
 - Two people per room.
-- Rooms are lost on restart or deploy, and empty rooms are never cleaned up (yet).
+- Rooms are lost on restart or deploy. A room that has been empty for 10 minutes is deleted, so a link to an abandoned room stops working.
+- Room creation is limited to 10 per IP per 10 minutes (HTTP 429), and the server holds at most 5,000 rooms at once (HTTP 503).
 - No heartbeat yet: a partner whose connection dies silently (sleep, Wi-Fi drop) may keep their seat until the server notices the broken socket.
 - Chrome's autoplay rules: a tab nobody has clicked yet can't start playing. Click anywhere on the page once.
 - Changing the URL in a room tab can leave the room stuck "full". Close that tab to free the seat.

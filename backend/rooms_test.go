@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/coder/websocket"
 )
@@ -11,6 +12,15 @@ import (
 // room with createRoom instead of reusing a code. The zero-value
 // &websocket.Conn{} values never send anything: rooms.go only compares
 // them by pointer, so they work as distinct stand-ins.
+
+// newTestRoom makes a room, failing the test if the server is at its cap.
+func newTestRoom(t *testing.T) string {
+	code, err := createRoom()
+	if err != nil {
+		t.Fatalf("createRoom: %v", err)
+	}
+	return code
+}
 
 func TestJoinRoom_UnknownCodeRejected(t *testing.T) {
 	conn := &websocket.Conn{}
@@ -21,7 +31,7 @@ func TestJoinRoom_UnknownCodeRejected(t *testing.T) {
 }
 
 func TestJoinRoom_TwoPeopleCanJoin(t *testing.T) {
-	code := createRoom()
+	code := newTestRoom(t)
 	conn1 := &websocket.Conn{}
 	conn2 := &websocket.Conn{}
 	_, err1 := joinRoom(code, conn1)
@@ -35,7 +45,7 @@ func TestJoinRoom_TwoPeopleCanJoin(t *testing.T) {
 }
 
 func TestJoinRoom_ReturnsWhoWasHereFirst(t *testing.T) {
-	code := createRoom()
+	code := newTestRoom(t)
 	conn1 := &websocket.Conn{}
 	conn2 := &websocket.Conn{}
 	partner1, err1 := joinRoom(code, conn1)
@@ -55,7 +65,7 @@ func TestJoinRoom_ReturnsWhoWasHereFirst(t *testing.T) {
 }
 
 func TestJoinRoom_ThirdIsFull(t *testing.T) {
-	code := createRoom()
+	code := newTestRoom(t)
 	conn1 := &websocket.Conn{}
 	conn2 := &websocket.Conn{}
 	conn3 := &websocket.Conn{}
@@ -74,7 +84,7 @@ func TestJoinRoom_ThirdIsFull(t *testing.T) {
 }
 
 func TestLeaveRoom_FreesSeat(t *testing.T) {
-	code := createRoom()
+	code := newTestRoom(t)
 	conn1 := &websocket.Conn{}
 	conn2 := &websocket.Conn{}
 	conn3 := &websocket.Conn{}
@@ -94,7 +104,7 @@ func TestLeaveRoom_FreesSeat(t *testing.T) {
 }
 
 func TestLeaveRoom_ReturnsWhoStayed(t *testing.T) {
-	code := createRoom()
+	code := newTestRoom(t)
 	conn1 := &websocket.Conn{}
 	conn2 := &websocket.Conn{}
 	_, err1 := joinRoom(code, conn1)
@@ -116,7 +126,7 @@ func TestLeaveRoom_ReturnsWhoStayed(t *testing.T) {
 }
 
 func TestGetPartnerConn_AloneReturnsNil(t *testing.T) {
-	code := createRoom()
+	code := newTestRoom(t)
 	conn1 := &websocket.Conn{}
 	_, err1 := joinRoom(code, conn1)
 	if err1 != nil {
@@ -129,7 +139,7 @@ func TestGetPartnerConn_AloneReturnsNil(t *testing.T) {
 }
 
 func TestGetPartnerConn_TwoReturnsOther(t *testing.T) {
-	code := createRoom()
+	code := newTestRoom(t)
 	conn1 := &websocket.Conn{}
 	conn2 := &websocket.Conn{}
 	_, err1 := joinRoom(code, conn1)
@@ -184,7 +194,7 @@ func TestSetRoomVideo(t *testing.T) {
 		{false, "dQw4w9WgXcQ", errRoomNotFound, ""},
 	}
 	for _, tt := range tests {
-		c := createRoom()
+		c := newTestRoom(t)
 		if !tt.roomExists {
 			// A code createRoom never returns: 15 characters, not 6.
 			c = "invalidRoomCode"
@@ -196,5 +206,108 @@ func TestSetRoomVideo(t *testing.T) {
 		if got := getRoomVideo(c); got != tt.wantVideo {
 			t.Errorf("getRoomVideo(%q) = %q, want %q", c, got, tt.wantVideo)
 		}
+	}
+}
+
+// The sweep tests pass a fake "now", so they never wait for real time.
+
+// A room nobody ever joined (what a spam script makes) has no leave event
+// to trigger deletion, so the sweep alone must remove it.
+func TestSweepRooms_DeletesNeverJoinedRoom(t *testing.T) {
+	code := newTestRoom(t)
+	sweepRooms(time.Now().Add(roomIdleTTL+time.Second), roomIdleTTL)
+	_, err := joinRoom(code, &websocket.Conn{})
+	if !errors.Is(err, errRoomNotFound) {
+		t.Errorf("got: %v, want: %v", err, errRoomNotFound)
+	}
+}
+
+func TestSweepRooms_KeepsRoomWithinGracePeriod(t *testing.T) {
+	code := newTestRoom(t)
+	sweepRooms(time.Now().Add(roomIdleTTL-time.Second), roomIdleTTL)
+	_, err := joinRoom(code, &websocket.Conn{})
+	if err != nil {
+		t.Errorf("got: %v, want: nil", err)
+	}
+}
+
+func TestSweepRooms_KeepsOccupiedRoom(t *testing.T) {
+	code := newTestRoom(t)
+	_, err := joinRoom(code, &websocket.Conn{})
+	if err != nil {
+		t.Fatalf("got: %v, want: nil", err)
+	}
+	// Far in the future: still kept, because someone is in it.
+	sweepRooms(time.Now().Add(100*roomIdleTTL), roomIdleTTL)
+	_, err = joinRoom(code, &websocket.Conn{})
+	if err != nil {
+		t.Errorf("got: %v, want: nil", err)
+	}
+}
+
+// The last person leaving starts the clock, so a room that just emptied
+// is still there for a refresh.
+func TestSweepRooms_KeepsJustEmptiedRoom(t *testing.T) {
+	code := newTestRoom(t)
+	conn := &websocket.Conn{}
+	_, err := joinRoom(code, conn)
+	if err != nil {
+		t.Fatalf("got: %v, want: nil", err)
+	}
+	leaveRoom(code, conn)
+
+	sweepRooms(time.Now(), roomIdleTTL)
+	_, err = joinRoom(code, &websocket.Conn{})
+	if err != nil {
+		t.Errorf("got: %v, want: nil", err)
+	}
+}
+
+func TestSweepRooms_EmptiedRoomIsDeleted(t *testing.T) {
+	code := newTestRoom(t)
+	conn := &websocket.Conn{}
+	_, err := joinRoom(code, conn)
+	if err != nil {
+		t.Fatalf("got: %v, want: nil", err)
+	}
+	leaveRoom(code, conn)
+
+	sweepRooms(time.Now().Add(roomIdleTTL+time.Second), roomIdleTTL)
+	_, err = joinRoom(code, &websocket.Conn{})
+	if !errors.Is(err, errRoomNotFound) {
+		t.Errorf("got: %v, want: %v", err, errRoomNotFound)
+	}
+}
+
+// A refresh: the only person leaves and comes back inside the grace
+// period. Their join must stop the clock for good.
+func TestSweepRooms_RejoinStopsTheClock(t *testing.T) {
+	code := newTestRoom(t)
+	conn := &websocket.Conn{}
+	joinRoom(code, conn)
+	leaveRoom(code, conn)
+	joinRoom(code, &websocket.Conn{})
+
+	sweepRooms(time.Now().Add(roomIdleTTL+time.Second), roomIdleTTL)
+	_, err := joinRoom(code, &websocket.Conn{})
+	if err != nil {
+		t.Errorf("got: %v, want: nil", err)
+	}
+}
+
+func TestCreateRoom_RefusesAtCap(t *testing.T) {
+	roomsMutex.Lock()
+	old := maxRooms
+	maxRooms = len(rooms)
+	roomsMutex.Unlock()
+	t.Cleanup(func() {
+		roomsMutex.Lock()
+		maxRooms = old
+		roomsMutex.Unlock()
+	})
+
+	_, err := createRoom()
+	if !errors.Is(err, errTooManyRooms) {
+		t.Errorf("got: %v, want: %v", err, errTooManyRooms)
 	}
 }
