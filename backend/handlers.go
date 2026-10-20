@@ -135,9 +135,10 @@ func joinRoomHandler(turnKeyID, turnKeyAPI string) http.Handler {
 		}()
 
 		// Only a seat holder reaches this line, so it doubles as the seat
-		// check for TURN. Sent before the partner notices, so the newcomer
-		// always gets ice-servers first. On failure the list is left out
-		// and the browser keeps its STUN fallback.
+		// check for TURN. Keep it before the partner notices: useCall makes
+		// its phone on partner-present without waiting, trusting that
+		// ice-servers came first. On failure the list is left out and the
+		// browser keeps its STUN fallback.
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		iceServers, err := getICEServers(ctx, turnKeyID, turnKeyAPI)
 		cancel()
@@ -232,31 +233,6 @@ func joinRoomHandler(turnKeyID, turnKeyAPI string) http.Handler {
 			if err != nil {
 				log.Println("Error writing message to partner:", err)
 			}
-		}
-	})
-}
-
-// iceServersHandler sends the browser short-lived STUN + TURN servers as
-// {"iceServers": [...]}. The long-term key stays on the server; the
-// browser only gets credentials that expire.
-func iceServersHandler(turnKeyID, turnKeyAPI string) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Give up after 5 seconds; also cancelled if the browser leaves.
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-		defer cancel()
-
-		iceServers, err := getICEServers(ctx, turnKeyID, turnKeyAPI)
-		if err != nil {
-			// Details stay in our logs, not in the browser.
-			log.Println("Error getting ICE servers:", err)
-			http.Error(w, "TURN unavailable", http.StatusBadGateway)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		err = json.NewEncoder(w).Encode(map[string]any{"iceServers": iceServers})
-		if err != nil {
-			log.Println("Error writing ICE servers:", err)
 		}
 	})
 }
