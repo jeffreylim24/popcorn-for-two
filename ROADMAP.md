@@ -621,7 +621,6 @@ as real date nights show what matters.
 
 | # | Item | Priority | Why |
 |---|---|---|---|
-| [#14](https://github.com/jeffreylim24/popcorn-for-two/issues/14) | Only give TURN credentials to someone in a room | HIGH | In review: creds go over the room socket to seat holders only, per-IP limit (`limiter.go`) |
 | [#4](https://github.com/jeffreylim24/popcorn-for-two/issues/4) | WebSocket heartbeat (ping 15 s, free the seat after 30 s) | HIGH | A sleeping laptop or dropped Wi-Fi can hold a seat; the partner can't rejoin |
 | [#5](https://github.com/jeffreylim24/popcorn-for-two/issues/5) | Synced drags (same cam layout on both screens) | HIGH | The M10 end goal; a key priority |
 | [#6](https://github.com/jeffreylim24/popcorn-for-two/issues/6) | Ghost seat after editing the URL (bfcache) | MEDIUM | Same "room full" symptom; the heartbeat won't catch it (socket alive) |
