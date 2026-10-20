@@ -95,8 +95,9 @@ func createRoomHandler(w http.ResponseWriter, r *http.Request) {
 // TURN servers, tells both people when a partner is present, sends the
 // room's current video, then relays every message to the partner until the
 // connection drops. A full or unknown room is closed with statusRoomFull
-// or statusRoomNotFound, and gets no TURN credentials.
-func joinRoomHandler(turnKeyID, turnKeyAPI string) http.Handler {
+// or statusRoomNotFound, and gets no TURN credentials: getICE is only
+// called for a seat holder.
+func joinRoomHandler(getICE iceServersFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		code := r.PathValue("code")
 		conn, err := websocket.Accept(w, r, nil)
@@ -140,7 +141,7 @@ func joinRoomHandler(turnKeyID, turnKeyAPI string) http.Handler {
 		// ice-servers came first. On failure the list is left out and the
 		// browser keeps its STUN fallback.
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-		iceServers, err := getICEServers(ctx, turnKeyID, turnKeyAPI)
+		iceServers, err := getICE(ctx)
 		cancel()
 		if err != nil {
 			log.Println("Error getting ICE servers:", err)
@@ -236,6 +237,10 @@ func joinRoomHandler(turnKeyID, turnKeyAPI string) http.Handler {
 		}
 	})
 }
+
+// iceServersFunc gets a fresh STUN + TURN list. main passes one that asks
+// Cloudflare; tests pass a fake, so they never touch the real API.
+type iceServersFunc func(ctx context.Context) ([]map[string]any, error)
 
 // getICEServers asks Cloudflare for TURN credentials that last 4 hours
 // (longer than the longest movie night) and returns its iceServers list.

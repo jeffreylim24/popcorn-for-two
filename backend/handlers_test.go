@@ -1,6 +1,16 @@
 package main
 
-import "testing"
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/coder/websocket"
+)
 
 func TestIsServerOnlyType(t *testing.T) {
 	tests := []struct {
@@ -58,5 +68,118 @@ func TestJSONFields_NotAnObject(t *testing.T) {
 		if err == nil {
 			t.Errorf("jsonFields(%s) = nil error, want an error", msg)
 		}
+	}
+}
+
+// fakeTURN is a stand-in for Cloudflare. calls counts how often the handler
+// asked it; atomic because each connection's handler runs in its own
+// goroutine.
+type fakeTURN struct {
+	calls atomic.Int32
+}
+
+func (f *fakeTURN) getICE(ctx context.Context) ([]map[string]any, error) {
+	f.calls.Add(1)
+	return []map[string]any{{"urls": "turn:fake.example"}}, nil
+}
+
+// startJoinServer runs the real join handler on a test server, behind the
+// same route pattern as main, so r.PathValue("code") works.
+func startJoinServer(t *testing.T) (*httptest.Server, *fakeTURN) {
+	fake := &fakeTURN{}
+	mux := http.NewServeMux()
+	mux.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(fake.getICE))
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	return srv, fake
+}
+
+// dialRoom opens a client WebSocket to the room. It is closed when the test
+// ends.
+func dialRoom(t *testing.T, srv *httptest.Server, code string) *websocket.Conn {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	conn, _, err := websocket.Dial(ctx, srv.URL+"/api/rooms/"+code+"/ws", nil)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	t.Cleanup(func() { conn.CloseNow() })
+	return conn
+}
+
+// readFirst reads one message, giving up after 2 seconds so a broken
+// handler fails the test instead of hanging it.
+func readFirst(conn *websocket.Conn) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	_, msg, err := conn.Read(ctx)
+	return msg, err
+}
+
+// readICEServers reads the first message and fails the test unless it is
+// ice-servers. Getting it also proves the server has seated this conn.
+func readICEServers(t *testing.T, conn *websocket.Conn) iceServersMessage {
+	msg, err := readFirst(conn)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	var got iceServersMessage
+	err = json.Unmarshal(msg, &got)
+	if err != nil {
+		t.Fatalf("unmarshal %s: %v", msg, err)
+	}
+	if got.Type != "ice-servers" {
+		t.Fatalf("first message type = %q, want ice-servers", got.Type)
+	}
+	return got
+}
+
+func TestJoin_SeatHolderGetsICEServersFirst(t *testing.T) {
+	srv, fake := startJoinServer(t)
+	conn := dialRoom(t, srv, createRoom())
+
+	got := readICEServers(t, conn)
+	if len(got.IceServers) != 1 || got.IceServers[0]["urls"] != "turn:fake.example" {
+		t.Errorf("iceServers = %v, want the fake's list", got.IceServers)
+	}
+	if n := fake.calls.Load(); n != 1 {
+		t.Errorf("TURN calls = %d, want 1", n)
+	}
+}
+
+// No seat → no credentials: the third person is refused before any
+// message, and the TURN API is never asked on their behalf.
+func TestJoin_FullRoomGetsNoCredentials(t *testing.T) {
+	srv, fake := startJoinServer(t)
+	code := createRoom()
+	readICEServers(t, dialRoom(t, srv, code))
+	readICEServers(t, dialRoom(t, srv, code))
+
+	third := dialRoom(t, srv, code)
+	msg, err := readFirst(third)
+	if err == nil {
+		t.Fatalf("third person got a message %s, want a close", msg)
+	}
+	if got := websocket.CloseStatus(err); got != statusRoomFull {
+		t.Errorf("close status = %v, want %v", got, statusRoomFull)
+	}
+	if n := fake.calls.Load(); n != 2 {
+		t.Errorf("TURN calls = %d, want 2 (one per seat)", n)
+	}
+}
+
+func TestJoin_UnknownRoomGetsNoCredentials(t *testing.T) {
+	srv, fake := startJoinServer(t)
+	conn := dialRoom(t, srv, "nope00")
+
+	msg, err := readFirst(conn)
+	if err == nil {
+		t.Fatalf("got a message %s, want a close", msg)
+	}
+	if got := websocket.CloseStatus(err); got != statusRoomNotFound {
+		t.Errorf("close status = %v, want %v", got, statusRoomNotFound)
+	}
+	if n := fake.calls.Load(); n != 0 {
+		t.Errorf("TURN calls = %d, want 0", n)
 	}
 }

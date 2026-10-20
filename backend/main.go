@@ -8,6 +8,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -23,9 +24,14 @@ func main() {
 		log.Fatal("TURN_KEY_ID and TURN_KEY_API must be set in the environment variables")
 	}
 
+	// The keys stay in this closure; the handler only sees "get a list".
+	getICE := func(ctx context.Context) ([]map[string]any, error) {
+		return getICEServers(ctx, turnKeyID, turnKeyAPI)
+	}
+
 	http.HandleFunc("GET /api/health", healthHandler)
 	http.HandleFunc("POST /api/rooms", createRoomHandler)
-	http.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(turnKeyID, turnKeyAPI))
+	http.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(getICE))
 	// "GET /" is the catch-all: the more specific /api/ patterns win. The
 	// path is relative to the working directory, which is backend/ both in
 	// dev and in the Docker image.
