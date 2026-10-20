@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 )
 
 func main() {
@@ -29,9 +30,16 @@ func main() {
 		return getICEServers(ctx, turnKeyID, turnKeyAPI)
 	}
 
+	// 30 credential fetches per IP per 10 minutes: room for reloads (each
+	// one is a new join) and two-tab testing from one IP, and still stops
+	// one client flooding Cloudflare's API (which would cut TURN off for
+	// every couple). It doesn't cap relay bandwidth: one credential works
+	// for its whole TTL.
+	turnLimit := newLimiter(30, 10*time.Minute)
+
 	http.HandleFunc("GET /api/health", healthHandler)
 	http.HandleFunc("POST /api/rooms", createRoomHandler)
-	http.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(getICE))
+	http.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(getICE, turnLimit))
 	// "GET /" is the catch-all: the more specific /api/ patterns win. The
 	// path is relative to the working directory, which is backend/ both in
 	// dev and in the Docker image.

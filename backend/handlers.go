@@ -96,8 +96,8 @@ func createRoomHandler(w http.ResponseWriter, r *http.Request) {
 // room's current video, then relays every message to the partner until the
 // connection drops. A full or unknown room is closed with statusRoomFull
 // or statusRoomNotFound, and gets no TURN credentials: getICE is only
-// called for a seat holder.
-func joinRoomHandler(getICE iceServersFunc) http.Handler {
+// called for a seat holder, and only while turnLimit allows their IP.
+func joinRoomHandler(getICE iceServersFunc, turnLimit *limiter) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		code := r.PathValue("code")
 		conn, err := websocket.Accept(w, r, nil)
@@ -139,12 +139,19 @@ func joinRoomHandler(getICE iceServersFunc) http.Handler {
 		// check for TURN. Keep it before the partner notices: useCall makes
 		// its phone on partner-present without waiting, trusting that
 		// ice-servers came first. On failure the list is left out and the
-		// browser keeps its STUN fallback.
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-		iceServers, err := getICE(ctx)
-		cancel()
-		if err != nil {
-			log.Println("Error getting ICE servers:", err)
+		// browser keeps its STUN fallback. Over the per-IP limit, the list is
+		// left out the same way: they keep their seat, just not our paid
+		// relay. (Limiting joins themselves is #9's job.)
+		var iceServers []map[string]any
+		if turnLimit.allow(clientIP(r)) {
+			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+			iceServers, err = getICE(ctx)
+			cancel()
+			if err != nil {
+				log.Println("Error getting ICE servers:", err)
+			}
+		} else {
+			log.Println("TURN limit reached, sending no list")
 		}
 		err = sendJSON(r.Context(), conn, iceServersMessage{Type: "ice-servers", IceServers: iceServers})
 		if err != nil {

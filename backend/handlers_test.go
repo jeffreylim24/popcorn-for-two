@@ -85,10 +85,18 @@ func (f *fakeTURN) getICE(ctx context.Context) ([]map[string]any, error) {
 
 // startJoinServer runs the real join handler on a test server, behind the
 // same route pattern as main, so r.PathValue("code") works.
+// startJoinServer's limit is high enough that only the limit test, which
+// passes its own, ever reaches it.
 func startJoinServer(t *testing.T) (*httptest.Server, *fakeTURN) {
+	return startJoinServerWithLimit(t, newLimiter(100, time.Hour))
+}
+
+// startJoinServerWithLimit is startJoinServer with a chosen TURN limit. All
+// test clients come from 127.0.0.1, so they share one count.
+func startJoinServerWithLimit(t *testing.T, turnLimit *limiter) (*httptest.Server, *fakeTURN) {
 	fake := &fakeTURN{}
 	mux := http.NewServeMux()
-	mux.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(fake.getICE))
+	mux.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(fake.getICE, turnLimit))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return srv, fake
@@ -181,5 +189,24 @@ func TestJoin_UnknownRoomGetsNoCredentials(t *testing.T) {
 	}
 	if n := fake.calls.Load(); n != 0 {
 		t.Errorf("TURN calls = %d, want 0", n)
+	}
+}
+
+// Over the limit: still seated, but ice-servers carries no list and the
+// TURN API isn't asked.
+func TestJoin_OverTURNLimitGetsNoList(t *testing.T) {
+	srv, fake := startJoinServerWithLimit(t, newLimiter(1, time.Hour))
+	code := createRoom()
+
+	first := readICEServers(t, dialRoom(t, srv, code))
+	if len(first.IceServers) == 0 {
+		t.Errorf("first join got no list, want the fake's list")
+	}
+	second := readICEServers(t, dialRoom(t, srv, code))
+	if second.IceServers != nil {
+		t.Errorf("second join got %v, want no list", second.IceServers)
+	}
+	if n := fake.calls.Load(); n != 1 {
+		t.Errorf("TURN calls = %d, want 1", n)
 	}
 }
