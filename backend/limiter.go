@@ -32,7 +32,8 @@ func newLimiter(max int, window time.Duration) *limiter {
 }
 
 // allow counts one attempt from ip and reports whether it is within the
-// limit. Refused attempts count too, so hammering doesn't help.
+// limit. The count and the check share one lock, so two attempts at once
+// can't both see room for one more.
 func (l *limiter) allow(ip string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
