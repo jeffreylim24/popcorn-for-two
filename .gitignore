@@ -1,5 +1,6 @@
 .vscode
 .claude
 .env
+/artifacts
 docs/LEARNING.md
 docs/learning-archive.md
