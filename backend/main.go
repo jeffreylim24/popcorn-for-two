@@ -30,6 +30,10 @@ func main() {
 		return getICEServers(ctx, turnKeyID, turnKeyAPI)
 	}
 
+	revokeICE := func(ctx context.Context, username string) error {
+		return revokeTURNCredential(ctx, turnKeyID, turnKeyAPI, username)
+	}
+
 	// 30 credential fetches per IP per 10 minutes: room for reloads (each
 	// one is a new join) and two-tab testing from one IP, and still stops
 	// one client flooding Cloudflare's API (which would cut TURN off for
@@ -50,7 +54,7 @@ func main() {
 
 	http.HandleFunc("GET /api/health", healthHandler)
 	http.Handle("POST /api/rooms", createRoomHandler(createLimit))
-	http.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(getICE, turnLimit, hb))
+	http.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(getICE, revokeICE, turnLimit, hb))
 	// "GET /" is the catch-all: the more specific /api/ patterns win. The
 	// path is relative to the working directory, which is backend/ both in
 	// dev and in the Docker image.
