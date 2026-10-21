@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -76,11 +78,37 @@ func TestJSONFields_NotAnObject(t *testing.T) {
 // goroutine.
 type fakeTURN struct {
 	calls atomic.Int32
+	// revoked receives the username of every revoke the handler asks for,
+	// so a test can wait for one instead of sleeping.
+	revoked chan string
+	// failRevoke makes revoke return an error; block makes it wait for
+	// release to be closed. Both are atomic because the handler's goroutine
+	// reads them.
+	failRevoke atomic.Bool
+	block      atomic.Bool
+	release    chan struct{}
 }
 
+// getICE hands out a different username per call, so a test can tell the
+// seats apart.
 func (f *fakeTURN) getICE(ctx context.Context) ([]map[string]any, error) {
-	f.calls.Add(1)
-	return []map[string]any{{"urls": "turn:fake.example"}}, nil
+	n := f.calls.Add(1)
+	return []map[string]any{{
+		"urls":       "turn:fake.example",
+		"username":   fmt.Sprintf("user-%d", n),
+		"credential": "secret",
+	}}, nil
+}
+
+func (f *fakeTURN) revoke(ctx context.Context, username string) error {
+	f.revoked <- username
+	if f.block.Load() {
+		<-f.release
+	}
+	if f.failRevoke.Load() {
+		return errors.New("fake revoke failure")
+	}
+	return nil
 }
 
 // startJoinServer runs the real join handler on a test server, behind the
@@ -104,9 +132,11 @@ var slowHeartbeat = heartbeat{every: time.Hour, timeout: time.Hour}
 // startJoinServerWith is startJoinServer with a chosen TURN limit and
 // heartbeat.
 func startJoinServerWith(t *testing.T, turnLimit *limiter, hb heartbeat) (*httptest.Server, *fakeTURN) {
-	fake := &fakeTURN{}
+	fake := &fakeTURN{revoked: make(chan string, 10), release: make(chan struct{})}
+	// Unblocks a revoke a test left waiting, so no goroutine outlives it.
+	t.Cleanup(func() { close(fake.release) })
 	mux := http.NewServeMux()
-	mux.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(fake.getICE, turnLimit, hb))
+	mux.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(fake.getICE, fake.revoke, turnLimit, hb))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return srv, fake
@@ -283,5 +313,111 @@ func TestCreateRoom_OverLimitGets429(t *testing.T) {
 	}
 	if len(rooms) != before {
 		t.Errorf("rooms = %d, want %d (no room made)", len(rooms), before)
+	}
+}
+
+// readRevoked waits for the next revoke the handler asks for, failing the
+// test if none comes within 2 seconds.
+func readRevoked(t *testing.T, fake *fakeTURN) string {
+	select {
+	case username := <-fake.revoked:
+		return username
+	case <-time.After(2 * time.Second):
+		t.Fatal("no revoke within 2s")
+		return ""
+	}
+}
+
+func TestTurnUsername(t *testing.T) {
+	tests := []struct {
+		name string
+		list []map[string]any
+		want string
+	}{
+		{"nil list", nil, ""},
+		{"STUN only", []map[string]any{{"urls": "stun:stun.example"}}, ""},
+		{"STUN then TURN", []map[string]any{
+			{"urls": "stun:stun.example"},
+			{"urls": "turn:turn.example", "username": "abc", "credential": "pw"},
+		}, "abc"},
+		{"username is not a string", []map[string]any{{"username": 42}}, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := turnUsername(tt.list); got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// Each seat's own credential is revoked when that seat is freed, and no
+// other.
+func TestLeave_RevokesThatSeatsCredential(t *testing.T) {
+	srv, fake := startJoinServer(t)
+	code := newTestRoom(t)
+	a := dialRoom(t, srv, code)
+	aName := turnUsername(readICEServers(t, a).IceServers)
+	b := dialRoom(t, srv, code)
+	bName := turnUsername(readICEServers(t, b).IceServers)
+
+	b.CloseNow()
+	if got := readRevoked(t, fake); got != bName {
+		t.Errorf("first revoke = %q, want b's %q", got, bName)
+	}
+	a.CloseNow()
+	if got := readRevoked(t, fake); got != aName {
+		t.Errorf("second revoke = %q, want a's %q", got, aName)
+	}
+}
+
+// A seat that got no list (over the TURN limit) has nothing to revoke.
+func TestLeave_OverLimitSeatRevokesNothing(t *testing.T) {
+	srv, fake := startJoinServerWithLimit(t, newLimiter(1, time.Hour))
+	code := newTestRoom(t)
+	a := dialRoom(t, srv, code)
+	aName := turnUsername(readICEServers(t, a).IceServers)
+	b := dialRoom(t, srv, code)
+	readICEServers(t, b) // seated, but with no list
+
+	b.CloseNow()
+	readUntil(t, a, "partner-left") // b's leave has finished its first half
+	a.CloseNow()
+	// If b's leave had revoked "", it would arrive first.
+	if got := readRevoked(t, fake); got != aName {
+		t.Errorf("first revoke = %q, want a's %q", got, aName)
+	}
+}
+
+// The partner hears partner-left even while the revoke is still stuck:
+// revoking comes after, so a slow Cloudflare can't delay it.
+func TestLeave_SlowRevokeDoesNotDelayPartnerLeft(t *testing.T) {
+	srv, fake := startJoinServer(t)
+	fake.block.Store(true)
+	code := newTestRoom(t)
+	a := dialRoom(t, srv, code)
+	readICEServers(t, a)
+	b := dialRoom(t, srv, code)
+	readICEServers(t, b)
+
+	b.CloseNow()
+	readUntil(t, a, "partner-left")
+	readRevoked(t, fake) // the revoke did start, and is still waiting
+}
+
+// A failed revoke is only logged: the partner is still told.
+func TestLeave_FailedRevokeStillTellsPartner(t *testing.T) {
+	srv, fake := startJoinServer(t)
+	fake.failRevoke.Store(true)
+	code := newTestRoom(t)
+	a := dialRoom(t, srv, code)
+	readICEServers(t, a)
+	b := dialRoom(t, srv, code)
+	bName := turnUsername(readICEServers(t, b).IceServers)
+
+	b.CloseNow()
+	readUntil(t, a, "partner-left")
+	if got := readRevoked(t, fake); got != bName {
+		t.Errorf("revoke = %q, want %q", got, bName)
 	}
 }

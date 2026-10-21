@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -151,7 +152,7 @@ func createRoomHandler(createLimit *limiter) http.Handler {
 // or statusRoomNotFound, and gets no TURN credentials: getICE is only
 // called for a seat holder, and only while turnLimit allows their IP. A
 // connection that stops answering hb's pings is closed and loses its seat.
-func joinRoomHandler(getICE iceServersFunc, turnLimit *limiter, hb heartbeat) http.Handler {
+func joinRoomHandler(getICE iceServersFunc, revoke revokeFunc, turnLimit *limiter, hb heartbeat) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		code := r.PathValue("code")
 		conn, err := websocket.Accept(w, r, nil)
@@ -179,12 +180,28 @@ func joinRoomHandler(getICE iceServersFunc, turnLimit *limiter, hb heartbeat) ht
 			return
 		}
 		log.Println("Client joined room:", code)
+		// turnUser is this seat's TURN username, or "" if it got no
+		// credentials. It is declared before the defer and set later: the
+		// closure reads it when the defer runs, not when it is registered.
+		var turnUser string
 		defer func() {
 			// Tell whoever is still here, so they can close the call.
 			if p := leaveRoom(code, conn); p != nil {
 				err := sendJSON(r.Context(), p, peekMessage{Type: "partner-left"})
 				if err != nil {
 					log.Println("Error writing partner-left:", err)
+				}
+			}
+			// Revoke last, so a slow Cloudflare never delays partner-left.
+			// A fresh context, not r.Context(): that belongs to the
+			// connection that just ended. A failure only means the
+			// credential lives out its TTL, so log it and move on.
+			if turnUser != "" {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				err := revoke(ctx, turnUser)
+				cancel()
+				if err != nil {
+					log.Println("Error revoking TURN credential:", err)
 				}
 			}
 		}()
@@ -204,6 +221,7 @@ func joinRoomHandler(getICE iceServersFunc, turnLimit *limiter, hb heartbeat) ht
 			if err != nil {
 				log.Println("Error getting ICE servers:", err)
 			}
+			turnUser = turnUsername(iceServers)
 		} else {
 			log.Println("TURN limit reached, sending no list")
 		}
@@ -310,6 +328,22 @@ func joinRoomHandler(getICE iceServersFunc, turnLimit *limiter, hb heartbeat) ht
 // Cloudflare; tests pass a fake, so they never touch the real API.
 type iceServersFunc func(ctx context.Context) ([]map[string]any, error)
 
+// revokeFunc revokes one TURN credential by its username. main passes one
+// that asks Cloudflare; tests pass a fake.
+type revokeFunc func(ctx context.Context, username string) error
+
+// turnUsername returns the TURN username in an iceServers list, or "" if
+// the list has none (nil, STUN only, or Cloudflare failed).
+func turnUsername(servers []map[string]any) string {
+	for _, server := range servers {
+		username, ok := server["username"].(string)
+		if ok {
+			return username
+		}
+	}
+	return ""
+}
+
 // getICEServers asks Cloudflare for TURN credentials that last 4 hours
 // (longer than the longest movie night) and returns its iceServers list.
 func getICEServers(ctx context.Context, turnKeyID, turnKeyAPI string) ([]map[string]any, error) {
@@ -343,4 +377,28 @@ func getICEServers(ctx context.Context, turnKeyID, turnKeyAPI string) ([]map[str
 		return nil, err
 	}
 	return out.IceServers, nil
+}
+
+// revokeTURNCredential asks Cloudflare to stop accepting a credential, so
+// a seat's username and password are useless once the seat is freed.
+// Cloudflare answers 204 No Content on success.
+func revokeTURNCredential(ctx context.Context, turnKeyID, turnKeyAPI, username string) error {
+	// PathEscape keeps a username with odd characters inside its path piece.
+	endpoint := fmt.Sprintf("https://rtc.live.cloudflare.com/v1/turn/keys/%s/credentials/%s/revoke", turnKeyID, url.PathEscape(username))
+	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+turnKeyAPI)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("cloudflare returned status %d", resp.StatusCode)
+	}
+	return nil
 }
