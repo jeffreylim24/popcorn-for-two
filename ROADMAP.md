@@ -621,7 +621,7 @@ as real date nights show what matters.
 
 | # | Item | Priority | Why |
 |---|---|---|---|
-| [#4](https://github.com/jeffreylim24/popcorn-for-two/issues/4) | WebSocket heartbeat (ping 15 s, free the seat after 30 s) | HIGH | A sleeping laptop or dropped Wi-Fi can hold a seat; the partner can't rejoin |
+| [#4](https://github.com/jeffreylim24/popcorn-for-two/issues/4) | ✅ WebSocket heartbeat (PR #17 merged 2026-10-20) | done | `keepAlive` pings every 15 s and closes on a missed pong (15 s), so a sleeping laptop or dropped Wi-Fi frees its seat within about 30 s. Tested: `TestJoin_SilentClientLosesSeat` |
 | [#5](https://github.com/jeffreylim24/popcorn-for-two/issues/5) | Synced drags (same cam layout on both screens) | HIGH | The M10 end goal; a key priority |
 | [#6](https://github.com/jeffreylim24/popcorn-for-two/issues/6) | Ghost seat after editing the URL (bfcache) | MEDIUM | Same "room full" symptom; the heartbeat won't catch it (socket alive) |
 | [#7](https://github.com/jeffreylim24/popcorn-for-two/issues/7) | Socket auto-retry with backoff | MEDIUM | A blip needs a manual Reconnect; ICE restart builds on it |
@@ -632,13 +632,14 @@ as real date nights show what matters.
 | [#16](https://github.com/jeffreylim24/popcorn-for-two/issues/16) | ✅ Revoke TURN credentials when the seat is freed (deployed 2026-10-20) | done | The leave defer revokes the seat's username after `partner-left`, with its own 5 s context; a failed revoke is only logged (no retry: the leftover is a credential living out its TTL). Checked live: after leaving, Trickle ICE gets no relay candidate with the copied credential |
 | | Shorter TURN TTL + refresh while seated | LOW | Bounds a leaked credential's life; Go re-sends `ice-servers`, browser applies it with `pc.setConfiguration()`. Doesn't stop someone who keeps the seat (that's bounded by #8/#9 + a usage alert) |
 | [#10](https://github.com/jeffreylim24/popcorn-for-two/issues/10) | CI: run the checks on every PR | MEDIUM | The habit that goes with PRs; deploys stay manual |
+| [#21](https://github.com/jeffreylim24/popcorn-for-two/issues/21) | Load test: how many concurrent rooms the server really handles | LOW | `maxRooms = 5000` is a memory guard, not a measured capacity. Run against a separate Fly app, not prod |
 | [#11](https://github.com/jeffreylim24/popcorn-for-two/issues/11) | Call status indicator | MEDIUM | A failed call is mostly silent today |
 | [#12](https://github.com/jeffreylim24/popcorn-for-two/issues/12) | Devices: pick cam/mic/speakers, voice vs movie volume (was M11) | MEDIUM | Wait for real use; volume balance is the likely first slice |
 | [#13](https://github.com/jeffreylim24/popcorn-for-two/issues/13) | Phone layout (fullscreen broken there) | MEDIUM | Partners on phones are common |
 | | Relay message size/rate limit | LOW | The server relays anything; one client could flood its partner |
 | | Unknown `GET /api/...` returns `index.html` with 200 | LOW | Should be a 404; confusing when debugging |
 | | Server hardening: `http.Server` timeouts, no `/assets/` dir listing | LOW | `ListenAndServe` has no timeouts (slowloris); `FileServer` lists directories |
-| | Don't relay server-only message types (`partner-*`) | LOW | A partner can fake a hang-up |
+| | ✅ Don't relay server-only message types | done | The relay drops client-sent `ice-servers` and `partner-*` (`serverOnlyTypes` in `handlers.go`), so a partner can't fake a hang-up or reroute the call. Tested: `TestIsServerOnlyType` |
 | | Container: non-root user; keep room codes out of logs | LOW | Defense in depth; codes are secrets |
 | | Send a `sync` right when buffering ends | LOW | Small sync-quality gain |
 | | ICE restart on a network change | LOW | Reconnect works; needs #7 first |
