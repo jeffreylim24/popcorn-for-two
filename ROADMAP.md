@@ -633,7 +633,7 @@ as real date nights show what matters.
 | | Shorter TURN TTL + refresh while seated | LOW | Bounds a leaked credential's life; Go re-sends `ice-servers`, browser applies it with `pc.setConfiguration()`. Doesn't stop someone who keeps the seat (that's bounded by #8/#9 + a usage alert) |
 | [#10](https://github.com/jeffreylim24/popcorn-for-two/issues/10) | ✅ CI: run the checks on every PR (PR #22 merged 2026-10-25) | done | `.github/workflows/ci.yml`: two parallel jobs on every PR and every push to `main`. frontend: lint, format:check, test, build (Bun pinned to the Dockerfile's); backend: gofmt (fails if it lists a file), vet, test (Go from `go.mod`). Checked: a broken Go test turned only backend red, a broken Vitest test only frontend |
 | | ~~CD: deploy to Fly from `main` after CI passes~~ | dropped | Session 41: a deploy restarts the only machine and drops live rooms, so deploys stay manual to pick the moment. Option if wanted later: a manual "Run workflow" deploy button (`workflow_dispatch`) |
-| [#21](https://github.com/jeffreylim24/popcorn-for-two/issues/21) | Load test: how many concurrent rooms the server really handles | LOW | `maxRooms = 5000` is a memory guard, not a measured capacity. Run against a separate Fly app, not prod |
+| [#21](https://github.com/jeffreylim24/popcorn-for-two/issues/21) | Load test: how many concurrent rooms the server really handles (in progress: local done, Fly next) | LOW | `maxRooms = 5000` is a memory guard, not a measured capacity. Run against a separate Fly app, not prod. See "Load test results" below |
 | [#11](https://github.com/jeffreylim24/popcorn-for-two/issues/11) | Call status indicator | MEDIUM | A failed call is mostly silent today |
 | [#12](https://github.com/jeffreylim24/popcorn-for-two/issues/12) | Devices: pick cam/mic/speakers, voice vs movie volume (was M11) | MEDIUM | Wait for real use; volume balance is the likely first slice |
 | [#24](https://github.com/jeffreylim24/popcorn-for-two/issues/24) | ✅ Lobby and room layout on phones (PR #25 merged, deployed 2026-10-26) | done | Under 640px (Tailwind `sm:`): lobby buttons in two rows, header on one line (room badge hidden), resize handle always shown on touch (`pointer-coarse:`), 16px link input (no iOS zoom). Cams start side by side: 24px margins matching the player, 8px gap, read once when the room opens. Checked on a real phone |
@@ -662,6 +662,40 @@ as real date nights show what matters.
 | | Playback speed sync | VERY LOW | Rarely used on date nights |
 | | Accounts / login | VERY LOW | Links work fine for two people |
 | | Background blur / replace | VERY LOW | Needs a per-frame ML model (CPU heavy) |
+
+### Load test results (#21)
+
+`loadtest/couples.js` (k6): one VU = one couple for the whole run. It
+creates a room, both partners join, and each sends a `sync` every 2 s
+(the app's real rate) with a `sentAt` timestamp. 30 s ramp, 60 s hold.
+The server runs with `LOAD_TEST=1` (fake TURN, per-IP limits off;
+refused on the production app). Target: p95 relay under 100 ms, no lost
+messages, every couple paired.
+
+**Local, 2026-10-26.** A Mac with `GOMAXPROCS=1 GOMEMLIMIT=200MiB` (about
+a Fly `shared-cpu-1x`, 256 MB), k6 on the same Mac:
+
+| Couples | relay p95 | relay p99 | relay max | Live heap | Stacks | GC CPU | Process memory |
+|---|---|---|---|---|---|---|---|
+| 50 | 2 ms | n/a | 4 ms | | | | |
+| 500 | 2 ms | n/a | 6 ms | | | | |
+| 1000 | 2 ms | 3 ms | 11 ms | | | | |
+| 2000 | 3 ms | 5 ms | 18 ms | 85 MB | 20 MB | 0% | 192 MB |
+| 3000 | 7 ms | 11 ms | 62 ms | 127 MB | 31 MB | 16% | 244 MB |
+
+Every run: 100% paired, 0 lost.
+
+- **Memory is the wall, not CPU.** One core relays ~1600 msgs/s at 2000
+  couples with flat latency. Memory grows in a straight line: about
+  53 KB live (heap + stacks) and about 80 KB of process memory per couple.
+- **At 3000 the GC thrashes**: the heap goal equals the live heap, so Go
+  collects back to back, latency bends, and the process passes the soft
+  limit. On Fly (~200 MB usable) that is likely an out-of-memory kill.
+- **Estimated ceiling on the current VM: 2000–3000 couples**, below the
+  5000-room cap. Cheap fix if it ever matters: a 512 MB VM.
+- Caveats: `GOMEMLIMIT` is soft (nothing crashes locally); a Fly shared
+  CPU is slower than a Mac core. Next: the same runs against a separate
+  `popcorn-for-two-load` Fly app.
 
 ### Notes for untracked rows
 
