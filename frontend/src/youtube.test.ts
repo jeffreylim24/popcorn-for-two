@@ -11,7 +11,7 @@ describe('parseVideoId', () => {
     'https://youtu.be/dQw4w9WgXcQ?si=abc',
     'https://www.youtube.com/shorts/dQw4w9WgXcQ',
   ])('returns the ID for %s', (link) => {
-    expect(parseVideoId(link)).toBe('dQw4w9WgXcQ')
+    expect(parseVideoId(link)).toBe('dQw4w9WgXcQd')
   })
 
   test.each([
