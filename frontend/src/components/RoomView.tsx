@@ -57,6 +57,37 @@ const STATUS_TEXT: Record<
   },
 }
 
+/** Matches Tailwind's `sm:` breakpoint, so "phone" means the same here as in the classes. */
+const PHONE_QUERY = '(max-width: 639px)'
+
+/** The page's side padding on phones (`px-6`), so the cams line up with the player's edges. */
+const PHONE_MARGIN_PX = 24
+
+/** The gap between the two cams on phones. */
+const PHONE_GAP_PX = 8
+
+/**
+ * Where both cams start. Desktop: small, in the top corners. Phone: side by
+ * side across the width, margin + cam + gap + cam + margin = the whole window.
+ * Read once, when the room opens; after that the boxes are the user's.
+ */
+function startBoxes(): { self: CamBox; partner: CamBox } {
+  if (!window.matchMedia(PHONE_QUERY).matches) {
+    // x = 1 - 0.02 margin - 0.2 width.
+    return {
+      self: { x: 0.02, y: 0.1, width: 0.2 },
+      partner: { x: 0.78, y: 0.1, width: 0.2 },
+    }
+  }
+  const margin = PHONE_MARGIN_PX / window.innerWidth
+  const gap = PHONE_GAP_PX / window.innerWidth
+  const width = (1 - 2 * margin - gap) / 2
+  return {
+    self: { x: margin, y: 0.1, width },
+    partner: { x: margin + width + gap, y: 0.1, width },
+  }
+}
+
 type RoomViewProps = {
   code: string
   camStream: MediaStream | null
@@ -112,23 +143,14 @@ export function RoomView({
   /** Shared by the control strip and the fullscreen bar. */
   const toggleCams = () => setCamsHidden((hidden) => !hidden)
   /**
-   * My cam's box. Starts top-left. Kept here, not in the cam, so it keeps
-   * its place while the cam draws nothing (no stream).
+   * My cam's box. Starts on the left (see `startBoxes`). Kept here, not in
+   * the cam, so it keeps its place while the cam draws nothing (no stream).
    */
-  const [selfBox, setSelfBox] = useState<CamBox>({
-    x: 0.02,
-    y: 0.1,
-    width: 0.2,
-  })
-  /**
-   * The partner's box, kept here for the same reason. Starts top-right:
-   * x = 1 - 0.02 margin - 0.2 width.
-   */
-  const [partnerBox, setPartnerBox] = useState<CamBox>({
-    x: 0.78,
-    y: 0.1,
-    width: 0.2,
-  })
+  const [selfBox, setSelfBox] = useState<CamBox>(() => startBoxes().self)
+  /** The partner's box, kept here for the same reason. Starts on the right. */
+  const [partnerBox, setPartnerBox] = useState<CamBox>(
+    () => startBoxes().partner,
+  )
 
   return (
     <main className="mx-auto flex min-h-svh max-w-5xl flex-col px-6 py-8">
