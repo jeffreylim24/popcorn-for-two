@@ -637,7 +637,7 @@ as real date nights show what matters.
 | [#11](https://github.com/jeffreylim24/popcorn-for-two/issues/11) | Call status indicator | MEDIUM | A failed call is mostly silent today |
 | [#12](https://github.com/jeffreylim24/popcorn-for-two/issues/12) | Devices: pick cam/mic/speakers, voice vs movie volume (was M11) | MEDIUM | Wait for real use; volume balance is the likely first slice |
 | [#24](https://github.com/jeffreylim24/popcorn-for-two/issues/24) | ✅ Lobby and room layout on phones (PR #25 merged, deployed 2026-10-26) | done | Under 640px (Tailwind `sm:`): lobby buttons in two rows, header on one line (room badge hidden), resize handle always shown on touch (`pointer-coarse:`), 16px link input (no iOS zoom). Cams start side by side: 24px margins matching the player, 8px gap, read once when the room opens. Checked on a real phone |
-| [#13](https://github.com/jeffreylim24/popcorn-for-two/issues/13) | Phone: fullscreen button does nothing (layout done in #24) | MEDIUM | Partners on phones are common. Next up (session 43) |
+| [#13](https://github.com/jeffreylim24/popcorn-for-two/issues/13) | ✅ Phone: fullscreen button does nothing (PR #26 merged, deployed 2026-10-26) | done | Cause: every iPhone browser is WebKit, which has no `requestFullscreen` on elements, so the call threw a TypeError (before any Promise, so `.catch` never logged). Fix: feature-check the stage; where the method is missing, `toggleFullscreen` flips `isFullscreen` itself and the stage is pinned with `fixed inset-0`. Real fullscreen kept wherever it exists (its "Esc to exit" hint can't be removed; accepted). Checked on a laptop and an iPhone |
 | | Relay message size/rate limit | LOW | The server relays anything; one client could flood its partner |
 | | Unknown `GET /api/...` returns `index.html` with 200 | LOW | Should be a 404; confusing when debugging |
 | | Server hardening: `http.Server` timeouts, no `/assets/` dir listing | LOW | `ListenAndServe` has no timeouts (slowloris); `FileServer` lists directories |
@@ -650,7 +650,7 @@ as real date nights show what matters.
 | | Search YouTube in-app | LOW | Pasting a link works; needs an API key + quota |
 | | Emoji reactions / text chat | LOW | Fun, cheap over the existing socket |
 | | Mini-games, non-YouTube movies | LOW | Big; needs its own brainstorm |
-| | Other browsers (incl. iPhone: every browser there is Safari underneath) | LOW | Matters if a partner is on an iPhone |
+| | Other browsers (incl. iPhone: every browser there is Safari underneath) | LOW | Matters if a partner is on an iPhone. #13 was the first real WebKit gap; debug iPhone pages with Safari's Web Inspector (iPhone Settings → Apps → Safari → Advanced, plus Chrome's own switch) |
 | | Logging / uptime alerts (`slog`, Fly health check on `/api/health`) | LOW | Otherwise outages are reported by your partner |
 | [#1](https://github.com/jeffreylim24/popcorn-for-two/issues/1) | Facecam off-screen after a height-only resize | VERY LOW | The next drag fixes it |
 | | Phone made for a partner who already left | VERY LOW | Harmless today; see notes |
