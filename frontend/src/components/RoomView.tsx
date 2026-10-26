@@ -132,12 +132,16 @@ export function RoomView({
 
   return (
     <main className="mx-auto flex min-h-svh max-w-5xl flex-col px-6 py-8">
-      <header className="flex items-center justify-between">
-        <a href="/" className="font-heading text-xl font-bold">
+      <header className="flex items-center justify-between gap-3">
+        <a
+          href="/"
+          className="font-heading text-xl font-bold whitespace-nowrap"
+        >
           popcorn for <span className="text-primary">two</span>
         </a>
         <div className="flex items-center gap-2">
-          <span className="flex h-7 items-center gap-1.5 rounded-full border border-primary/30 px-3 font-heading text-xs">
+          {/* Hidden on phones to keep the header on one line: the code is in the URL, and Copy link shares it. */}
+          <span className="flex h-7 items-center gap-1.5 rounded-full border border-primary/30 px-3 font-heading text-xs whitespace-nowrap max-sm:hidden">
             <Popcorn className="size-3.5 text-primary" aria-hidden="true" />
             room {code}
           </span>

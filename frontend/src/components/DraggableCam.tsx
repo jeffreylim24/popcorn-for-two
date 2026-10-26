@@ -137,14 +137,14 @@ export function DraggableCam({
       {showHandle && (
         <div
           aria-hidden="true"
-          className="absolute right-0 bottom-0 size-6 cursor-nwse-resize p-1.5"
+          className="absolute right-0 bottom-0 size-6 cursor-nwse-resize p-1.5 pointer-coarse:size-8 pointer-coarse:p-2"
           onPointerDown={handleResizeDown}
           onPointerMove={handleResizeMove}
           onPointerUp={handleResizeUp}
           onLostPointerCapture={handleResizeUp}
         >
-          {/* A thin corner bracket, shown on hover; the padding keeps the grab area bigger than what's drawn. */}
-          <div className="size-full rounded-br-md border-r-2 border-b-2 border-background/90 opacity-0 transition-opacity group-hover:opacity-100" />
+          {/* A thin corner bracket, shown on hover (always on touch screens, which have no hover); the padding keeps the grab area bigger than what's drawn. */}
+          <div className="size-full rounded-br-md border-r-2 border-b-2 border-background/90 opacity-0 transition-opacity group-hover:opacity-100 pointer-coarse:opacity-100" />
         </div>
       )}
     </div>

@@ -40,7 +40,7 @@ export function VideoPicker({ onPick }: VideoPickerProps) {
           placeholder="Paste a YouTube link"
           aria-label="YouTube link"
           aria-invalid={invalid}
-          className="h-11 min-w-0 flex-1 rounded-full border-2 border-foreground/20 bg-background px-5 font-heading text-sm outline-none placeholder:text-muted-foreground focus-visible:border-primary aria-invalid:border-destructive"
+          className="h-11 min-w-0 flex-1 rounded-full border-2 border-foreground/20 bg-background px-5 font-heading text-base outline-none sm:text-sm placeholder:text-muted-foreground focus-visible:border-primary aria-invalid:border-destructive"
         />
         <Button
           type="submit"
