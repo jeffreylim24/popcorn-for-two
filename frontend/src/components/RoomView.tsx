@@ -173,7 +173,12 @@ export function RoomView({
       <section className="flex flex-1 flex-col justify-center gap-4 py-8">
         {/* The screen and its control strip, one object like an old TV. */}
         <div className="rounded-2xl shadow-xl">
-          <div ref={stageRef} className={cn(isFullscreen && 'bg-foreground')}>
+          {/* Pinned to the window's edges: what the browser does for real
+            fullscreen, and all a fake one (iPhone) can do. */}
+          <div
+            ref={stageRef}
+            className={cn(isFullscreen && 'fixed inset-0 z-50 bg-foreground')}
+          >
             {/* YouTube replaces #player with an iframe, so the wrapper does the sizing. */}
             <div
               className={cn(
