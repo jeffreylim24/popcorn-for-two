@@ -67,7 +67,8 @@ export function Lobby({
             className="absolute inset-0 size-full rounded-none border-0 shadow-none"
           />
         </div>
-        <div className="flex gap-3">
+        {/* Phones: camera and mic share a row, Join gets its own. */}
+        <div className="grid w-full max-w-xl grid-cols-2 gap-3 sm:flex sm:w-auto">
           <Button
             type="button"
             size="lg"
@@ -103,7 +104,7 @@ export function Lobby({
           <Button
             type="button"
             size="lg"
-            className="h-11 px-6 font-heading text-base"
+            className="col-span-2 h-11 px-6 font-heading text-base"
             onClick={onJoin}
           >
             Join room
