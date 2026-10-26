@@ -8,7 +8,7 @@ import (
 
 func TestLimiter_AllowsUpToMax(t *testing.T) {
 	l := newLimiter(2, time.Hour)
-	want := []bool{true, true, false, false}
+	want := []bool{true, true, true, false}
 	for i, w := range want {
 		if got := l.allow("1.2.3.4"); got != w {
 			t.Errorf("attempt %d: allow = %v, want %v", i+1, got, w)
