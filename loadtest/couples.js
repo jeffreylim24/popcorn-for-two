@@ -15,6 +15,12 @@ const RAMP_S = Number(__ENV.RAMP_S || 30)
 /** Seconds every couple stays once the last one has arrived. */
 const HOLD_S = Number(__ENV.HOLD_S || 60)
 
+/**
+ * relay_latency p95 pass line (ms). The target is "the server adds under
+ * 100 ms", so over a real network pass the baseline (50 couples) + 100.
+ */
+const P95_LIMIT_MS = Number(__ENV.P95_LIMIT_MS || 100)
+
 /** Same as the app: each playing tab sends its position every 2 s. */
 const SYNC_INTERVAL_MS = 2000
 /** A couple that isn't paired by then counts as a failed join. */
@@ -48,7 +54,7 @@ export const options = {
   // k6's default summary stops at p(95); p(99) shows the slow tail first.
   summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)'],
   thresholds: {
-    relay_latency: ['p(95)<100'],
+    relay_latency: [`p(95)<${P95_LIMIT_MS}`],
     relay_lost: ['count==0'],
     paired: ['rate==1'],
   },
