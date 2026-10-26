@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+        - uses: actions/checkout@v7             # Get the code
+        - uses: oven-sh/setup-bun@v2            # Install bun
+          with:
+            bun-version: 1.4.2
+        - run: bun install --frozen-lockfile    # Install dependencies
+        - run: bun run lint                     # Run linter
+        - run: bun run format:check             # Check formatting
+        - run: bun run test                     # Run tests
+        - run: bun run build                    # Build the project
+
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+        - uses: actions/checkout@v7               # Get the code
+        - uses: actions/setup-go@v7               # Install Go
+          with:
+            go-version-file: backend/go.mod       # uses: steps start at the repo root
+            cache-dependency-path: backend/go.sum
+        - name: format check                      # Run gofmt, check that no lines are printed
+          run: |                                  # If there are any, means format check failed
+            files="$(gofmt -l .)"
+            if [ -n "$files" ]; then
+              echo "$files"
+              exit 1
+            fi
+        - run: go vet ./...                       # Run vet
+        - run: go test ./...                      # Run tests
