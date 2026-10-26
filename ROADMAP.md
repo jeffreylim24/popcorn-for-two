@@ -633,7 +633,7 @@ as real date nights show what matters.
 | | Shorter TURN TTL + refresh while seated | LOW | Bounds a leaked credential's life; Go re-sends `ice-servers`, browser applies it with `pc.setConfiguration()`. Doesn't stop someone who keeps the seat (that's bounded by #8/#9 + a usage alert) |
 | [#10](https://github.com/jeffreylim24/popcorn-for-two/issues/10) | ✅ CI: run the checks on every PR (PR #22 merged 2026-10-25) | done | `.github/workflows/ci.yml`: two parallel jobs on every PR and every push to `main`. frontend: lint, format:check, test, build (Bun pinned to the Dockerfile's); backend: gofmt (fails if it lists a file), vet, test (Go from `go.mod`). Checked: a broken Go test turned only backend red, a broken Vitest test only frontend |
 | | ~~CD: deploy to Fly from `main` after CI passes~~ | dropped | Session 41: a deploy restarts the only machine and drops live rooms, so deploys stay manual to pick the moment. Option if wanted later: a manual "Run workflow" deploy button (`workflow_dispatch`) |
-| [#21](https://github.com/jeffreylim24/popcorn-for-two/issues/21) | Load test: how many concurrent rooms the server really handles (in progress: local done, Fly next) | LOW | `maxRooms = 5000` is a memory guard, not a measured capacity. Run against a separate Fly app, not prod. See "Load test results" below |
+| [#21](https://github.com/jeffreylim24/popcorn-for-two/issues/21) | Load test: how many concurrent rooms the server really handles (measured 2026-10-26, PR pending) | LOW | Production's VM holds **~1250 couples** at once; 1500 is an out-of-memory kill. Memory is the wall, not CPU. Plan on ~1000 with a margin; more needs a bigger VM. See "Load test results" below |
 | [#11](https://github.com/jeffreylim24/popcorn-for-two/issues/11) | Call status indicator | MEDIUM | A failed call is mostly silent today |
 | [#12](https://github.com/jeffreylim24/popcorn-for-two/issues/12) | Devices: pick cam/mic/speakers, voice vs movie volume (was M11) | MEDIUM | Wait for real use; volume balance is the likely first slice |
 | [#24](https://github.com/jeffreylim24/popcorn-for-two/issues/24) | ✅ Lobby and room layout on phones (PR #25 merged, deployed 2026-10-26) | done | Under 640px (Tailwind `sm:`): lobby buttons in two rows, header on one line (room badge hidden), resize handle always shown on touch (`pointer-coarse:`), 16px link input (no iOS zoom). Cams start side by side: 24px margins matching the player, 8px gap, read once when the room opens. Checked on a real phone |
@@ -691,11 +691,43 @@ Every run: 100% paired, 0 lost.
 - **At 3000 the GC thrashes**: the heap goal equals the live heap, so Go
   collects back to back, latency bends, and the process passes the soft
   limit. On Fly (~200 MB usable) that is likely an out-of-memory kill.
-- **Estimated ceiling on the current VM: 2000–3000 couples**, below the
-  5000-room cap. Cheap fix if it ever matters: a 512 MB VM.
-- Caveats: `GOMEMLIMIT` is soft (nothing crashes locally); a Fly shared
-  CPU is slower than a Mac core. Next: the same runs against a separate
-  `popcorn-for-two-load` Fly app.
+- Local estimate for the Fly VM was 2000–3000 couples. Fly measured
+  lower (below): it missed the ~55 MB the VM uses before the server
+  starts. `GOMEMLIMIT` is soft, so nothing crashes locally.
+
+**Fly, 2026-10-26.** Server: a separate `popcorn-for-two-load` app
+(`fly.load.toml`: production's VM, 256 MB `shared-cpu-1x`, plus
+`LOAD_TEST=1`). k6 on a Fly machine in the same region (`yyz`, 2
+performance CPUs, 4 GB) through the public URL, so Fly's proxy stays in
+the path. Machine restarted before each run.
+
+| Couples | Result | relay p95 / p99 | lost | dropped sockets | Memory |
+|---|---|---|---|---|---|
+| 1000 | ✓ | 4 / 6 ms | 0 | 0 | peak ~165 MB |
+| 1250 | ✓ | 6 / 14 ms | 0 | 0 | peak ~197 MB of 207 |
+| 1500 | ✗ | 14 / 51 ms | 5097 | 3000 of 3000 | out-of-memory kill |
+| 2000 | ✗ | 38 ms before the kill | 6549 | 3643 | out-of-memory kill |
+| 2000, `GOMEMLIMIT=180MiB` | ✗ | | | | out-of-memory kill |
+
+- **Ceiling: ~1250 couples**, with almost no memory left; plan on
+  ~1000. The VM has ~207 MB, ~55 MB of it used at idle (kernel, Fly's
+  init, SSH), leaving ~150 MB for the server.
+- **CPU and latency are never the limit:** p95 stays under 15 ms right up
+  to the kill. A kill shows as `exit_code=137, oom_killed=true` in
+  `fly machine status`, and every room is lost on the restart.
+- **`GOMEMLIMIT` doesn't help here:** it only makes Go give back spare
+  memory; at 2000 couples the live data alone doesn't fit. More capacity
+  means a bigger VM (512 MB roughly doubles it).
+- **Run k6 next to the server.** From a home laptop, 1000 couples
+  "failed" (p95 6.67 s, sockets dropped by the heartbeat) because the
+  home network / internet path choked; from a Fly machine in `yyz` the
+  same run was 4 ms.
+- Reproduce: `fly deploy --config fly.load.toml --ha=false`, then
+  `fly machine run --app popcorn-for-two-k6 --region yyz --rm
+  --vm-cpu-kind performance --vm-cpus 2 --vm-memory 4096 --file-local
+  /scripts/couples.js=loadtest/couples.js --env BASE_URL=https://popcorn-for-two-load.fly.dev
+  --env COUPLES=1250 grafana/k6:2.3.0 -- run -q --no-color /scripts/couples.js`.
+  Destroy both apps afterwards.
 
 ### Notes for untracked rows
 
