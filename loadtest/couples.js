@@ -99,6 +99,9 @@ export default function () {
     let position = 0
     intervals.push(
       setInterval(() => {
+        // send() on a closed socket throws and kills the whole couple; a
+        // dropped socket is already counted in dropped_sockets.
+        if (socket.readyState !== 1) return // 1 = OPEN
         position += SYNC_INTERVAL_MS / 1000
         socket.send(JSON.stringify({ type: 'sync', position, state: 'playing', sentAt: Date.now() }))
         sent++
