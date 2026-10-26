@@ -18,8 +18,17 @@ export function useFullscreen(ref: RefObject<HTMLElement | null>) {
     return () => document.removeEventListener('fullscreenchange', onChange)
   }, [ref])
 
-  /** Enters fullscreen, or leaves it if we're in it. */
+  /**
+   * Enters fullscreen, or leaves it if we're in it. Where elements can't go
+   * fullscreen (every iPhone browser), fakes it: `isFullscreen` alone pins the
+   * stage to the window.
+   */
   const toggleFullscreen = () => {
+    // No browser and no fullscreenchange event here, so we keep the state.
+    if (typeof ref.current?.requestFullscreen !== 'function') {
+      setIsFullscreen((on) => !on)
+      return
+    }
     if (document.fullscreenElement) {
       document.exitFullscreen()
       return

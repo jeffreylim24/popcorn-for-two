@@ -24,7 +24,7 @@ A web app for long-distance couples to have date nights together: movies, videos
 - `ROADMAP.md`: MVP milestones M1–M10 (done, session 38) with their decisions; "Backlog" is a priority table of future work. New work is tracked as GitHub issues.
 - Root: `README.md`, `Dockerfile` (Bun → Go → Alpine), `fly.toml`. Deploy by hand from an up-to-date `main`: `fly deploy --ha=false` (one machine; rooms live in memory). New secrets go in before the deploy that needs them: `fly secrets import --stage < backend/.env` (no values in shell history); `fly secrets list` shows digests only.
 - Review checks Claude may run (read-only): `go test ./...`, `go vet ./...` and `gofmt -l .` in `backend/`.
-- Visual check Claude may run: `bun run build`, `bunx vite preview --port <p>`, then headless Chrome `--screenshot=<scratchpad>/x.png <url>`.
+- Visual check Claude may run: `bun run build`, `bunx vite preview --port <p>`, then headless Chrome `--screenshot=<scratchpad>/x.png <url>`. Headless Chrome won't go narrower than 500px, so for phone widths use `puppeteer-core` installed in the scratchpad (not the project) with `page.setViewport({ width: 375, isMobile: true, hasTouch: true })` pointed at the installed Chrome; add `--use-fake-device-for-media-stream` to see a cam.
 
 **The learner:** has done full-stack work before but is very rusty. Treat them as a beginner who picks concepts up fast. Ask what they remember before explaining from zero.
 
