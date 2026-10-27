@@ -73,24 +73,47 @@ The reasoning behind each choice (and what was rejected) lives in [ROADMAP.md](R
 ### Project layout
 
 ```
-backend/              Go server, one package: routes + env (main.go), rooms,
-                      WebSocket relay + ICE servers (handlers.go), serves the SPA
+backend/              Go server, one package: routes, env + load-test mode
+                      (main.go), rooms + sweeper (rooms.go), WebSocket relay +
+                      ICE servers (handlers.go), per-IP limits (limiter.go),
+                      serves the SPA (spa.go)
 frontend/src/
   pages/              HomePage, RoomPage (lobby → room), NotFoundPage
   components/         Lobby, RoomView, DraggableCam, controls; ui/ is shadcn output
   hooks/              useRoomSocket, useSync, useYouTubePlayer, useCall,
                       useCamera, useMic, useFullscreen
   sync.ts             Pure sync rules + message parsing (unit tested)
+  youtube.ts, mic.ts  Link → video ID, mic label (unit tested)
+loadtest/             k6 scripts: couples.js (capacity), rooms.js (create limit)
+.github/workflows/    CI: frontend and backend checks on every PR and push to main
 Dockerfile            Bun build → Go build → small Alpine image
-fly.toml              Fly.io config
+fly.toml              Fly.io config (fly.load.toml: the load-test copy)
 ```
 
 ## Checks
 
+CI (GitHub Actions) runs these on every pull request and every push to `main`, frontend and backend in parallel. To run them yourself:
+
 ```sh
-cd frontend && bun run test && bun run lint && bun run format:check
-cd backend && go test ./... && go vet ./... && gofmt -l .
+cd frontend && bun run test && bun run lint && bun run format:check && bun run build
+cd backend && go test ./... && go vet ./... && gofmt -l .   # gofmt must print nothing
 ```
+
+## Load test
+
+`loadtest/couples.js` ([k6](https://k6.io/)) acts out many couples at once: each one creates a room, both partners join, and each sends a `sync` every 2 s, like the real app. It measures relay latency, lost messages, and whether every couple got paired.
+
+Run it against a server in load-test mode (`LOAD_TEST=1`: fake TURN, no TURN keys needed, per-IP limits off). The server refuses load-test mode on the production app.
+
+```sh
+# Terminal 1
+cd backend && LOAD_TEST=1 go run .
+
+# Terminal 2 (COUPLES, RAMP_S, HOLD_S, P95_LIMIT_MS are optional)
+k6 run -e COUPLES=500 loadtest/couples.js
+```
+
+**Result on production's VM (256 MB, 1 shared CPU):** about 1250 couples at once, with relay p95 under 15 ms. 1500 couples runs out of memory and the machine restarts. Memory is the limit, not CPU, so plan on ~1000 couples; more needs a bigger VM. The full numbers, and how to run it on Fly, are in [ROADMAP.md](ROADMAP.md) under "Load test results".
 
 ## Contributing workflow
 
@@ -112,8 +135,9 @@ Every deploy restarts the server and wipes all rooms, so don't deploy during a d
 
 ## Limits
 
-- Chrome only, and designed for a laptop or desktop. It runs on a phone, but the layout isn't made for one (fullscreen doesn't work there).
+- Built and tested for Chrome. Phones work too: the lobby and room fit a phone screen and the cams start side by side. On an iPhone, fullscreen fills the browser window instead of the whole screen (iPhone browsers can't make a page element fullscreen).
 - Two people per room.
+- One server holds about 1000 couples at once with a safe margin (see [Load test](#load-test)).
 - Rooms are lost on restart or deploy. A room that has been empty for 10 minutes is deleted, so a link to an abandoned room stops working.
 - Room creation is limited to 10 per IP per 10 minutes (HTTP 429), and the server holds at most 5,000 rooms at once (HTTP 503).
 - A partner whose connection dies silently (sleep, Wi-Fi drop) keeps their seat for up to about 30 s, until the server's heartbeat (a ping every 15 s) notices.
