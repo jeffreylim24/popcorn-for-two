@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { micLabel } from '@/mic'
 import { cn } from '@/lib/utils'
+import { SwapIcon } from '@/components/SwapIcon'
 
 type FullscreenControlsProps = {
   cameraOn: boolean
@@ -94,11 +95,13 @@ export function FullscreenControls({
         onClick={() => setOpen((o) => !o)}
         pressed={open}
       >
-        {open ? (
-          <ChevronUp aria-hidden="true" />
-        ) : (
-          <ChevronDown aria-hidden="true" />
-        )}
+        <SwapIcon id={open ? 'open' : 'closed'}>
+          {open ? (
+            <ChevronUp aria-hidden="true" />
+          ) : (
+            <ChevronDown aria-hidden="true" />
+          )}
+        </SwapIcon>
       </IconButton>
       {open && (
         <div className="flex gap-2 rounded-full bg-foreground/60 p-1.5 shadow-lg">
@@ -109,33 +112,39 @@ export function FullscreenControls({
             // Nothing to mute without a mic.
             disabled={micError !== null}
           >
-            {micLive ? (
-              <Mic aria-hidden="true" />
-            ) : (
-              <MicOff aria-hidden="true" />
-            )}
+            <SwapIcon id={micLive ? 'on' : 'off'}>
+              {micLive ? (
+                <Mic aria-hidden="true" />
+              ) : (
+                <MicOff aria-hidden="true" />
+              )}
+            </SwapIcon>
           </IconButton>
           <IconButton
             label={cameraOn ? 'Camera on' : 'Camera off'}
             onClick={onToggleCamera}
             pressed={cameraOn}
           >
-            {cameraOn ? (
-              <Video aria-hidden="true" />
-            ) : (
-              <VideoOff aria-hidden="true" />
-            )}
+            <SwapIcon id={cameraOn ? 'on' : 'off'}>
+              {cameraOn ? (
+                <Video aria-hidden="true" />
+              ) : (
+                <VideoOff aria-hidden="true" />
+              )}
+            </SwapIcon>
           </IconButton>
           <IconButton
             label={camsHidden ? 'Cams hidden' : 'Cams shown'}
             onClick={onToggleCams}
             pressed={camsHidden}
           >
-            {camsHidden ? (
-              <EyeOff aria-hidden="true" />
-            ) : (
-              <Eye aria-hidden="true" />
-            )}
+            <SwapIcon id={camsHidden ? 'hidden' : 'shown'}>
+              {camsHidden ? (
+                <EyeOff aria-hidden="true" />
+              ) : (
+                <Eye aria-hidden="true" />
+              )}
+            </SwapIcon>
           </IconButton>
           <IconButton label="Exit fullscreen" onClick={onExit}>
             <Minimize aria-hidden="true" />

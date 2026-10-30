@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { micLabel } from '@/mic'
 import { cn } from '@/lib/utils'
+import { SwapIcon } from '@/components/SwapIcon'
 
 type RoomControlsProps = {
   cameraOn: boolean
@@ -51,7 +52,7 @@ function ControlButton({
       disabled={disabled}
       title={label}
       className={cn(
-        'flex h-9 items-center gap-2 rounded-full px-3 font-heading text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-foreground disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0',
+        'flex h-9 items-center gap-2 rounded-full px-3 font-heading text-xs transition-[color,background-color,scale] outline-none active:not-disabled:scale-[0.94] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-foreground disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0',
         alert
           ? 'bg-primary text-primary-foreground hover:bg-primary/85'
           : 'text-background hover:bg-background/15',
@@ -84,7 +85,13 @@ export function RoomControls({
         <ControlButton
           label={micLabel(micError, micOn)}
           icon={
-            micLive ? <Mic aria-hidden="true" /> : <MicOff aria-hidden="true" />
+            <SwapIcon id={micLive ? 'on' : 'off'}>
+              {micLive ? (
+                <Mic aria-hidden="true" />
+              ) : (
+                <MicOff aria-hidden="true" />
+              )}
+            </SwapIcon>
           }
           onClick={onToggleMic}
           alert={!micLive}
@@ -95,11 +102,13 @@ export function RoomControls({
         <ControlButton
           label={cameraOn ? 'Camera on' : 'Camera off'}
           icon={
-            cameraOn ? (
-              <Video aria-hidden="true" />
-            ) : (
-              <VideoOff aria-hidden="true" />
-            )
+            <SwapIcon id={cameraOn ? 'on' : 'off'}>
+              {cameraOn ? (
+                <Video aria-hidden="true" />
+              ) : (
+                <VideoOff aria-hidden="true" />
+              )}
+            </SwapIcon>
           }
           onClick={onToggleCamera}
           alert={!cameraOn}
@@ -110,11 +119,13 @@ export function RoomControls({
         <ControlButton
           label={camsHidden ? 'Cams hidden' : 'Cams shown'}
           icon={
-            camsHidden ? (
-              <EyeOff aria-hidden="true" />
-            ) : (
-              <Eye aria-hidden="true" />
-            )
+            <SwapIcon id={camsHidden ? 'hidden' : 'shown'}>
+              {camsHidden ? (
+                <EyeOff aria-hidden="true" />
+              ) : (
+                <Eye aria-hidden="true" />
+              )}
+            </SwapIcon>
           }
           onClick={onToggleCams}
           pressed={camsHidden}

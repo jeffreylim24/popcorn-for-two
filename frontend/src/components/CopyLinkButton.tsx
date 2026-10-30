@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Check, Link } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SwapIcon } from '@/components/SwapIcon'
 
 /** How long the button says "Copied!" before it switches back. */
 const COPIED_FOR_MS = 2000
@@ -34,11 +35,13 @@ export function CopyLinkButton() {
       className="rounded-full font-heading text-xs"
       onClick={handleClick}
     >
-      {copied ? (
-        <Check data-icon="inline-start" aria-hidden="true" />
-      ) : (
-        <Link data-icon="inline-start" aria-hidden="true" />
-      )}
+      <SwapIcon id={copied ? 'copied' : 'link'}>
+        {copied ? (
+          <Check data-icon="inline-start" aria-hidden="true" />
+        ) : (
+          <Link data-icon="inline-start" aria-hidden="true" />
+        )}
+      </SwapIcon>
       {copied ? 'Copied!' : 'Copy link'}
     </Button>
   )
