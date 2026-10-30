@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import { Clapperboard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -52,11 +53,24 @@ export function VideoPicker({ onPick }: VideoPickerProps) {
           Watch
         </Button>
       </div>
-      {invalid && (
-        <p className="px-5 font-heading text-xs text-destructive">
-          That doesn't look like a YouTube video link.
-        </p>
-      )}
+      {/* Opens instead of popping. marginTop: -6 cancels the form's `gap-1.5`
+        while the line is 0 tall. */}
+      <AnimatePresence initial={false}>
+        {invalid && (
+          <motion.div
+            key="invalid"
+            initial={{ height: 0, opacity: 0, marginTop: -6 }}
+            animate={{ height: 'auto', opacity: 1, marginTop: 0 }}
+            exit={{ height: 0, opacity: 0, marginTop: -6 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="overflow-hidden"
+          >
+            <p className="px-5 font-heading text-xs text-destructive">
+              That doesn't look like a YouTube video link.
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </form>
   )
 }

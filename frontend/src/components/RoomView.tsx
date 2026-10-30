@@ -3,6 +3,7 @@ import { useRoomSocket, type RoomStatus } from '@/hooks/useRoomSocket'
 import { useSync } from '@/hooks/useSync'
 import { useCall } from '@/hooks/useCall'
 import { useFullscreen } from '@/hooks/useFullscreen'
+import { AnimatePresence, motion } from 'motion/react'
 import { Popcorn } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createAndJoinRoom } from '@/rooms'
@@ -56,6 +57,18 @@ const STATUS_TEXT: Record<
     action: 'reconnect',
   },
 }
+
+/**
+ * A message line opening and closing instead of popping, so the centred
+ * page shifts smoothly. marginTop: -16 cancels the section's `gap-4`, which
+ * would otherwise still push things apart while the line is 0 tall.
+ */
+const SLIDE_OPEN = {
+  initial: { height: 0, opacity: 0, marginTop: -16 },
+  animate: { height: 'auto', opacity: 1, marginTop: 0 },
+  exit: { height: 0, opacity: 0, marginTop: -16 },
+  transition: { duration: 0.25, ease: 'easeOut' },
+} as const
 
 /** Matches Tailwind's `sm:` breakpoint, so "phone" means the same here as in the classes. */
 const PHONE_QUERY = '(max-width: 639px)'
@@ -190,35 +203,46 @@ export function RoomView({
               )}
             >
               <div id="player" />
-              {/* Drawn over the player, not instead of it: YouTube keeps hold of #player. */}
-              {statusText && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-foreground/90 p-6 text-center text-background">
-                  <p className="font-heading text-xl">{statusText.title}</p>
-                  <p className="font-heading text-sm opacity-80">
-                    {statusText.detail}
-                  </p>
-                  {statusText.action === 'create' && (
-                    <Button
-                      type="button"
-                      size="lg"
-                      className="mt-3 h-11 px-6 font-heading text-base"
-                      onClick={createAndJoinRoom}
-                    >
-                      Create a new room
-                    </Button>
-                  )}
-                  {statusText.action === 'reconnect' && (
-                    <Button
-                      type="button"
-                      size="lg"
-                      className="mt-3 h-11 px-6 font-heading text-base"
-                      onClick={reconnect}
-                    >
-                      Reconnect
-                    </Button>
-                  )}
-                </div>
-              )}
+              {/* Drawn over the player, not instead of it: YouTube keeps hold of #player.
+                One key for every status: switching between two statuses swaps
+                the text; only showing or clearing the overlay fades it. */}
+              <AnimatePresence>
+                {statusText && (
+                  <motion.div
+                    key="status"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-foreground/90 p-6 text-center text-background"
+                  >
+                    <p className="font-heading text-xl">{statusText.title}</p>
+                    <p className="font-heading text-sm opacity-80">
+                      {statusText.detail}
+                    </p>
+                    {statusText.action === 'create' && (
+                      <Button
+                        type="button"
+                        size="lg"
+                        className="mt-3 h-11 px-6 font-heading text-base"
+                        onClick={createAndJoinRoom}
+                      >
+                        Create a new room
+                      </Button>
+                    )}
+                    {statusText.action === 'reconnect' && (
+                      <Button
+                        type="button"
+                        size="lg"
+                        className="mt-3 h-11 px-6 font-heading text-base"
+                        onClick={reconnect}
+                      >
+                        Reconnect
+                      </Button>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
             {/* Outside the player wrapper: its overflow-hidden would clip the box.
             Inside the stage: fullscreen shows only the stage, and the cams
@@ -284,11 +308,19 @@ export function RoomView({
         </div>
         <VideoPicker onPick={pickVideo} />
         {/* Last, so the picker doesn't jump when it goes away. */}
-        {status === 'connected' && partnerStream === null && (
-          <p className="text-center font-heading text-sm text-muted-foreground">
-            Waiting for your partner. Copy the link and send it to them.
-          </p>
-        )}
+        <AnimatePresence initial={false}>
+          {status === 'connected' && partnerStream === null && (
+            <motion.div
+              key="waiting"
+              {...SLIDE_OPEN}
+              className="overflow-hidden"
+            >
+              <p className="text-center font-heading text-sm text-muted-foreground">
+                Waiting for your partner. Copy the link and send it to them.
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </section>
     </main>
   )
