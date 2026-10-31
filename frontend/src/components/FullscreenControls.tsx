@@ -10,9 +10,11 @@ import {
   Video,
   VideoOff,
 } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { Button } from '@/components/ui/button'
 import { micLabel } from '@/mic'
 import { cn } from '@/lib/utils'
+import { SwapIcon } from '@/components/SwapIcon'
 
 type FullscreenControlsProps = {
   cameraOn: boolean
@@ -94,54 +96,73 @@ export function FullscreenControls({
         onClick={() => setOpen((o) => !o)}
         pressed={open}
       >
-        {open ? (
-          <ChevronUp aria-hidden="true" />
-        ) : (
-          <ChevronDown aria-hidden="true" />
-        )}
+        <SwapIcon id={open ? 'open' : 'closed'}>
+          {open ? (
+            <ChevronUp aria-hidden="true" />
+          ) : (
+            <ChevronDown aria-hidden="true" />
+          )}
+        </SwapIcon>
       </IconButton>
-      {open && (
-        <div className="flex gap-2 rounded-full bg-foreground/60 p-1.5 shadow-lg">
-          <IconButton
-            label={micLabel(micError, micOn)}
-            onClick={onToggleMic}
-            pressed={micOn}
-            // Nothing to mute without a mic.
-            disabled={micError !== null}
+      {/* Drops down from the chevron. Fine to transform: this bar isn't an
+        ancestor of the cams, so their `fixed` position is unaffected. */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            key="bar"
+            initial={{ opacity: 0, y: -8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.95 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="flex gap-2 rounded-full bg-foreground/60 p-1.5 shadow-lg"
           >
-            {micLive ? (
-              <Mic aria-hidden="true" />
-            ) : (
-              <MicOff aria-hidden="true" />
-            )}
-          </IconButton>
-          <IconButton
-            label={cameraOn ? 'Camera on' : 'Camera off'}
-            onClick={onToggleCamera}
-            pressed={cameraOn}
-          >
-            {cameraOn ? (
-              <Video aria-hidden="true" />
-            ) : (
-              <VideoOff aria-hidden="true" />
-            )}
-          </IconButton>
-          <IconButton
-            label={camsHidden ? 'Cams hidden' : 'Cams shown'}
-            onClick={onToggleCams}
-            pressed={camsHidden}
-          >
-            {camsHidden ? (
-              <EyeOff aria-hidden="true" />
-            ) : (
-              <Eye aria-hidden="true" />
-            )}
-          </IconButton>
-          <IconButton label="Exit fullscreen" onClick={onExit}>
-            <Minimize aria-hidden="true" />
-          </IconButton>
-        </div>
-      )}
+            <IconButton
+              label={micLabel(micError, micOn)}
+              onClick={onToggleMic}
+              pressed={micOn}
+              // Nothing to mute without a mic.
+              disabled={micError !== null}
+            >
+              <SwapIcon id={micLive ? 'on' : 'off'}>
+                {micLive ? (
+                  <Mic aria-hidden="true" />
+                ) : (
+                  <MicOff aria-hidden="true" />
+                )}
+              </SwapIcon>
+            </IconButton>
+            <IconButton
+              label={cameraOn ? 'Camera on' : 'Camera off'}
+              onClick={onToggleCamera}
+              pressed={cameraOn}
+            >
+              <SwapIcon id={cameraOn ? 'on' : 'off'}>
+                {cameraOn ? (
+                  <Video aria-hidden="true" />
+                ) : (
+                  <VideoOff aria-hidden="true" />
+                )}
+              </SwapIcon>
+            </IconButton>
+            <IconButton
+              label={camsHidden ? 'Cams hidden' : 'Cams shown'}
+              onClick={onToggleCams}
+              pressed={camsHidden}
+            >
+              <SwapIcon id={camsHidden ? 'hidden' : 'shown'}>
+                {camsHidden ? (
+                  <EyeOff aria-hidden="true" />
+                ) : (
+                  <Eye aria-hidden="true" />
+                )}
+              </SwapIcon>
+            </IconButton>
+            <IconButton label="Exit fullscreen" onClick={onExit}>
+              <Minimize aria-hidden="true" />
+            </IconButton>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

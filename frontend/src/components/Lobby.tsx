@@ -2,6 +2,7 @@ import { Headphones, Mic, MicOff, Popcorn, Video, VideoOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SelfView } from '@/components/SelfView'
 import { micLabel } from '@/mic'
+import { SwapIcon } from '@/components/SwapIcon'
 
 type LobbyProps = {
   code: string
@@ -77,11 +78,13 @@ export function Lobby({
             onClick={onToggleCamera}
             aria-pressed={cameraOn}
           >
-            {cameraOn ? (
-              <Video data-icon="inline-start" aria-hidden="true" />
-            ) : (
-              <VideoOff data-icon="inline-start" aria-hidden="true" />
-            )}
+            <SwapIcon id={cameraOn ? 'on' : 'off'}>
+              {cameraOn ? (
+                <Video data-icon="inline-start" aria-hidden="true" />
+              ) : (
+                <VideoOff data-icon="inline-start" aria-hidden="true" />
+              )}
+            </SwapIcon>
             {cameraOn ? 'Camera on' : 'Camera off'}
           </Button>
           <Button
@@ -94,11 +97,13 @@ export function Lobby({
             // Nothing to mute without a mic.
             disabled={micError !== null}
           >
-            {micOn && !micError ? (
-              <Mic data-icon="inline-start" aria-hidden="true" />
-            ) : (
-              <MicOff data-icon="inline-start" aria-hidden="true" />
-            )}
+            <SwapIcon id={micOn && !micError ? 'on' : 'off'}>
+              {micOn && !micError ? (
+                <Mic data-icon="inline-start" aria-hidden="true" />
+              ) : (
+                <MicOff data-icon="inline-start" aria-hidden="true" />
+              )}
+            </SwapIcon>
             {micLabel(micError, micOn)}
           </Button>
           <Button
