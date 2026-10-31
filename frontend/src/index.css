@@ -119,9 +119,45 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Pixel-art cursors as inline SVG: 12px art drawn at 24px (an enlarged PNG
+   cursor blurs). The numbers after each image are its hotspot. Holding the
+   mouse down makes :root :active, which moves the arrow's and hand's
+   hotspots 2px up, so they're drawn 2px lower: a click "dip". */
+:root {
+  --cursor-pointer-img: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 12 12' shape-rendering='crispEdges'><path fill='%23242027' d='M2 2h3v1H2zM2 3h1v1H2zM4 3h2v1H4zM2 4h1v1H2zM5 4h2v1H5zM2 5h1v1H2zM6 5h2v1H6zM2 6h1v1H2zM7 6h1v1H7zM2 7h1v1H2zM7 7h1v1H7zM2 8h1v1H2zM6 8h2v1H6zM2 9h5v1H2z'/><path fill='%23daddd8' d='M3 3h1v1H3zM3 4h2v1H3zM3 5h3v1H3zM3 6h4v1H3zM3 7h3v1H3zM3 8h2v1H3z'/><path fill='%235f758e' d='M6 7h1v1H6zM5 8h1v1H5z'/></svg>");
+  --cursor-hand-img: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 12 12' shape-rendering='crispEdges'><path fill='%23242027' d='M4 2h2v1H4zM4 3h1v1H4zM6 3h1v1H6zM4 4h1v1H4zM6 4h2v1H6zM2 5h3v1H2zM8 5h1v1H8zM2 6h1v1H2zM4 6h1v1H4zM9 6h1v1H9zM2 7h1v1H2zM9 7h1v1H9zM2 8h2v1H2zM8 8h2v1H8zM3 9h6v1H3z'/><path fill='%23daddd8' d='M5 3h1v1H5zM5 4h1v1H5zM5 5h3v1H5zM3 6h1v1H3zM5 6h1v1H5zM7 6h1v1H7zM4 7h3v1H4z'/><path fill='%235f758e' d='M6 6h1v1H6zM8 6h1v1H8zM3 7h1v1H3zM7 7h2v1H7zM4 8h4v1H4z'/></svg>");
+  --cursor-grab-img: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 12 12' shape-rendering='crispEdges'><path fill='%23242027' d='M4 2h3v1H4zM4 3h1v1H4zM7 3h1v1H7zM4 4h1v1H4zM8 4h1v1H8zM2 5h3v1H2zM9 5h1v1H9zM2 6h1v1H2zM4 6h1v1H4zM9 6h1v1H9zM2 7h1v1H2zM9 7h1v1H9zM2 8h2v1H2zM8 8h2v1H8zM3 9h6v1H3z'/><path fill='%23daddd8' d='M5 3h2v1H5zM5 4h3v1H5zM5 5h4v1H5zM3 6h1v1H3zM5 6h1v1H5zM7 6h1v1H7zM4 7h3v1H4z'/><path fill='%235f758e' d='M6 6h1v1H6zM8 6h1v1H8zM3 7h1v1H3zM7 7h2v1H7zM4 8h4v1H4z'/></svg>");
+  --cursor-grabbing-img: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 12 12' shape-rendering='crispEdges'><path fill='%23242027' d='M4 3h4v1H4zM4 4h1v1H4zM8 4h1v1H8zM2 5h3v1H2zM9 5h1v1H9zM2 6h1v1H2zM4 6h1v1H4zM9 6h1v1H9zM2 7h1v1H2zM9 7h1v1H9zM2 8h2v1H2zM8 8h2v1H8zM3 9h6v1H3z'/><path fill='%23daddd8' d='M5 4h3v1H5zM5 5h4v1H5zM3 6h1v1H3zM5 6h1v1H5zM7 6h1v1H7zM4 7h3v1H4z'/><path fill='%235f758e' d='M6 6h1v1H6zM8 6h1v1H8zM3 7h1v1H3zM7 7h2v1H7zM4 8h4v1H4z'/></svg>");
+  --cursor-text-img: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 12 12' shape-rendering='crispEdges'><path fill='%23242027' d='M3 2h5v1H3zM3 3h2v1H3zM6 3h2v1H6zM4 4h1v1H4zM6 4h1v1H6zM4 5h1v1H4zM6 5h1v1H6zM4 6h1v1H4zM6 6h1v1H6zM4 7h1v1H4zM6 7h1v1H6zM3 8h2v1H3zM6 8h2v1H6zM3 9h5v1H3z'/><path fill='%23daddd8' d='M5 3h1v1H5zM5 4h1v1H5zM5 5h1v1H5zM5 6h1v1H5zM5 7h1v1H5zM5 8h1v1H5z'/></svg>");
+  --cursor-pointer: var(--cursor-pointer-img) 4 4, auto;
+  --cursor-hand: var(--cursor-hand-img) 10 4, pointer;
+  --cursor-grab: var(--cursor-grab-img) 12 12, grab;
+  --cursor-grabbing: var(--cursor-grabbing-img) 12 12, grabbing;
+  --cursor-text: var(--cursor-text-img) 11 12, text;
+}
+
+:root:active {
+  --cursor-pointer: var(--cursor-pointer-img) 4 2, auto;
+  --cursor-hand: var(--cursor-hand-img) 10 2, pointer;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+  /* Utilities (the cams' grab cursors, cursor-nwse-resize, cursor-not-allowed)
+     sit in a later layer, so they still win over these. */
+  html {
+    cursor: var(--cursor-pointer);
+  }
+  a,
+  button:not(:disabled),
+  [role='button'] {
+    cursor: var(--cursor-hand);
+  }
+  input,
+  textarea {
+    cursor: var(--cursor-text);
   }
   body {
     @apply bg-background text-foreground;

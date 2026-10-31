@@ -120,7 +120,7 @@ export function DraggableCam({
 
   return (
     <div
-      className="group fixed z-10 cursor-grab touch-none select-none active:cursor-grabbing"
+      className="group fixed z-10 cursor-(--cursor-grab) touch-none select-none active:cursor-(--cursor-grabbing)"
       style={{
         left: `${box.x * 100}vw`,
         top: `${box.y * 100}vh`,
