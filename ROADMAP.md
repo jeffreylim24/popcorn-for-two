@@ -638,9 +638,16 @@ Decisions (planned, not built):
   machine. A global cap would need shared state again. The pool size
   bounds the total, and that is the cost guard.
 
-- [ ] **S1. Several machines, one room map each** ([#32](https://github.com/jeffreylim24/popcorn-for-two/issues/32))
+- [ ] **S1. Several machines, one room map each** ([#32](https://github.com/jeffreylim24/popcorn-for-two/issues/32);
+  full plan: [docs/plans/s1-room-routing.md](docs/plans/s1-room-routing.md))
   - Create: the machine that gets `POST /api/rooms` hosts the room and
-    puts its machine ID in the code.
+    returns `{machineID}-{random6}`. The `rooms` map key is only the
+    random part (unique per machine is enough; the prefix makes codes
+    unique across the fleet).
+  - The machine ID is passed in from `main` (like `getICE`), not a
+    package variable, so tests can act as machine A or B in parallel.
+    `main` turns an empty `FLY_MACHINE_ID` into `"local"`; nothing
+    below `main` knows about dev.
   - Join: malformed code → 4004, no replay; another machine's ID →
     `fly-replay: instance=<id>`, no upgrade; own ID → existing join.
   - `FLY_MACHINE_ID` unset (dev, `go test`) → every room is local.
