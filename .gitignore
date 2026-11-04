@@ -4,5 +4,4 @@
 .DS_Store
 /loadtest/results
 /artifacts
-docs/LEARNING.md
-docs/learning-archive.md
+docs/learning/
