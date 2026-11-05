@@ -135,13 +135,15 @@ func createRoomHandler(createLimit *limiter, machineID string) http.Handler {
 			http.Error(w, "Too many rooms created, try again later", http.StatusTooManyRequests)
 			return
 		}
-		roomCode, err := createRoom()
+		key, err := createRoom()
 		if err != nil {
 			log.Println("Error creating room:", err)
 			http.Error(w, "Server is full, try again later", http.StatusServiceUnavailable)
 			return
 		}
-		fmt.Fprint(w, roomCode)
+		// The machine part tells a join which machine holds the room; the
+		// rooms map only knows the key.
+		fmt.Fprint(w, machineID+"-"+key)
 	})
 }
 

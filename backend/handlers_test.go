@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -313,6 +315,34 @@ func TestCreateRoom_OverLimitGets429(t *testing.T) {
 	}
 	if len(rooms) != before {
 		t.Errorf("rooms = %d, want %d (no room made)", len(rooms), before)
+	}
+}
+
+// roomKeyPattern matches the random part of a room code: exactly the 6
+// letters or digits generateRoomCode makes.
+var roomKeyPattern = regexp.MustCompile(`^[A-Za-z0-9]{6}$`)
+
+// The code sent back is "{machineID}-{key}", and only the key goes in the
+// rooms map: the machine part is for routing, not lookup.
+func TestCreateRoom_CodeIsMachineIDThenKey(t *testing.T) {
+	h := createRoomHandler(newLimiter(10, time.Hour), "A")
+	rec := postRoom(h)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	code := rec.Body.String()
+	key, found := strings.CutPrefix(code, "A-")
+	if !found {
+		t.Fatalf("code = %q, want it to start with %q", code, "A-")
+	}
+	if !roomKeyPattern.MatchString(key) {
+		t.Errorf("key = %q, want 6 letters or digits", key)
+	}
+	roomsMutex.Lock()
+	_, exists := rooms[key]
+	roomsMutex.Unlock()
+	if !exists {
+		t.Errorf("rooms has no entry for key %q", key)
 	}
 }
 
