@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -317,10 +316,6 @@ func TestCreateRoom_OverLimitGets429(t *testing.T) {
 		t.Errorf("rooms = %d, want %d (no room made)", len(rooms), before)
 	}
 }
-
-// roomKeyPattern matches the random part of a room code: exactly the 6
-// letters or digits generateRoomCode makes.
-var roomKeyPattern = regexp.MustCompile(`^[A-Za-z0-9]{6}$`)
 
 // The code sent back is "{machineID}-{key}", and only the key goes in the
 // rooms map: the machine part is for routing, not lookup.

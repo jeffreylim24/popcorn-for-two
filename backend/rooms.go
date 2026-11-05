@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand/v2"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -57,6 +58,10 @@ var roomsMutex sync.Mutex
 // other browser would then load.
 var videoIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
 
+// roomKeyPattern matches the random part of a room code: exactly the 6
+// letters or digits generateRoomCode makes.
+var roomKeyPattern = regexp.MustCompile(`^[A-Za-z0-9]{6}$`)
+
 // generateRoomCode returns a random 6-character alphanumeric code. It does
 // not check for collisions; createRoom does.
 func generateRoomCode() string {
@@ -66,6 +71,24 @@ func generateRoomCode() string {
 		code += string(letters[rand.IntN(len(letters))])
 	}
 	return code
+}
+
+// parseRoomCode splits a room code "{machine}-{key}" into the ID of the
+// machine that holds the room and the key it is stored under in rooms. It
+// splits on the last "-": keys never contain one, so this still works if a
+// machine ID ever does. ok is false if there is no "-", the machine part is
+// empty, or the key isn't 6 letters or digits.
+func parseRoomCode(code string) (machine, key string, ok bool) {
+	i := strings.LastIndex(code, "-")
+	if i == -1 {
+		return "", "", false
+	}
+	machine = code[:i]
+	key = code[i+1:]
+	if machine == "" || !roomKeyPattern.MatchString(key) {
+		return "", "", false
+	}
+	return machine, key, true
 }
 
 // createRoom makes an empty room under a fresh, unused code and returns
