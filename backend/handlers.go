@@ -126,8 +126,9 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 
 // createRoomHandler answers POST /api/rooms with the new room's code as
 // plain text. A caller over createLimit gets 429, and 503 if the server is
-// already holding its maximum number of rooms.
-func createRoomHandler(createLimit *limiter) http.Handler {
+// already holding its maximum number of rooms. machineID is this machine's
+// ID (see main).
+func createRoomHandler(createLimit *limiter, machineID string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !createLimit.allow(clientIP(r)) {
 			log.Println("Room creation limit reached:", clientIP(r))
@@ -152,7 +153,8 @@ func createRoomHandler(createLimit *limiter) http.Handler {
 // or statusRoomNotFound, and gets no TURN credentials: getICE is only
 // called for a seat holder, and only while turnLimit allows their IP. A
 // connection that stops answering hb's pings is closed and loses its seat.
-func joinRoomHandler(getICE iceServersFunc, revoke revokeFunc, turnLimit *limiter, hb heartbeat) http.Handler {
+// machineID is this machine's ID (see main).
+func joinRoomHandler(getICE iceServersFunc, revoke revokeFunc, turnLimit *limiter, hb heartbeat, machineID string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		code := r.PathValue("code")
 		conn, err := websocket.Accept(w, r, nil)

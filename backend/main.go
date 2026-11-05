@@ -43,10 +43,24 @@ func loadTestMode(loadTest, flyAppName string) (bool, error) {
 }
 
 func main() {
-	loadTest, err := loadTestMode(os.Getenv("LOAD_TEST"), os.Getenv("FLY_APP_NAME"))
+	// Fly sets FLY_APP_NAME on every machine, so empty means "not on Fly".
+	flyAppName := os.Getenv("FLY_APP_NAME")
+
+	loadTest, err := loadTestMode(os.Getenv("LOAD_TEST"), flyAppName)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	isLocal := flyAppName == ""
+	machineID := "local"
+	if !isLocal {
+		machineID = os.Getenv("FLY_MACHINE_ID")
+	}
+
+	if machineID == "" {
+		log.Fatal("FLY_MACHINE_ID must be set when running on Fly")
+	}
+	log.Printf("machine ID: %s", machineID)
 
 	// 30 credential fetches per IP per 10 minutes: room for reloads (each
 	// one is a new join) and two-tab testing from one IP, and still stops
@@ -101,8 +115,8 @@ func main() {
 	hb := heartbeat{every: 15 * time.Second, timeout: 15 * time.Second}
 
 	http.HandleFunc("GET /api/health", healthHandler)
-	http.Handle("POST /api/rooms", createRoomHandler(createLimit))
-	http.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(getICE, revokeICE, turnLimit, hb))
+	http.Handle("POST /api/rooms", createRoomHandler(createLimit, machineID))
+	http.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(getICE, revokeICE, turnLimit, hb, machineID))
 	// "GET /" is the catch-all: the more specific /api/ patterns win. The
 	// path is relative to the working directory, which is backend/ both in
 	// dev and in the Docker image.

@@ -136,7 +136,7 @@ func startJoinServerWith(t *testing.T, turnLimit *limiter, hb heartbeat) (*httpt
 	// Unblocks a revoke a test left waiting, so no goroutine outlives it.
 	t.Cleanup(func() { close(fake.release) })
 	mux := http.NewServeMux()
-	mux.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(fake.getICE, fake.revoke, turnLimit, hb))
+	mux.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(fake.getICE, fake.revoke, turnLimit, hb, "local"))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return srv, fake
@@ -299,7 +299,7 @@ func postRoom(h http.Handler) *httptest.ResponseRecorder {
 
 // Over the limit the caller gets 429 and no room is made.
 func TestCreateRoom_OverLimitGets429(t *testing.T) {
-	h := createRoomHandler(newLimiter(2, time.Hour))
+	h := createRoomHandler(newLimiter(2, time.Hour), "local")
 	for i := range 2 {
 		rec := postRoom(h)
 		if rec.Code != http.StatusOK {
