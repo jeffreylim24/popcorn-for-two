@@ -640,17 +640,23 @@ Decisions (planned, not built):
 
 - [ ] **S1. Several machines, one room map each** ([#32](https://github.com/jeffreylim24/popcorn-for-two/issues/32);
   full plan: [docs/plans/s1-room-routing.md](docs/plans/s1-room-routing.md))
-  - Create: the machine that gets `POST /api/rooms` hosts the room and
-    returns `{machineID}-{random6}`. The `rooms` map key is only the
-    random part (unique per machine is enough; the prefix makes codes
-    unique across the fleet).
+  - Built (session 46, steps 1–4): the machine that gets
+    `POST /api/rooms` hosts the room and returns the **key**
+    `{machineID}-{code}`; the `rooms` map key is only the 6-char
+    **code** (unique per machine is enough; the prefix makes keys
+    unique across the fleet). `parseRoomKey` splits on the last `-`.
   - The machine ID is passed in from `main` (like `getICE`), not a
     package variable, so tests can act as machine A or B in parallel.
-    `main` turns an empty `FLY_MACHINE_ID` into `"local"`; nothing
-    below `main` knows about dev.
-  - Join: malformed code → 4004, no replay; another machine's ID →
-    `fly-replay: instance=<id>`, no upgrade; own ID → existing join.
-  - `FLY_MACHINE_ID` unset (dev, `go test`) → every room is local.
+    Off Fly (`FLY_APP_NAME` empty) it is `"local"`; on Fly without
+    `FLY_MACHINE_ID` the server refuses to start. Nothing below `main`
+    knows about dev.
+  - Join: another machine's key → `fly-replay: instance=<id>` + 421,
+    no upgrade; malformed → upgrade, then close 4004 (a browser can't
+    read a refused upgrade's status); own → existing join by code.
+  - Tested on Fly (2 machines): the forced cross-machine join replays
+    and connects. Junk machine IDs get an instant 400 from Fly's proxy;
+    a destroyed machine's ID hangs → next: replay `timeout=5s` +
+    `fallback=force_self`, answering the fallback with 4004 (step 4b).
   - Then drop `--ha=false`, run 2 machines, update the README section.
 - [ ] **S2. Load test a fixed pool, then set the real cap**
   - k6 (`loadtest/couples.js`) against 1, 2 and 4 machines, giving a
