@@ -22,14 +22,14 @@ func newTestRoom(t *testing.T) string {
 	return code
 }
 
-// A code is "{machine}-{key}", split on the last "-" so a "-" in a machine
+// A key is "{machine}-{code}", split on the last "-" so a "-" in a machine
 // ID can't break it. The machine part only has to be non-empty (Fly
-// doesn't document its format); the key must look like one we made.
-func TestParseRoomCode(t *testing.T) {
+// doesn't document its format); the code must look like one we made.
+func TestParseRoomKey(t *testing.T) {
 	tests := []struct {
-		code        string
+		key         string
 		wantMachine string
-		wantKey     string
+		wantCode    string
 		wantOK      bool
 	}{
 		{"A-xY3kQ9", "A", "xY3kQ9", true},
@@ -37,17 +37,17 @@ func TestParseRoomCode(t *testing.T) {
 		{"ab-cd-xY3kQ9", "ab-cd", "xY3kQ9", true}, // last "-" wins
 		{"xY3kQ9", "", "", false},                 // old format, no "-"
 		{"-xY3kQ9", "", "", false},                // empty machine
-		{"A-", "", "", false},                     // empty key
-		{"A-xY3", "", "", false},                  // key too short
-		{"A-xY3kQ9z", "", "", false},              // key too long
-		{"A-xY3k!9", "", "", false},               // key not letters/digits
+		{"A-", "", "", false},                     // empty code
+		{"A-xY3", "", "", false},                  // code too short
+		{"A-xY3kQ9z", "", "", false},              // code too long
+		{"A-xY3k!9", "", "", false},               // code not letters/digits
 		{"", "", "", false},
 	}
 	for _, tt := range tests {
-		machine, key, ok := parseRoomCode(tt.code)
-		if machine != tt.wantMachine || key != tt.wantKey || ok != tt.wantOK {
-			t.Errorf("parseRoomCode(%q) = (%q, %q, %v), want (%q, %q, %v)",
-				tt.code, machine, key, ok, tt.wantMachine, tt.wantKey, tt.wantOK)
+		machine, code, ok := parseRoomKey(tt.key)
+		if machine != tt.wantMachine || code != tt.wantCode || ok != tt.wantOK {
+			t.Errorf("parseRoomKey(%q) = (%q, %q, %v), want (%q, %q, %v)",
+				tt.key, machine, code, ok, tt.wantMachine, tt.wantCode, tt.wantOK)
 		}
 	}
 }

@@ -58,9 +58,9 @@ var roomsMutex sync.Mutex
 // other browser would then load.
 var videoIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
 
-// roomKeyPattern matches the random part of a room code: exactly the 6
-// letters or digits generateRoomCode makes.
-var roomKeyPattern = regexp.MustCompile(`^[A-Za-z0-9]{6}$`)
+// roomCodePattern matches a room code: exactly the 6 letters or digits
+// generateRoomCode makes.
+var roomCodePattern = regexp.MustCompile(`^[A-Za-z0-9]{6}$`)
 
 // generateRoomCode returns a random 6-character alphanumeric code. It does
 // not check for collisions; createRoom does.
@@ -73,22 +73,23 @@ func generateRoomCode() string {
 	return code
 }
 
-// parseRoomCode splits a room code "{machine}-{key}" into the ID of the
-// machine that holds the room and the key it is stored under in rooms. It
-// splits on the last "-": keys never contain one, so this still works if a
-// machine ID ever does. ok is false if there is no "-", the machine part is
-// empty, or the key isn't 6 letters or digits.
-func parseRoomCode(code string) (machine, key string, ok bool) {
-	i := strings.LastIndex(code, "-")
+// parseRoomKey splits a room key "{machine}-{code}" (the part of a room
+// link that names the room) into the ID of the machine that holds the room
+// and the code it is stored under in rooms. It splits on the last "-":
+// codes never contain one, so this still works if a machine ID ever does.
+// ok is false if there is no "-", the machine part is empty, or the code
+// isn't 6 letters or digits.
+func parseRoomKey(key string) (machine, code string, ok bool) {
+	i := strings.LastIndex(key, "-")
 	if i == -1 {
 		return "", "", false
 	}
-	machine = code[:i]
-	key = code[i+1:]
-	if machine == "" || !roomKeyPattern.MatchString(key) {
+	machine = key[:i]
+	code = key[i+1:]
+	if machine == "" || !roomCodePattern.MatchString(code) {
 		return "", "", false
 	}
-	return machine, key, true
+	return machine, code, true
 }
 
 // createRoom makes an empty room under a fresh, unused code and returns

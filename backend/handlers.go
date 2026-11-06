@@ -135,19 +135,19 @@ func createRoomHandler(createLimit *limiter, machineID string) http.Handler {
 			http.Error(w, "Too many rooms created, try again later", http.StatusTooManyRequests)
 			return
 		}
-		key, err := createRoom()
+		code, err := createRoom()
 		if err != nil {
 			log.Println("Error creating room:", err)
 			http.Error(w, "Server is full, try again later", http.StatusServiceUnavailable)
 			return
 		}
 		// The machine part tells a join which machine holds the room; the
-		// rooms map only knows the key.
-		fmt.Fprint(w, machineID+"-"+key)
+		// rooms map only knows the code.
+		fmt.Fprint(w, machineID+"-"+code)
 	})
 }
 
-// joinRoomHandler upgrades GET /api/rooms/{code}/ws to a WebSocket and
+// joinRoomHandler upgrades GET /api/rooms/{key}/ws to a WebSocket and
 // puts the caller in that room. It sends the caller short-lived STUN +
 // TURN servers, tells both people when a partner is present, sends the
 // room's current video, then relays every message to the partner until the
@@ -158,7 +158,14 @@ func createRoomHandler(createLimit *limiter, machineID string) http.Handler {
 // machineID is this machine's ID (see main).
 func joinRoomHandler(getICE iceServersFunc, revoke revokeFunc, turnLimit *limiter, hb heartbeat, machineID string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		code := r.PathValue("code")
+		key := r.PathValue("key")
+		machine, code, ok := parseRoomKey(key)
+		if ok && machine != machineID {
+			log.Println("Replaying room", key, "to machine", machine)
+			w.Header().Set("fly-replay", "instance="+machine)
+			w.WriteHeader(http.StatusMisdirectedRequest)
+			return
+		}
 		conn, err := websocket.Accept(w, r, nil)
 		if err != nil {
 			log.Println("Failed to accept websocket connection:", err)
@@ -167,14 +174,22 @@ func joinRoomHandler(getICE iceServersFunc, revoke revokeFunc, turnLimit *limite
 		// Safety net: every return path below ends the connection.
 		defer conn.CloseNow()
 
+		// Upgrade first, then close: a browser can't read an HTTP error
+		// status on a failed upgrade, only a close code.
+		if !ok {
+			log.Println("Malformed room key:", key)
+			conn.Close(statusRoomNotFound, "Room not found")
+			return
+		}
+
 		partner, err := joinRoom(code, conn)
 		if errors.Is(err, errRoomNotFound) {
-			log.Println("Room not found:", code)
+			log.Println("Room not found:", key)
 			conn.Close(statusRoomNotFound, "Room not found")
 			return
 		}
 		if errors.Is(err, errRoomFull) {
-			log.Println("Room is full:", code)
+			log.Println("Room is full:", key)
 			conn.Close(statusRoomFull, "Room is full")
 			return
 		}
@@ -183,7 +198,7 @@ func joinRoomHandler(getICE iceServersFunc, revoke revokeFunc, turnLimit *limite
 			conn.Close(websocket.StatusInternalError, "Internal error")
 			return
 		}
-		log.Println("Client joined room:", code)
+		log.Println("Client joined room:", key)
 		// turnUser is this seat's TURN username, or "" if it got no
 		// credentials. It is declared before the defer and set later: the
 		// closure reads it when the defer runs, not when it is registered.
