@@ -42,6 +42,21 @@ func loadTestMode(loadTest, flyAppName string) (bool, error) {
 	return true, nil
 }
 
+// pickMachineID returns the ID that starts every room key this machine
+// hands out (see parseRoomKey). Off Fly (flyAppName empty) it is "local".
+// On Fly it is flyMachineID (the FLY_MACHINE_ID env var), and it is an
+// error if that is empty: keys without the real ID couldn't be routed
+// back to this machine.
+func pickMachineID(flyAppName, flyMachineID string) (string, error) {
+	if flyAppName == "" {
+		return "local", nil
+	}
+	if flyMachineID == "" {
+		return "", errors.New("FLY_MACHINE_ID must be set when running on Fly")
+	}
+	return flyMachineID, nil
+}
+
 func main() {
 	// Fly sets FLY_APP_NAME on every machine, so empty means "not on Fly".
 	flyAppName := os.Getenv("FLY_APP_NAME")
@@ -51,14 +66,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	isLocal := flyAppName == ""
-	machineID := "local"
-	if !isLocal {
-		machineID = os.Getenv("FLY_MACHINE_ID")
-	}
-
-	if machineID == "" {
-		log.Fatal("FLY_MACHINE_ID must be set when running on Fly")
+	machineID, err := pickMachineID(flyAppName, os.Getenv("FLY_MACHINE_ID"))
+	if err != nil {
+		log.Fatal(err)
 	}
 	log.Printf("machine ID: %s", machineID)
 
