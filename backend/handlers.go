@@ -155,14 +155,22 @@ func createRoomHandler(createLimit *limiter, machineID string) http.Handler {
 // or statusRoomNotFound, and gets no TURN credentials: getICE is only
 // called for a seat holder, and only while turnLimit allows their IP. A
 // connection that stops answering hb's pings is closed and loses its seat.
+// A key for another machine is replayed there with fly-replay; if Fly
+// sends it back unreached, it is closed with StatusTryAgainLater.
 // machineID is this machine's ID (see main).
 func joinRoomHandler(getICE iceServersFunc, revoke revokeFunc, turnLimit *limiter, hb heartbeat, machineID string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := r.PathValue("key")
 		machine, code, ok := parseRoomKey(key)
-		if ok && machine != machineID {
+		// Fly sends a replay back here with this header when the target
+		// didn't answer in time. A fallback request can't replay again.
+		failedReplay := r.Header.Get("fly-replay-failed")
+		fallback := failedReplay != ""
+		if !fallback && ok && machine != machineID {
 			log.Println("Replaying room", key, "to machine", machine)
-			w.Header().Set("fly-replay", "instance="+machine)
+			// Give up after 5 s and send the request back here (the
+			// fallback branch below) instead of hanging on a dead machine.
+			w.Header().Set("fly-replay", "instance="+machine+";timeout=5s;fallback=force_self")
 			w.WriteHeader(http.StatusMisdirectedRequest)
 			return
 		}
@@ -173,6 +181,14 @@ func joinRoomHandler(getICE iceServersFunc, revoke revokeFunc, turnLimit *limite
 		}
 		// Safety net: every return path below ends the connection.
 		defer conn.CloseNow()
+
+		// The machine may be gone or only unreachable, so not "Room not
+		// found": try again later.
+		if fallback {
+			log.Println("Replay failed for room", key+":", failedReplay)
+			conn.Close(websocket.StatusTryAgainLater, "Room unreachable, try again")
+			return
+		}
 
 		// Upgrade first, then close: a browser can't read an HTTP error
 		// status on a failed upgrade, only a close code.

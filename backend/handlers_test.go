@@ -273,8 +273,36 @@ func TestJoin_OtherMachineIsReplayed(t *testing.T) {
 	if resp.StatusCode != http.StatusMisdirectedRequest {
 		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusMisdirectedRequest)
 	}
-	if got := resp.Header.Get("fly-replay"); got != "instance=B" {
-		t.Errorf("fly-replay = %q, want %q", got, "instance=B")
+	want := "instance=B;timeout=5s;fallback=force_self"
+	if got := resp.Header.Get("fly-replay"); got != want {
+		t.Errorf("fly-replay = %q, want %q", got, want)
+	}
+}
+
+// A replay Fly sent back (fly-replay-failed) must not replay again: it is
+// upgraded and closed with 1013, and gets no TURN credentials.
+func TestJoin_FailedReplayIsTryAgainLater(t *testing.T) {
+	srv, fake := startJoinServer(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	opts := &websocket.DialOptions{HTTPHeader: http.Header{
+		"Fly-Replay-Failed": {"instance=B;reason=timeout;elapsed_ms=5000"},
+	}}
+	conn, _, err := websocket.Dial(ctx, srv.URL+"/api/rooms/B-xY3kQ9/ws", opts)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	t.Cleanup(func() { conn.CloseNow() })
+
+	msg, err := readFirst(conn)
+	if err == nil {
+		t.Fatalf("got a message %s, want a close", msg)
+	}
+	if got := websocket.CloseStatus(err); got != websocket.StatusTryAgainLater {
+		t.Errorf("close status = %v, want %v", got, websocket.StatusTryAgainLater)
+	}
+	if n := fake.calls.Load(); n != 0 {
+		t.Errorf("TURN calls = %d, want 0", n)
 	}
 }
 
