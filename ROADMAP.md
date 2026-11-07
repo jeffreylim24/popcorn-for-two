@@ -612,6 +612,90 @@ else is a future enhancement, tracked as GitHub issues.
     direct routes, so expect many calls with a phone on mobile data to
     use TURN (~1–2 GB per 2-hour call; 1,000 GB/month free).
 
+## Scaling out (planned 2026-11-03)
+
+Goal: run on several Fly machines and measure the gain. Today one
+256 MB machine holds ~1250 couples before an out-of-memory kill (#21,
+"Load test results" below), and memory grows with connections, so more
+capacity means more machines.
+
+Decisions (planned, not built):
+- **Sticky routing, no Redis.** A room is always two people, so it never
+  needs to span machines. Each room lives on one machine, which keeps
+  its own map, mutex, sweeper and cap unchanged. Redis pub/sub was
+  rejected: it costs per command (a k6 run could use up a free tier),
+  adds a shared store, and saves almost no memory (the rooms map is
+  tiny; the cost is per connection).
+- **The room code carries the owner's machine ID** (`FLY_MACHINE_ID`),
+  so the link itself routes the joiner. No lookup table and no central
+  router (that would be a single point of failure and the next
+  bottleneck); Fly's proxy does the redirecting.
+- **Check before the WebSocket upgrade.** `fly-replay` is an HTTP
+  response, so a machine must decide "mine or not" before
+  `websocket.Accept`; Fly's docs say the replaying machine must not
+  upgrade.
+- **The cap is per machine.** It bounds memory, and memory is per
+  machine. A global cap would need shared state again. The pool size
+  bounds the total, and that is the cost guard.
+
+- [x] **S1. Several machines, one room map each** ([#32](https://github.com/jeffreylim24/popcorn-for-two/issues/32);
+  full plan: [docs/plans/s1-room-routing.md](docs/plans/s1-room-routing.md))
+  - Built (session 46, steps 1–4): the machine that gets
+    `POST /api/rooms` hosts the room and returns the **key**
+    `{machineID}-{code}`; the `rooms` map key is only the 6-char
+    **code** (unique per machine is enough; the prefix makes keys
+    unique across the fleet). `parseRoomKey` splits on the last `-`.
+  - The machine ID is passed in from `main` (like `getICE`), not a
+    package variable, so tests can act as machine A or B in parallel.
+    Off Fly (`FLY_APP_NAME` empty) it is `"local"`; on Fly without
+    `FLY_MACHINE_ID` the server refuses to start. Nothing below `main`
+    knows about dev.
+  - Join: another machine's key → `fly-replay: instance=<id>` + 421,
+    no upgrade; malformed → upgrade, then close 4004 (a browser can't
+    read a refused upgrade's status); own → existing join by code.
+  - Tested on Fly (2 machines): the forced cross-machine join replays
+    and connects. Junk machine IDs get an instant 400 from Fly's proxy;
+    a destroyed machine's ID hung (30 s+).
+  - Fix (session 47, step 4b): the replay sends
+    `timeout=5s;fallback=force_self`; Fly then hands an unreachable
+    join back with a `fly-replay-failed` request header, answered with
+    **503, no upgrade** (checked first, before the replay check: a
+    fallback can't replay again). Not 4004: Fly only says
+    `reason=timeout` (seen on Fly for a destroyed machine), the same as
+    for a slow live one, so "not found" could be a lie; the browser
+    shows "Connection lost". Upgrade-then-close `1013` was tried first
+    and dropped: the room flashed before the close.
+  - The frontend still carries the full key (the socket URL needs it);
+    only the room chips show the 6-char code (`roomCode` in `rooms.ts`).
+  - Verified on the load app with 2 machines: a browser join across
+    machines (call + sync work) and the destroyed-machine 503 after
+    ~5 s. **Prod stays on 1 machine** (cost; no traffic needs more):
+    `fly deploy`, and `fly scale count N` when it does.
+- [ ] **S2. Load test a fixed pool, then set the real cap**
+  - k6 (`loadtest/couples.js`) against 1, 2 and 4 machines, giving a
+    before/after number. The 5000 cap never fires before the ~1500 OOM
+    kill, and `LOAD_TEST=1` already lifts the per-IP limit, so nothing
+    needs toggling for the test.
+  - Then lower `maxRooms` to ~1000 per machine: refusing couple #1001
+    beats an OOM kill that ends every date on the machine.
+- [ ] **S3. Grow and shrink the pool** (needs more design)
+  - Fly never creates machines; autostart only wakes stopped ones from
+    a pool you made (`fly scale count`). Stopped machines cost only
+    disk ($0.15/GB per 30 days).
+  - **Autostop must stay off** (`auto_stop_machines = "off"`,
+    `auto_start_machines = true`): Fly's proxy may stop a machine that
+    still has open WebSockets, which would end live dates. The app shuts
+    itself down instead, since only it knows its rooms.
+  - Fill-first on the way up comes from `soft_limit` (~80% of capacity):
+    a second machine wakes only when the first is over it.
+  - Open: draining on the way down. Under `soft_limit` the proxy spreads
+    creates over every running machine, so no map ever empties. Needs a
+    rule for which machine drains and how it refuses creates (likely
+    `fly-replay` with `elsewhere=true`). Also a race: "map is empty →
+    exit" while a create lands on it.
+- Later: Prometheus metrics + Grafana, and #7 (reconnect with backoff),
+  which "what happens when a machine dies" depends on.
+
 ## Backlog
 
 Everything after the MVP, by priority (session 38; re-ranked after the
@@ -634,6 +718,7 @@ as real date nights show what matters.
 | [#10](https://github.com/jeffreylim24/popcorn-for-two/issues/10) | ✅ CI: run the checks on every PR (PR #22 merged 2026-10-25) | done | `.github/workflows/ci.yml`: two parallel jobs on every PR and every push to `main`. frontend: lint, format:check, test, build (Bun pinned to the Dockerfile's); backend: gofmt (fails if it lists a file), vet, test (Go from `go.mod`). Checked: a broken Go test turned only backend red, a broken Vitest test only frontend |
 | | ~~CD: deploy to Fly from `main` after CI passes~~ | dropped | Session 41: a deploy restarts the only machine and drops live rooms, so deploys stay manual to pick the moment. Option if wanted later: a manual "Run workflow" deploy button (`workflow_dispatch`) |
 | [#21](https://github.com/jeffreylim24/popcorn-for-two/issues/21) | Load test: how many concurrent rooms the server really handles (measured 2026-10-26, PR pending) | LOW | Production's VM holds **~1250 couples** at once; 1500 is an out-of-memory kill. Memory is the wall, not CPU. Plan on ~1000 with a margin; more needs a bigger VM. See "Load test results" below |
+| [#32](https://github.com/jeffreylim24/popcorn-for-two/issues/32) | ✅ Route each room to the machine that hosts it (S1, session 47) | done | First step of "Scaling out" above; lifts the one-machine limit. Prod stays on 1 machine by choice |
 | [#11](https://github.com/jeffreylim24/popcorn-for-two/issues/11) | Call status indicator | MEDIUM | A failed call is mostly silent today |
 | [#12](https://github.com/jeffreylim24/popcorn-for-two/issues/12) | Devices: pick cam/mic/speakers, voice vs movie volume (was M11) | MEDIUM | Wait for real use; volume balance is the likely first slice |
 | [#24](https://github.com/jeffreylim24/popcorn-for-two/issues/24) | ✅ Lobby and room layout on phones (PR #25 merged, deployed 2026-10-26) | done | Under 640px (Tailwind `sm:`): lobby buttons in two rows, header on one line (room badge hidden), resize handle always shown on touch (`pointer-coarse:`), 16px link input (no iOS zoom). Cams start side by side: 24px margins matching the player, 8px gap, read once when the room opens. Checked on a real phone |

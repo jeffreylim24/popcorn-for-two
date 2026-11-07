@@ -11,3 +11,12 @@ export async function createAndJoinRoom() {
   const code = await response.text()
   window.location.assign(`/room/${code}`)
 }
+
+/**
+ * The 6-char room code in a room key (`{machine}-{code}`), for display.
+ * Splits on the last `-`, like the server's `parseRoomKey`: codes never
+ * contain one. A key with no `-` comes back whole.
+ */
+export function roomCode(key: string): string {
+  return key.slice(key.lastIndexOf('-') + 1)
+}

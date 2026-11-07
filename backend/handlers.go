@@ -126,25 +126,28 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 
 // createRoomHandler answers POST /api/rooms with the new room's code as
 // plain text. A caller over createLimit gets 429, and 503 if the server is
-// already holding its maximum number of rooms.
-func createRoomHandler(createLimit *limiter) http.Handler {
+// already holding its maximum number of rooms. machineID is this machine's
+// ID (see main).
+func createRoomHandler(createLimit *limiter, machineID string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !createLimit.allow(clientIP(r)) {
 			log.Println("Room creation limit reached:", clientIP(r))
 			http.Error(w, "Too many rooms created, try again later", http.StatusTooManyRequests)
 			return
 		}
-		roomCode, err := createRoom()
+		code, err := createRoom()
 		if err != nil {
 			log.Println("Error creating room:", err)
 			http.Error(w, "Server is full, try again later", http.StatusServiceUnavailable)
 			return
 		}
-		fmt.Fprint(w, roomCode)
+		// The machine part tells a join which machine holds the room; the
+		// rooms map only knows the code.
+		fmt.Fprint(w, machineID+"-"+code)
 	})
 }
 
-// joinRoomHandler upgrades GET /api/rooms/{code}/ws to a WebSocket and
+// joinRoomHandler upgrades GET /api/rooms/{key}/ws to a WebSocket and
 // puts the caller in that room. It sends the caller short-lived STUN +
 // TURN servers, tells both people when a partner is present, sends the
 // room's current video, then relays every message to the partner until the
@@ -152,9 +155,32 @@ func createRoomHandler(createLimit *limiter) http.Handler {
 // or statusRoomNotFound, and gets no TURN credentials: getICE is only
 // called for a seat holder, and only while turnLimit allows their IP. A
 // connection that stops answering hb's pings is closed and loses its seat.
-func joinRoomHandler(getICE iceServersFunc, revoke revokeFunc, turnLimit *limiter, hb heartbeat) http.Handler {
+// A key for another machine is replayed there with fly-replay; if Fly
+// sends it back unreached, it gets a 503 and no upgrade.
+// machineID is this machine's ID (see main).
+func joinRoomHandler(getICE iceServersFunc, revoke revokeFunc, turnLimit *limiter, hb heartbeat, machineID string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		code := r.PathValue("code")
+		key := r.PathValue("key")
+		machine, code, ok := parseRoomKey(key)
+		// Fly sends a replay back here with this header when the target
+		// didn't answer in time. A fallback request can't replay again, and
+		// the machine may be gone or only unreachable, so not "Room not
+		// found". No upgrade: the browser shows "Connection lost" either way,
+		// and upgrading would flash the room before the close.
+		failedReplay := r.Header.Get("fly-replay-failed")
+		if failedReplay != "" {
+			log.Println("Replay failed for room", key+":", failedReplay)
+			http.Error(w, "Room unreachable, try again later", http.StatusServiceUnavailable)
+			return
+		}
+		if ok && machine != machineID {
+			log.Println("Replaying room", key, "to machine", machine)
+			// Give up after 5 s and send the request back here (the
+			// fallback branch below) instead of hanging on a dead machine.
+			w.Header().Set("fly-replay", "instance="+machine+";timeout=5s;fallback=force_self")
+			w.WriteHeader(http.StatusMisdirectedRequest)
+			return
+		}
 		conn, err := websocket.Accept(w, r, nil)
 		if err != nil {
 			log.Println("Failed to accept websocket connection:", err)
@@ -163,14 +189,22 @@ func joinRoomHandler(getICE iceServersFunc, revoke revokeFunc, turnLimit *limite
 		// Safety net: every return path below ends the connection.
 		defer conn.CloseNow()
 
+		// Upgrade first, then close: a browser can't read an HTTP error
+		// status on a failed upgrade, only a close code.
+		if !ok {
+			log.Println("Malformed room key:", key)
+			conn.Close(statusRoomNotFound, "Room not found")
+			return
+		}
+
 		partner, err := joinRoom(code, conn)
 		if errors.Is(err, errRoomNotFound) {
-			log.Println("Room not found:", code)
+			log.Println("Room not found:", key)
 			conn.Close(statusRoomNotFound, "Room not found")
 			return
 		}
 		if errors.Is(err, errRoomFull) {
-			log.Println("Room is full:", code)
+			log.Println("Room is full:", key)
 			conn.Close(statusRoomFull, "Room is full")
 			return
 		}
@@ -179,7 +213,7 @@ func joinRoomHandler(getICE iceServersFunc, revoke revokeFunc, turnLimit *limite
 			conn.Close(websocket.StatusInternalError, "Internal error")
 			return
 		}
-		log.Println("Client joined room:", code)
+		log.Println("Client joined room:", key)
 		// turnUser is this seat's TURN username, or "" if it got no
 		// credentials. It is declared before the defer and set later: the
 		// closure reads it when the defer runs, not when it is registered.

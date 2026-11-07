@@ -18,11 +18,12 @@ A web app for long-distance couples to have date nights together: movies, videos
 ## Repo layout & commands
 
 - `frontend/`: Vite + React + TS, ESLint, Prettier. `bun run dev` (port 5173), `bun run lint`, `bun run format` / `bun run format:check`, `bun run test` (Vitest), `bun run build`. Imports use the `@/` alias (`@/*` → `src/*`, no `baseUrl`: TS 6 rejects it). `src/components/ui/` is shadcn CLI output (add with `bunx --bun shadcn@latest add <name>`); `src/components/CozyRoom.tsx` is the home-page scene. `src/pages/` holds only routed pages: `HomePage`, `RoomPage`, `NotFoundPage`. `RoomPage` owns `useCamera` and swaps `components/Lobby` for `components/RoomView` (which owns `useRoomSocket` and passes it to `useSync` and `useCall`; hooks plug in with `subscribe`) on Join, at the same URL; pure, tested logic lives in `src/sync.ts` (playback + video message parsers, sync rules) `src/youtube.ts` (`parseVideoId`) and `src/mic.ts` (`micLabel`); `App.tsx` matches the path by hand (`/`, `/room/{code}`, else not found; no router library). Animation: Motion (`motion/react`); `App.tsx` wraps everything in `MotionConfig reducedMotion="user"`; `components/SwapIcon.tsx` animates toggle icons. Never put a transform on an ancestor of the cams (`DraggableCam` is `position: fixed`, which then measures from that ancestor): animate opacity there. Cursors are pixel art as inline SVG `data:` URLs in `index.css` (PNG cursors blur when enlarged).
-- `backend/`: Go module `github.com/jeffreylim24/popcorn-for-two/backend`, flat layout, one `package main`: `main.go` (required env vars + routes), `rooms.go` (rooms in memory; a sweeper goroutine deletes rooms empty for 10 min, `createRoom` caps the total at 5000), `handlers.go` (create with a per-IP 429 limit; join + relay; TURN credentials go out over the room socket, only to seat holders), `limiter.go` (per-IP count + reset limiter, meant for reuse by #8/#9), `spa.go`, and a `_test.go` per file (`handlers_test.go` runs the real join handler on `httptest` with a fake TURN func). Run with `set -a; source .env; set +a; go run .` (port 8080): it refuses to start without `TURN_KEY_ID` and `TURN_KEY_API` (`backend/.env` in dev, gitignored; `fly secrets` in prod). `go test ./...` needs no env.
+- `backend/`: Go module `github.com/jeffreylim24/popcorn-for-two/backend`, flat layout, one `package main`: `main.go` (required env vars + routes; works out `machineID`: `FLY_MACHINE_ID` on Fly, `"local"` off it, and passes it to both room handlers), `rooms.go` (rooms in memory, keyed by the 6-char **code**; a sweeper goroutine deletes rooms empty for 10 min, `createRoom` caps the total at 5000; `parseRoomKey` splits a **key** `{machine}-{code}` on its last `-`), `handlers.go` (create with a per-IP 429 limit, returns the key; join at `/api/rooms/{key}/ws`: another machine's key gets `fly-replay` (5 s timeout, fallback to self) + 421 before the upgrade, and Fly's fallback request (`fly-replay-failed` header) a 503 (S1, #32, `docs/plans/s1-room-routing.md`), then join + relay; TURN credentials go out over the room socket, only to seat holders), `limiter.go` (per-IP count + reset limiter, meant for reuse by #8/#9), `spa.go`, and a `_test.go` per file (`handlers_test.go` runs the real join handler on `httptest` with a fake TURN func). Run with `set -a; source .env; set +a; go run .` (port 8080): it refuses to start without `TURN_KEY_ID` and `TURN_KEY_API` (`backend/.env` in dev, gitignored; `fly secrets` in prod). `go test ./...` needs no env.
 - CI: `.github/workflows/ci.yml` (#10) runs on every PR and push to `main`, two parallel jobs: frontend (lint, format:check, test, build; Bun pinned to the Dockerfile's version) and backend (gofmt must list nothing, vet, test; Go from `backend/go.mod`). Bump the Bun pin in both places together. `gh run list` shows runs. Deploys are still manual.
 - API routes live under `/api/`; in dev, Vite proxies `/api` to `:8080` (one origin, no CORS code in Go).
-- `ROADMAP.md`: MVP milestones M1–M10 (done, session 38) with their decisions; "Backlog" is a priority table of future work. New work is tracked as GitHub issues.
-- Root: `README.md`, `Dockerfile` (Bun → Go → Alpine), `fly.toml`. Deploy by hand from an up-to-date `main`: `fly deploy --ha=false` (one machine; rooms live in memory). New secrets go in before the deploy that needs them: `fly secrets import --stage < backend/.env` (no values in shell history); `fly secrets list` shows digests only.
+- `docs/plans/`: one committed plan per milestone (e.g. `s1-room-routing.md`).
+- `ROADMAP.md`: MVP milestones M1–M10 (done, session 38) with their decisions; "Scaling out" plans S1–S3 (several Fly machines via sticky routing, no Redis; S1 is #32); "Backlog" is a priority table of future work. New work is tracked as GitHub issues.
+- Root: `README.md`, `Dockerfile` (Bun → Go → Alpine), `fly.toml`. Deploy by hand from an up-to-date `main`: `fly deploy` (keeps the machine count; prod runs 1 machine by choice, S1 lets it run several: `fly scale count N`). New secrets go in before the deploy that needs them: `fly secrets import --stage < backend/.env` (no values in shell history); `fly secrets list` shows digests only.
 - Review checks Claude may run (read-only): `go test ./...`, `go vet ./...` and `gofmt -l .` in `backend/`.
 - Visual check Claude may run: `bun run build`, `bunx vite preview --port <p>`, then headless Chrome `--screenshot=<scratchpad>/x.png <url>`. Headless Chrome won't go narrower than 500px, so for phone widths use `puppeteer-core` installed in the scratchpad (not the project) with `page.setViewport({ width: 375, isMobile: true, hasTouch: true })` pointed at the installed Chrome; add `--use-fake-device-for-media-stream` to see a cam.
 
@@ -59,7 +60,7 @@ If the user says "write it for me" for a step, Claude writes it and maps each ps
 **Exceptions**
 1. The user says "just show me", "write it for me", or similar *before* giving pseudocode: do exactly what was asked, nothing extra, then explain the logic with a trace.
 2. **Styling fast lane:** visual work (layout, spacing, sizing, Tailwind classes, presentational components) needs no pseudocode. Claude writes it directly with a one-line explanation.
-3. **Docs files are Claude's:** Claude writes and commits `README.md`, `ROADMAP.md`, `CLAUDE.md`, and similar docs, and writes the local-only `docs/LEARNING.md`. The user doesn't type these (no learning in it), but makes the decisions they record.
+3. **Docs files are Claude's:** Claude writes and commits `README.md`, `ROADMAP.md`, `CLAUDE.md`, and similar docs, and writes the local-only `docs/learning/LEARNING.md`. The user doesn't type these (no learning in it), but makes the decisions they record.
 4. **Commit messages are Claude's:** when the work is ready to commit, Claude drafts the message (with a one-line why for its shape). The user still stages, commits, and pushes their own work. **No `Co-Authored-By: Claude` trailer** on messages for the user's code, including code Claude wrote from their pseudocode; Claude only helped word the message. Claude's own docs commits keep it.
 
 ## Teaching approach
@@ -68,7 +69,7 @@ If the user says "write it for me" for a step, Claude writes it and maps each ps
 - **One small step at a time.** Say what to do next and how to tell it worked, then wait. Never lay out many steps at once.
 - **New concepts:** when one first comes up, explain it inline (2–3 sentences) with everything needed for the step. Put doc links at the end as optional extras; never make a step depend on reading them.
 - **Check understanding** now and then: after the user runs something, ask them to explain the real output or code in their own words. Don't ask them to predict command output.
-- **Learning style is still unknown.** Vary the format (analogies, ASCII diagrams, small runnable examples, doc pointers), notice what lands, and record it in `docs/LEARNING.md`.
+- **Learning style is still unknown.** Vary the format (analogies, ASCII diagrams, small runnable examples, doc pointers), notice what lands, and record it in `docs/learning/LEARNING.md`.
 - Keep explanations short and scannable.
 
 **Hint ladder** (when the user is stuck). Climb one rung at a time:
@@ -105,12 +106,12 @@ Coach these one at a time, when they become relevant. Don't front-load them.
 - Environment variables and secrets
 - Deployment
 
-## Progress tracking: docs/LEARNING.md
+## Progress tracking: docs/learning/LEARNING.md
 
-`docs/LEARNING.md` is a current-state snapshot, not a diary. Keep it under ~100 lines. It and `docs/learning-archive.md` are local only (gitignored, never committed or pushed).
+`docs/learning/LEARNING.md` is a current-state snapshot, not a diary. Keep it under ~100 lines. The whole `docs/learning/` folder is local only (gitignored, never committed or pushed): `LEARNING.md`, `learning-archive.md`, and one topic note per deep-dive (e.g. `redis-pubsub-vs-sticky-routing.md`), which `LEARNING.md` links to instead of repeating.
 
-- **Session start:** read `docs/LEARNING.md` (not the archive) and the current milestone in `ROADMAP.md`, then recap in 2–3 lines where we left off and what the next step is.
-- **When the user says "wrap up":** rewrite `docs/LEARNING.md` so it reflects the current state:
+- **Session start:** read `docs/learning/LEARNING.md` (not the archive) and the current milestone in `ROADMAP.md`, then recap in 2–3 lines where we left off and what the next step is.
+- **When the user says "wrap up":** rewrite `docs/learning/LEARNING.md` so it reflects the current state:
   - Concepts: each one has a single entry, updated in place, never duplicated.
     - Shaky concepts keep a short note on the gap and which explanations were already tried. Next time, try a different approach.
     - Mastered concepts shrink to a one-line entry under "Solid".
@@ -118,7 +119,7 @@ Coach these one at a time, when they become relevant. Don't front-load them.
   - Remove answered open questions. Replace the next step.
   - Teaching formats: keep a short, refined list of what works and what doesn't.
   - Tick finished milestones in `ROADMAP.md`, and add any design decisions to the milestone they belong to.
-  - If the file is over budget, move old decisions and detail to `docs/learning-archive.md`.
+  - If the file is over budget, move old decisions and detail to `docs/learning/learning-archive.md`.
   - Last step: if `ROADMAP.md` changed, commit only it (on the current branch, see Git workflow) with `git commit ROADMAP.md -m "docs: update roadmap"`. This leaves the user's staged work untouched. Don't push; the user's next push includes it. Tell the user it was committed. The learning files are never committed.
 - No git history backs up the learning files, so move old detail to the archive instead of deleting it.
 

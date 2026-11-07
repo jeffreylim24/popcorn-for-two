@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -112,7 +113,7 @@ func (f *fakeTURN) revoke(ctx context.Context, username string) error {
 }
 
 // startJoinServer runs the real join handler on a test server, behind the
-// same route pattern as main, so r.PathValue("code") works.
+// same route pattern as main, so r.PathValue("key") works.
 // startJoinServer's limit is high enough that only the limit test, which
 // passes its own, ever reaches it.
 func startJoinServer(t *testing.T) (*httptest.Server, *fakeTURN) {
@@ -136,18 +137,27 @@ func startJoinServerWith(t *testing.T, turnLimit *limiter, hb heartbeat) (*httpt
 	// Unblocks a revoke a test left waiting, so no goroutine outlives it.
 	t.Cleanup(func() { close(fake.release) })
 	mux := http.NewServeMux()
-	mux.Handle("GET /api/rooms/{code}/ws", joinRoomHandler(fake.getICE, fake.revoke, turnLimit, hb))
+	mux.Handle("GET /api/rooms/{key}/ws", joinRoomHandler(fake.getICE, fake.revoke, turnLimit, hb, testMachineID))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return srv, fake
 }
 
-// dialRoom opens a client WebSocket to the room. It is closed when the test
-// ends.
+// testMachineID is the machine the join test server pretends to be.
+const testMachineID = "local"
+
+// dialRoom opens a client WebSocket to the room stored under code on the
+// test server's machine. It is closed when the test ends.
 func dialRoom(t *testing.T, srv *httptest.Server, code string) *websocket.Conn {
+	return dialKey(t, srv, testMachineID+"-"+code)
+}
+
+// dialKey is dialRoom with the full room key as sent in the URL, so a test
+// can send a malformed one.
+func dialKey(t *testing.T, srv *httptest.Server, key string) *websocket.Conn {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	conn, _, err := websocket.Dial(ctx, srv.URL+"/api/rooms/"+code+"/ws", nil)
+	conn, _, err := websocket.Dial(ctx, srv.URL+"/api/rooms/"+key+"/ws", nil)
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
@@ -232,6 +242,65 @@ func TestJoin_UnknownRoomGetsNoCredentials(t *testing.T) {
 	}
 }
 
+// A key that doesn't parse (here an old link with a bare 6-char code) is
+// "room not found": the browser can only read a reason from a close code,
+// so the handler upgrades and then closes.
+func TestJoin_MalformedKeyIsNotFound(t *testing.T) {
+	srv, fake := startJoinServer(t)
+	conn := dialKey(t, srv, "xY3kQ9")
+
+	msg, err := readFirst(conn)
+	if err == nil {
+		t.Fatalf("got a message %s, want a close", msg)
+	}
+	if got := websocket.CloseStatus(err); got != statusRoomNotFound {
+		t.Errorf("close status = %v, want %v", got, statusRoomNotFound)
+	}
+	if n := fake.calls.Load(); n != 0 {
+		t.Errorf("TURN calls = %d, want 0", n)
+	}
+}
+
+// A room on another machine gets a fly-replay to that machine and no
+// upgrade: after a 101, Fly's proxy could no longer resend the request.
+func TestJoin_OtherMachineIsReplayed(t *testing.T) {
+	srv, _ := startJoinServer(t)
+	resp, err := http.Get(srv.URL + "/api/rooms/B-xY3kQ9/ws")
+	if err != nil {
+		t.Fatalf("GET: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusMisdirectedRequest {
+		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusMisdirectedRequest)
+	}
+	want := "instance=B;timeout=5s;fallback=force_self"
+	if got := resp.Header.Get("fly-replay"); got != want {
+		t.Errorf("fly-replay = %q, want %q", got, want)
+	}
+}
+
+// A replay Fly sent back (fly-replay-failed) must not replay again: it gets
+// a 503, no fly-replay header and no upgrade.
+func TestJoin_FailedReplayIsUnavailable(t *testing.T) {
+	srv, _ := startJoinServer(t)
+	req, err := http.NewRequest("GET", srv.URL+"/api/rooms/B-xY3kQ9/ws", nil)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set("fly-replay-failed", "instance=B;reason=timeout;elapsed_ms=5000")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("GET: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusServiceUnavailable)
+	}
+	if got := resp.Header.Get("fly-replay"); got != "" {
+		t.Errorf("fly-replay = %q, want none", got)
+	}
+}
+
 // Over the limit: still seated, but ice-servers carries no list and the
 // TURN API isn't asked.
 func TestJoin_OverTURNLimitGetsNoList(t *testing.T) {
@@ -299,7 +368,7 @@ func postRoom(h http.Handler) *httptest.ResponseRecorder {
 
 // Over the limit the caller gets 429 and no room is made.
 func TestCreateRoom_OverLimitGets429(t *testing.T) {
-	h := createRoomHandler(newLimiter(2, time.Hour))
+	h := createRoomHandler(newLimiter(2, time.Hour), "local")
 	for i := range 2 {
 		rec := postRoom(h)
 		if rec.Code != http.StatusOK {
@@ -313,6 +382,30 @@ func TestCreateRoom_OverLimitGets429(t *testing.T) {
 	}
 	if len(rooms) != before {
 		t.Errorf("rooms = %d, want %d (no room made)", len(rooms), before)
+	}
+}
+
+// The key sent back is "{machineID}-{code}", and only the code goes in the
+// rooms map: the machine part is for routing, not lookup.
+func TestCreateRoom_KeyIsMachineIDThenCode(t *testing.T) {
+	h := createRoomHandler(newLimiter(10, time.Hour), "A")
+	rec := postRoom(h)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	key := rec.Body.String()
+	code, found := strings.CutPrefix(key, "A-")
+	if !found {
+		t.Fatalf("key = %q, want it to start with %q", key, "A-")
+	}
+	if !roomCodePattern.MatchString(code) {
+		t.Errorf("code = %q, want 6 letters or digits", code)
+	}
+	roomsMutex.Lock()
+	_, exists := rooms[code]
+	roomsMutex.Unlock()
+	if !exists {
+		t.Errorf("rooms has no entry for code %q", code)
 	}
 }
 
