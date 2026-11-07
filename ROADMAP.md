@@ -752,7 +752,7 @@ as real date nights show what matters.
 | | ICE restart on a network change | LOW | Reconnect works; needs #7 first |
 | | Auto-switch devices on unplug (`devicechange`) | LOW | Belongs with #12 |
 | | "Hide my IP" (relay-only) toggle | LOW | Privacy nicety; costs TURN bandwidth |
-| [#36](https://github.com/jeffreylim24/popcorn-for-two/issues/36) | Placeholder instead of the default video | LOW | A new room plays a hard-coded MVP video (`VIDEO_ID` in `RoomView.tsx`). Needs a "no video yet" state, not only styling |
+| [#36](https://github.com/jeffreylim24/popcorn-for-two/issues/36) | ✅ Placeholder instead of the default video (PR #41 merged 2026-11-06) | done | `VIDEO_ID` is gone: the player starts empty and `useSync` returns `hasVideo` (true once a video is cued, by a pick or the server's join message). Until then the status overlay shows "Nothing playing yet"; a socket problem's text wins. Playback messages are ignored while there's no video. Backend unchanged (it already stored `""`) |
 | | Search YouTube in-app | LOW | Pasting a link works; needs an API key + quota |
 | | Emoji reactions | LOW | Fun, cheap over the existing socket |
 | | Mini-games, non-YouTube movies | LOW | Big; needs its own brainstorm |
