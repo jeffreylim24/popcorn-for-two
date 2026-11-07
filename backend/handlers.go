@@ -156,17 +156,24 @@ func createRoomHandler(createLimit *limiter, machineID string) http.Handler {
 // called for a seat holder, and only while turnLimit allows their IP. A
 // connection that stops answering hb's pings is closed and loses its seat.
 // A key for another machine is replayed there with fly-replay; if Fly
-// sends it back unreached, it is closed with StatusTryAgainLater.
+// sends it back unreached, it gets a 503 and no upgrade.
 // machineID is this machine's ID (see main).
 func joinRoomHandler(getICE iceServersFunc, revoke revokeFunc, turnLimit *limiter, hb heartbeat, machineID string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := r.PathValue("key")
 		machine, code, ok := parseRoomKey(key)
 		// Fly sends a replay back here with this header when the target
-		// didn't answer in time. A fallback request can't replay again.
+		// didn't answer in time. A fallback request can't replay again, and
+		// the machine may be gone or only unreachable, so not "Room not
+		// found". No upgrade: the browser shows "Connection lost" either way,
+		// and upgrading would flash the room before the close.
 		failedReplay := r.Header.Get("fly-replay-failed")
-		fallback := failedReplay != ""
-		if !fallback && ok && machine != machineID {
+		if failedReplay != "" {
+			log.Println("Replay failed for room", key+":", failedReplay)
+			http.Error(w, "Room unreachable, try again later", http.StatusServiceUnavailable)
+			return
+		}
+		if ok && machine != machineID {
 			log.Println("Replaying room", key, "to machine", machine)
 			// Give up after 5 s and send the request back here (the
 			// fallback branch below) instead of hanging on a dead machine.
@@ -181,14 +188,6 @@ func joinRoomHandler(getICE iceServersFunc, revoke revokeFunc, turnLimit *limite
 		}
 		// Safety net: every return path below ends the connection.
 		defer conn.CloseNow()
-
-		// The machine may be gone or only unreachable, so not "Room not
-		// found": try again later.
-		if fallback {
-			log.Println("Replay failed for room", key+":", failedReplay)
-			conn.Close(websocket.StatusTryAgainLater, "Room unreachable, try again")
-			return
-		}
 
 		// Upgrade first, then close: a browser can't read an HTTP error
 		// status on a failed upgrade, only a close code.
