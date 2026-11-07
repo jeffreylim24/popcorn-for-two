@@ -2,6 +2,7 @@ import { Headphones, Mic, MicOff, Popcorn, Video, VideoOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SelfView } from '@/components/SelfView'
 import { micLabel } from '@/mic'
+import { roomCode } from '@/rooms'
 import { SwapIcon } from '@/components/SwapIcon'
 
 type LobbyProps = {
@@ -46,7 +47,7 @@ export function Lobby({
         </a>
         <span className="flex items-center gap-1.5 rounded-full border border-primary/30 px-3 py-1 font-heading text-xs">
           <Popcorn className="size-3.5 text-primary" aria-hidden="true" />
-          room {code}
+          room {roomCode(code)}
         </span>
       </header>
       <section className="flex flex-1 flex-col items-center justify-center gap-6 py-8">

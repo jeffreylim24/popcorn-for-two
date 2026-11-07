@@ -6,7 +6,7 @@ import { useFullscreen } from '@/hooks/useFullscreen'
 import { AnimatePresence, motion } from 'motion/react'
 import { Popcorn } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { createAndJoinRoom } from '@/rooms'
+import { createAndJoinRoom, roomCode } from '@/rooms'
 import { SelfView } from '@/components/SelfView'
 import { PartnerView } from '@/components/PartnerView'
 import { VideoPicker } from '@/components/VideoPicker'
@@ -178,7 +178,7 @@ export function RoomView({
           {/* Hidden on phones to keep the header on one line: the code is in the URL, and Copy link shares it. */}
           <span className="flex h-7 items-center gap-1.5 rounded-full border border-primary/30 px-3 font-heading text-xs whitespace-nowrap max-sm:hidden">
             <Popcorn className="size-3.5 text-primary" aria-hidden="true" />
-            room {code}
+            room {roomCode(code)}
           </span>
           <CopyLinkButton />
         </div>
