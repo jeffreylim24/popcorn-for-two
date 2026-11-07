@@ -638,8 +638,7 @@ Decisions (planned, not built):
   machine. A global cap would need shared state again. The pool size
   bounds the total, and that is the cost guard.
 
-- [x] **S1. Several machines, one room map each** ([#32](https://github.com/jeffreylim24/popcorn-for-two/issues/32);
-  full plan: [docs/plans/s1-room-routing.md](docs/plans/s1-room-routing.md))
+- [x] **S1. Several machines, one room map each** ([#32](https://github.com/jeffreylim24/popcorn-for-two/issues/32))
   - Built (session 46, steps 1–4): the machine that gets
     `POST /api/rooms` hosts the room and returns the **key**
     `{machineID}-{code}`; the `rooms` map key is only the 6-char
