@@ -33,7 +33,7 @@ A web app for long-distance couples to have date nights together: movies, videos
 
 ## Git workflow (session 38, after the MVP)
 
-- Every code change starts from a GitHub issue (labels in use: `bug`, `SEVERITY: …`). Code never goes straight to `main`.
+- Every code change starts from a GitHub issue (labels: bugs get `bug` + `SEVERITY: …`, features get `enhancement` + `PRIORITY: …`; levels VERY LOW/LOW/MEDIUM/HIGH). Code never goes straight to `main`.
 - One branch per issue, off an up-to-date `main` (`git switch main && git pull` first): `feat/…`, `fix/…` (Conventional Commits types).
 - The PR body says `Closes #N`; merge it, then deploy from `main`.
 - Claude drafts issue text, branch names, and PR titles/bodies; the user runs all `git`/`gh` commands.
