@@ -48,7 +48,8 @@ const roomIdleTTL = 10 * time.Minute
 // ends every date on the machine.
 //
 // 1000 is measured, not guessed (#21, #37): a 256 MB Fly VM holds 1000
-// couples with room to spare, slows down at ~1250 and is killed at ~1500.
+// couples with room to spare, is nearly full at ~1250, and 1300 got it
+// out-of-memory killed with no slowdown first.
 // It only holds for that VM size ([[vm]] in fly.toml): change the size,
 // re-run the load test. Several machines don't change it: the cap is per
 // machine, and the proxy's uneven split makes headroom matter more.

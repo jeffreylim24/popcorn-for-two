@@ -676,13 +676,16 @@ Decisions (planned, not built):
     each machine has its own memory. Results in "Load test results (#37)"
     below.
   - The proxy balances creates by **connections**, not memory (default
-    `soft_limit` 20, no `hard_limit`), and the split is **uneven**: on 4
-    machines two peaked at ~200 MB, two at ~170 MB. Nothing stops it
+    `soft_limit` 20, no `hard_limit`), and the split **can be uneven**:
+    in one 4-machine run two peaked at ~200 MB, two at ~170 MB (another
+    run was even). Nothing stops it
     feeding a nearly full machine, so headroom per machine matters more
     with several machines, not less.
-  - `maxRooms` 5000 → **1000 per machine**: 1250/machine already bends
-    the tail (relay p99 268 ms) and 1500 is the OOM kill; refusing
-    couple #1001 beats a kill that ends every date on the machine.
+  - `maxRooms` 5000 → **1000 per machine**: 1250/machine sits at
+    ~201 MB of ~207 and **1300 OOM-killed 2 of 4 machines** with no
+    latency warning first (p95 stayed ~5 ms). The wall is sharp and
+    silent, so the cap needs margin for a skewed split; refusing couple
+    #1001 beats a kill that ends every date on the machine.
     Verified on a real VM: 1100 couples → exactly 100 refused (503), no
     OOM. The number holds only for the 256 MB VM; re-measure if the VM
     size changes. A refused create still shows nothing (#19).
@@ -842,18 +845,27 @@ performance-2x 4 GB machine in `yyz`), on the S1 code. Reports in
 |---|---|---|---|---|---|
 | 1 | 1 | 1000 | ✓ | 3 / 6 ms | 169 MB |
 | 2 | 2 | 2000 | ✓ | 3 / 5 ms | 177, 169 MB |
-| 3 | 2 | 2500 | ✓ (tail bends) | 62 / 268 ms | 201, 197 MB |
+| 3 | 2 | 2500, one k6 machine | ✓ (tail bends) | 62 / 268 ms | 201, 197 MB |
 | 4 | 4 | 4000, **one** k6 machine | ✗ 53% paired | 975 ms / 1.95 s | 115–119 MB |
 | 4b | 4 | 4000, **two** k6 machines × 2000 | ✓ | 5–6 / 46–51 ms | 201, 197, 170, 170 MB |
+| 5 | 4 | 5001, three k6 × 1667 | ✓ | 2–7 / 4–47 ms | 202, 201, 200, 200 MB |
+| 7 | 4 | 5202, three k6 × 1734 | ✗ 2 of 4 OOM-killed | 4–5 ms (survivors) | ~206 MB, then killed |
 | cap | 1 | 1100, `maxRooms` 1000 | 1000 ✓ / 100 refused | 3 / 6 ms | 169 MB |
 
 - **Capacity is linear in machines.** Server CPU stayed under 25%.
+  The wall is ~1250–1300 couples per 256 MB machine: run 7 (1300)
+  dropped 3928 sockets and lost 7438 messages after two OOM kills, while
+  the survivors' p95 stayed ~5 ms. No latency warning before the cliff.
+- **Run 3's bent tail was mostly k6, not the servers:** run 5 had the
+  same 1250 per server and the same memory, but three k6 machines, and
+  p99 was 4–47 ms instead of 268 ms. Keep each k6 machine at ≤ ~2000
+  couples.
 - **Run 4 failed in the test, not the app.** 474 creates got `EOF`
   (Fly's proxy hung up with no response), sockets took 2.5 s to open,
   while the servers sat at ~115 MB and 11% CPU and k6 at 67% CPU,
   2.2 GiB. The same load from two k6 machines passed. So one source
   (one k6 machine, maybe one IP) hit a limit; real couples come from
-  many. Above ~3000 couples, split k6 over several machines.
+  many.
 - **pair_time grows with machines** (p95 52 ms on 1 → 136–515 ms on 2–4):
   joins that land on the wrong machine take an extra replay hop. Once
   per join only.
