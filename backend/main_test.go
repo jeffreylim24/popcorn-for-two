@@ -29,3 +29,29 @@ func TestLoadTestMode(t *testing.T) {
 		})
 	}
 }
+
+func TestPickMachineID(t *testing.T) {
+	tests := []struct {
+		name         string
+		flyAppName   string
+		flyMachineID string
+		want         string
+		wantErr      bool
+	}{
+		{"off Fly is local", "", "", "local", false},
+		{"off Fly ignores a stray ID", "", "0e286072f65186", "local", false},
+		{"on Fly uses the machine ID", prodAppName, "0e286072f65186", "0e286072f65186", false},
+		{"on Fly without an ID is refused", prodAppName, "", "", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := pickMachineID(tt.flyAppName, tt.flyMachineID)
+			if got != tt.want {
+				t.Errorf("pickMachineID = %q, want %q", got, tt.want)
+			}
+			if (err != nil) != tt.wantErr {
+				t.Errorf("err = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
