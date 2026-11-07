@@ -15,15 +15,14 @@ const PAUSED_CHECK_INTERVAL_MS = 500
 const SYNC_INTERVAL_MS = 2000
 
 /**
- * Creates the YouTube player in the element with id `elementId` and reports
- * what the user does: `onLocalChange` on play, pause or a seek, and
- * `onPlayingTick` every few seconds while playing. `playerRef` holds the
- * player once it's ready, and null before.
+ * Creates an empty YouTube player (no video until the caller cues one) in the
+ * element with id `elementId` and reports what the user does: `onLocalChange`
+ * on play, pause or a seek, and `onPlayingTick` every few seconds while
+ * playing. `playerRef` holds the player once it's ready, and null before.
  */
 export function useYouTubePlayer(
   playerRef: RefObject<YT.Player | null>,
   elementId: string,
-  videoId: string,
   callbacks: {
     onLocalChange: (position: number, state: PlaybackMessage['state']) => void
     onPlayingTick: (position: number) => void
@@ -47,8 +46,8 @@ export function useYouTubePlayer(
     }
 
     const createYouTubePlayer = () => {
+      // No videoId: a new room has none yet. useSync cues one once it's picked.
       player = new YT.Player(elementId, {
-        videoId,
         // No YouTube fullscreen button: it fullscreens only the iframe, which
         // hides our cams. RoomView has its own that keeps them.
         playerVars: { fs: 0 },
@@ -107,5 +106,5 @@ export function useYouTubePlayer(
       player?.destroy()
       playerRef.current = null
     }
-  }, [playerRef, elementId, videoId])
+  }, [playerRef, elementId])
 }
