@@ -670,13 +670,30 @@ Decisions (planned, not built):
     machines (call + sync work) and the destroyed-machine 503 after
     ~5 s. **Prod stays on 1 machine** (cost; no traffic needs more):
     `fly deploy`, and `fly scale count N` when it does.
-- [ ] **S2. Load test a fixed pool, then set the real cap**
-  - k6 (`loadtest/couples.js`) against 1, 2 and 4 machines, giving a
-    before/after number. The 5000 cap never fires before the ~1500 OOM
-    kill, and `LOAD_TEST=1` already lifts the per-IP limit, so nothing
-    needs toggling for the test.
-  - Then lower `maxRooms` to ~1000 per machine: refusing couple #1001
-    beats an OOM kill that ends every date on the machine.
+- [x] **S2. Load test a fixed pool, then set the real cap** ([#37](https://github.com/jeffreylim24/popcorn-for-two/issues/37), session 48)
+  - k6 (`loadtest/couples.js`) against 1, 2 and 4 machines: capacity is
+    **linear** (~1000 → ~2000 → ~4000 couples at full quality), because
+    each machine has its own memory. Results in "Load test results (#37)"
+    below.
+  - The proxy balances creates by **connections**, not memory (default
+    `soft_limit` 20, no `hard_limit`), and the split **can be uneven**:
+    in one 4-machine run two peaked at ~200 MB, two at ~170 MB (another
+    run was even). Nothing stops it
+    feeding a nearly full machine, so headroom per machine matters more
+    with several machines, not less.
+  - `maxRooms` 5000 → **1000 per machine**: 1250/machine sits at
+    ~201 MB of ~207 and **1300 OOM-killed 2 of 4 machines** with no
+    latency warning first (p95 stayed ~5 ms). The wall is sharp and
+    silent, so the cap needs margin for a skewed split; refusing couple
+    #1001 beats a kill that ends every date on the machine.
+    Verified on a real VM: 1100 couples → exactly 100 refused (503), no
+    OOM. The number holds only for the 256 MB VM; re-measure if the VM
+    size changes. A refused create still shows nothing (#19).
+  - Skipped: replay caching / `fly-force-instance-id` to skip the
+    random first hop on joins (browsers can't set WebSocket headers; a
+    replay cache is per path prefix and "an optimization, not a
+    guarantee"). It costs only 0.1–0.5 s once per join; relay latency is
+    unaffected.
 - [ ] **S3. Grow and shrink the pool** (needs more design)
   - Fly never creates machines; autostart only wakes stopped ones from
     a pool you made (`fly scale count`). Stopped machines cost only
@@ -708,7 +725,7 @@ as real date nights show what matters.
 | [#5](https://github.com/jeffreylim24/popcorn-for-two/issues/5) | Synced drags (same cam layout on both screens) | HIGH | The M10 end goal; a key priority |
 | [#6](https://github.com/jeffreylim24/popcorn-for-two/issues/6) | Ghost seat after editing the URL (bfcache) | MEDIUM | Same "room full" symptom; the heartbeat won't catch it (socket alive) |
 | [#7](https://github.com/jeffreylim24/popcorn-for-two/issues/7) | Socket auto-retry with backoff | MEDIUM | A blip needs a manual Reconnect; ICE restart builds on it |
-| [#8](https://github.com/jeffreylim24/popcorn-for-two/issues/8) | ✅ Room expiry + rate-limit room creation (PR merged, deployed 2026-10-20) | done | Rooms empty for 10 min are swept (1-min tick; never-joined rooms too); creation is 10/IP/10 min → 429, and 5000 rooms total → 503. Checked live: sweep on prod, 429 on mobile data |
+| [#8](https://github.com/jeffreylim24/popcorn-for-two/issues/8) | ✅ Room expiry + rate-limit room creation (PR merged, deployed 2026-10-20) | done | Rooms empty for 10 min are swept (1-min tick; never-joined rooms too); creation is 10/IP/10 min → 429, and 5000 rooms total → 503 (1000 per machine since #37). Checked live: sweep on prod, 429 on mobile data |
 | [#19](https://github.com/jeffreylim24/popcorn-for-two/issues/19) | Say so when room creation is refused (429 / 503) | MEDIUM | `createAndJoinRoom` only logs the status, so a rate-limited user clicks Create and nothing happens. Needs a visible message on the home page ("too many rooms, try again in a few minutes" / "server is full"). Frontend only |
 | [#9](https://github.com/jeffreylim24/popcorn-for-two/issues/9) | Room-code hardening (rate-limit joins) | MEDIUM | The code is the only gate to a partner's camera. Reuse `limiter.go`; count every attempt (incl. not found); tune with #7's backoff |
 | | Tests for `joinRoomHandler` (`httptest` + `websocket.Dial`) | MEDIUM | Harness exists since #14 (`startJoinServer`, fake TURN); join/ICE covered. Still untested: relay, partner notices, room video. #4 and #8 both change it |
@@ -817,6 +834,45 @@ the path. Machine restarted before each run.
   /scripts/couples.js=loadtest/couples.js --env BASE_URL=https://popcorn-for-two-load.fly.dev
   --env COUPLES=1250 grafana/k6:2.3.0 -- run -q --no-color /scripts/couples.js`.
   Destroy both apps afterwards.
+
+### Load test results (#37): several machines
+
+Same script and VM as #21 (30 s ramp, 60 s hold, k6 on a Fly
+performance-2x 4 GB machine in `yyz`), on the S1 code. Reports in
+`loadtest/results/multiple-machines/s2/` (local only, gitignored).
+
+| Run | Machines | Couples | Result | relay p95 / p99 | Peak memory per machine |
+|---|---|---|---|---|---|
+| 1 | 1 | 1000 | ✓ | 3 / 6 ms | 169 MB |
+| 2 | 2 | 2000 | ✓ | 3 / 5 ms | 177, 169 MB |
+| 3 | 2 | 2500, one k6 machine | ✓ (tail bends) | 62 / 268 ms | 201, 197 MB |
+| 4 | 4 | 4000, **one** k6 machine | ✗ 53% paired | 975 ms / 1.95 s | 115–119 MB |
+| 4b | 4 | 4000, **two** k6 machines × 2000 | ✓ | 5–6 / 46–51 ms | 201, 197, 170, 170 MB |
+| 5 | 4 | 5001, three k6 × 1667 | ✓ | 2–7 / 4–47 ms | 202, 201, 200, 200 MB |
+| 7 | 4 | 5202, three k6 × 1734 | ✗ 2 of 4 OOM-killed | 4–5 ms (survivors) | ~206 MB, then killed |
+| cap | 1 | 1100, `maxRooms` 1000 | 1000 ✓ / 100 refused | 3 / 6 ms | 169 MB |
+
+- **Capacity is linear in machines.** Server CPU stayed under 25%.
+  The wall is ~1250–1300 couples per 256 MB machine: run 7 (1300)
+  dropped 3928 sockets and lost 7438 messages after two OOM kills, while
+  the survivors' p95 stayed ~5 ms. No latency warning before the cliff.
+- **Run 3's bent tail was mostly k6, not the servers:** run 5 had the
+  same 1250 per server and the same memory, but three k6 machines, and
+  p99 was 4–47 ms instead of 268 ms. Keep each k6 machine at ≤ ~2000
+  couples.
+- **Run 4 failed in the test, not the app.** 474 creates got `EOF`
+  (Fly's proxy hung up with no response), sockets took 2.5 s to open,
+  while the servers sat at ~115 MB and 11% CPU and k6 at 67% CPU,
+  2.2 GiB. The same load from two k6 machines passed. So one source
+  (one k6 machine, maybe one IP) hit a limit; real couples come from
+  many.
+- **pair_time grows with machines** (p95 52 ms on 1 → 136–515 ms on 2–4):
+  joins that land on the wrong machine take an extra replay hop. Once
+  per join only.
+- Debug tip: `save_k6`'s summary filter drops k6's warnings; count them
+  with `perl -ne 'print "$1\n" if /error="((?:[^"\\]|\\.){0,200})/'`
+  over `fly logs -a popcorn-for-two-k6 --no-tail -m <id>`. The log
+  buffer keeps only recent lines.
 
 ### Notes for untracked rows
 

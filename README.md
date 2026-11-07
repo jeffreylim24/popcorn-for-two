@@ -145,7 +145,7 @@ Every deploy restarts the server and wipes all rooms, so don't deploy during a d
 - Two people per room.
 - One server holds about 1000 couples at once with a safe margin (see [Load test](#load-test)).
 - Rooms are lost on restart or deploy. A room that has been empty for 10 minutes is deleted, so a link to an abandoned room stops working.
-- Room creation is limited to 10 per IP per 10 minutes (HTTP 429), and the server holds at most 5,000 rooms at once (HTTP 503).
+- Room creation is limited to 10 per IP per 10 minutes (HTTP 429), and each server machine holds at most 1,000 rooms at once (HTTP 503).
 - A partner whose connection dies silently (sleep, Wi-Fi drop) keeps their seat for up to about 30 s, until the server's heartbeat (a ping every 15 s) notices.
 - Chrome's autoplay rules: a tab nobody has clicked yet can't start playing. Click anywhere on the page once.
 - Changing the URL in a room tab can leave the room stuck "full". Close that tab to free the seat.
