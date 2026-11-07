@@ -8,10 +8,12 @@ Roadmap: "Scaling out", S1. Planned 2026-11-03.
 Run Popcorn for Two on 2+ Fly machines. Partners who land on different
 machines still end up in the same room.
 
-**Done when:** two machines run with `--ha=false` dropped; a room made
-on machine A can be joined by someone whose request first lands on
-machine B; tests cover the local, replay and malformed cases; the README
-deploy section is updated.
+**Done when:** a room made on machine A can be joined by someone whose
+request first lands on machine B; tests cover the local, replay,
+failed-replay and malformed cases; the README deploy section is updated.
+(Changed s. 47: multi-machine is verified on the load app; **prod stays
+on 1 machine** to save money until traffic needs more, `fly scale count
+N` then. The design no longer limits it to one.)
 
 ## Why
 
@@ -59,16 +61,22 @@ all unchanged.
   balancer already chose that machine, so no picking is needed.
 - The code it returns is `{machineID}-{random6}`. The joiner's link
   carries it, so no one has to remember which machine owns what.
-- The frontend needs no change: `App.tsx` accepts any non-empty
-  `/room/{code}`, and `useRoomSocket` passes the code through to
-  `/api/rooms/{code}/ws` unchanged. (Checked in dev, session 46.)
+- Routing needs no frontend change: `App.tsx` accepts any non-empty
+  `/room/{code}`, and `useRoomSocket` passes the key through to
+  `/api/rooms/{key}/ws` unchanged. (Checked in dev, session 46.) The
+  frontend must keep the **full** key: it carries the machine part
+  without reading it. Only display changed (s. 47): the two room chips
+  (`Lobby`, `RoomView`) show `roomCode(key)`, the part after the last
+  `-` (a key with no `-` shows whole).
 
 **Naming (session 46):** the **key** is the whole string in the link and
 the URL (`local-xY3kQ9`); the **machine** is the part before the last
 `-`; the **code** is the 6-char part after it, the `rooms` map key (as
 `rooms.go` already used the word). The route is `GET /api/rooms/{key}/ws`.
 The frontend's own variable is still called `code` and holds the key;
-it treats it as opaque.
+it treats it as opaque. Renaming it `roomKey` (not `key`: React reserves
+that prop) and parsing once in `RoomPage` was considered in s. 47 and
+deferred (YAGNI): do it if a third place needs the short code.
 
 ### `fly-replay`
 
@@ -89,7 +97,9 @@ As built (session 46), in this order:
 ```
 GET /api/rooms/{key}/ws arrives at some machine
   machine, code, ok := parseRoomKey(key)
-  ├─ ok and machine ≠ my ID → log, fly-replay: instance=<machine>, 421, no upgrade
+  ├─ fly-replay-failed header → log it, 503, no upgrade (Fly's fallback)
+  ├─ ok and machine ≠ my ID → log, fly-replay: instance=<machine>;
+  │                           timeout=5s;fallback=force_self, 421, no upgrade
   ├─ Accept (the upgrade)
   ├─ !ok (malformed)        → log, close 4004 (same as an unknown room)
   └─ joinRoom(code, …)      → the existing join logic (unknown code → 4004)
@@ -105,7 +115,19 @@ GET /api/rooms/{key}/ws arrives at some machine
   tests). In dev, a key for another machine therefore shows "Connection
   lost" (421 → `1006`); only a hand-edited link can produce one.
 - It can't loop: the replayed request lands on the right machine, where
-  the IDs match.
+  the IDs match, and a fallback request is answered before the replay
+  check.
+- **The fallback (step 4b, s. 47).** If the target doesn't answer in
+  5 s, Fly resends the *same request* to the replaying machine with a
+  `fly-replay-failed` request header (e.g. `instance=…;replay_source=…;
+  reason=timeout;elapsed_ms=5011`). It is a new run of the handler: run
+  1 returned right after sending the replay, and the 5 s wait is in the
+  proxy. Fly forbids a second replay, so the header check comes first.
+  Answer: **503**, not 4004 (the target may only be slow; Fly reports
+  `reason=timeout` for a destroyed machine too, so the reason can't
+  tell them apart) and **no upgrade** (the browser shows "Connection
+  lost" for a refused upgrade, the same as for close `1013`; upgrading
+  first, tried and dropped, flashed the room before the close).
 
 ### Local dev and tests
 
@@ -120,7 +142,7 @@ GET /api/rooms/{key}/ws arrives at some machine
 |---|---|---|
 | Hand-edited machine part naming a real machine | Replayed there; its map doesn't have the code → 4004. The local lookup is the guard | Covered by design |
 | Junk machine part (not a valid Fly ID) | **Tested s. 46:** Fly's proxy answers `400` at once (`[PU01] could not parse machine ID`), even for 14 hex chars or a real ID with one digit changed (IDs have internal structure). Browser: "Connection lost" | Accepted: only a hand-edited link |
-| Real ID of a destroyed machine | **Tested s. 46** (`fly machine destroy`): the proxy keeps retrying; curl timed out at 30 s. Browser: stuck on "Connecting…", then "Connection lost". Happens after scale-down / host replacement, routinely with S3 | **Fix: step 4b** |
+| Real ID of a destroyed machine | **Tested s. 46** (`fly machine destroy`): the proxy kept retrying; curl timed out at 30 s. Happens after scale-down / host replacement, routinely with S3 | **Fixed (4b, s. 47):** 503 after ~5 s, "Connection lost". Tested on Fly |
 | Owner machine crashed / restarted | Its rooms are gone (memory). Same as today with one machine | Accepted; #7 (reconnect) should show a clean "room gone" |
 | Deploy | Every machine restarts; all rooms lost. Same as today | Accepted; still don't deploy during date nights |
 | Old 6-char links from before the deploy | Malformed → not found. All rooms die on deploy anyway | Accepted |
@@ -153,7 +175,8 @@ GET /api/rooms/{key}/ws arrives at some machine
    helpers: `dialRoom(code)` adds `"local-"`, `dialKey(key)` sends it
    raw. Tests: malformed key → 4004; plain GET for `B-…` → 421 +
    `fly-replay: instance=B`.
-4b. **Replay timeout + fallback** (decided s. 46, not built). Send
+4b. ✅ **Replay timeout + fallback** (`89c49ac`, then `9bd6289`; as
+   described in "Join, step by step"). Original plan, kept for the record: Send
    `fly-replay: instance=<id>;timeout=5s;fallback=force_self`: if the
    target can't be reached in 5 s, Fly sends the request back to the
    replaying machine with a `fly-replay-failed: …;reason=…` request
@@ -162,7 +185,7 @@ GET /api/rooms/{key}/ws arrives at some machine
    designs it: what to do and where in the order), ending in a 4004.
    Unknown: whether the fallback also fires for the proxy's "could not
    parse machine ID" 400 (probably not; accepted either way).
-5. **Fly** (in progress). Done s. 46 on `popcorn-for-two-load`, 2
+5. ✅ **Fly.** Done s. 46 on `popcorn-for-two-load`, 2
    machines: each logs its own ID; create + `curl` WebSocket handshake
    with `fly-force-instance-id: <other machine>` → `101`, logs show
    "Replaying room … to machine A" on B, then the join on A. Heartbeat
@@ -170,10 +193,15 @@ GET /api/rooms/{key}/ws arrives at some machine
    cases tested (see edge cases). App destroyed after; recreate with
    `fly apps create popcorn-for-two-load`, then `fly deploy --config
    fly.load.toml --ha=false` + `fly scale count 2 --config
-   fly.load.toml`. Still to do: re-test the destroyed-machine case
-   after 4b.
-6. **Production.** Update the README deploy section (`--ha=false` →
-   machine count), `fly scale count 2`, deploy, live test with a partner.
+   fly.load.toml`. S. 47, after 4b: destroyed machine → logs "Replaying
+   …" then "Replay failed … reason=timeout;elapsed_ms=5011", curl gets
+   503 after ~5 s (curl's 1013 version also lingered: `Close` waits up
+   to 5 s for a close reply curl never sends). And a real browser join
+   across the 2 machines: call + sync work. App destroyed after.
+6. **Production.** README deploy section updated (s. 47). Merge, then
+   `fly deploy` from `main`; prod stays on **1 machine** (decided s. 47,
+   see "Done when"), so `--ha=false` is gone (it only ever mattered on a
+   first deploy) and no `fly scale count`.
 
 ## Open questions
 
@@ -219,5 +247,5 @@ GET /api/rooms/{key}/ws arrives at some machine
 6. ~~What the browser sees when the replay target doesn't exist~~
    **Answered s. 46** (edge cases table): junk ID → instant 400;
    destroyed machine → hang. Fix the hang in step 4b.
-7. Step 4b: what the handler does with a `fly-replay-failed` request,
-   and where that check goes in the order.
+7. ~~Step 4b~~ **Decided s. 47:** a `fly-replay-failed` request gets a
+   503 with no upgrade, checked before the replay check.

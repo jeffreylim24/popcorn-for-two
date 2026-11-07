@@ -638,7 +638,7 @@ Decisions (planned, not built):
   machine. A global cap would need shared state again. The pool size
   bounds the total, and that is the cost guard.
 
-- [ ] **S1. Several machines, one room map each** ([#32](https://github.com/jeffreylim24/popcorn-for-two/issues/32);
+- [x] **S1. Several machines, one room map each** ([#32](https://github.com/jeffreylim24/popcorn-for-two/issues/32);
   full plan: [docs/plans/s1-room-routing.md](docs/plans/s1-room-routing.md))
   - Built (session 46, steps 1–4): the machine that gets
     `POST /api/rooms` hosts the room and returns the **key**
@@ -655,9 +655,22 @@ Decisions (planned, not built):
     read a refused upgrade's status); own → existing join by code.
   - Tested on Fly (2 machines): the forced cross-machine join replays
     and connects. Junk machine IDs get an instant 400 from Fly's proxy;
-    a destroyed machine's ID hangs → next: replay `timeout=5s` +
-    `fallback=force_self`, answering the fallback with 4004 (step 4b).
-  - Then drop `--ha=false`, run 2 machines, update the README section.
+    a destroyed machine's ID hung (30 s+).
+  - Fix (session 47, step 4b): the replay sends
+    `timeout=5s;fallback=force_self`; Fly then hands an unreachable
+    join back with a `fly-replay-failed` request header, answered with
+    **503, no upgrade** (checked first, before the replay check: a
+    fallback can't replay again). Not 4004: Fly only says
+    `reason=timeout` (seen on Fly for a destroyed machine), the same as
+    for a slow live one, so "not found" could be a lie; the browser
+    shows "Connection lost". Upgrade-then-close `1013` was tried first
+    and dropped: the room flashed before the close.
+  - The frontend still carries the full key (the socket URL needs it);
+    only the room chips show the 6-char code (`roomCode` in `rooms.ts`).
+  - Verified on the load app with 2 machines: a browser join across
+    machines (call + sync work) and the destroyed-machine 503 after
+    ~5 s. **Prod stays on 1 machine** (cost; no traffic needs more):
+    `fly deploy`, and `fly scale count N` when it does.
 - [ ] **S2. Load test a fixed pool, then set the real cap**
   - k6 (`loadtest/couples.js`) against 1, 2 and 4 machines, giving a
     before/after number. The 5000 cap never fires before the ~1500 OOM
@@ -705,7 +718,7 @@ as real date nights show what matters.
 | [#10](https://github.com/jeffreylim24/popcorn-for-two/issues/10) | ✅ CI: run the checks on every PR (PR #22 merged 2026-10-25) | done | `.github/workflows/ci.yml`: two parallel jobs on every PR and every push to `main`. frontend: lint, format:check, test, build (Bun pinned to the Dockerfile's); backend: gofmt (fails if it lists a file), vet, test (Go from `go.mod`). Checked: a broken Go test turned only backend red, a broken Vitest test only frontend |
 | | ~~CD: deploy to Fly from `main` after CI passes~~ | dropped | Session 41: a deploy restarts the only machine and drops live rooms, so deploys stay manual to pick the moment. Option if wanted later: a manual "Run workflow" deploy button (`workflow_dispatch`) |
 | [#21](https://github.com/jeffreylim24/popcorn-for-two/issues/21) | Load test: how many concurrent rooms the server really handles (measured 2026-10-26, PR pending) | LOW | Production's VM holds **~1250 couples** at once; 1500 is an out-of-memory kill. Memory is the wall, not CPU. Plan on ~1000 with a margin; more needs a bigger VM. See "Load test results" below |
-| [#32](https://github.com/jeffreylim24/popcorn-for-two/issues/32) | Route each room to the machine that hosts it (S1) | MEDIUM | First step of "Scaling out" above; lifts the one-machine limit |
+| [#32](https://github.com/jeffreylim24/popcorn-for-two/issues/32) | ✅ Route each room to the machine that hosts it (S1, session 47) | done | First step of "Scaling out" above; lifts the one-machine limit. Prod stays on 1 machine by choice |
 | [#11](https://github.com/jeffreylim24/popcorn-for-two/issues/11) | Call status indicator | MEDIUM | A failed call is mostly silent today |
 | [#12](https://github.com/jeffreylim24/popcorn-for-two/issues/12) | Devices: pick cam/mic/speakers, voice vs movie volume (was M11) | MEDIUM | Wait for real use; volume balance is the likely first slice |
 | [#24](https://github.com/jeffreylim24/popcorn-for-two/issues/24) | ✅ Lobby and room layout on phones (PR #25 merged, deployed 2026-10-26) | done | Under 640px (Tailwind `sm:`): lobby buttons in two rows, header on one line (room badge hidden), resize handle always shown on touch (`pointer-coarse:`), 16px link input (no iOS zoom). Cams start side by side: 24px margins matching the player, 8px gap, read once when the room opens. Checked on a real phone |

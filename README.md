@@ -126,10 +126,16 @@ Deployed by hand to [Fly.io](https://fly.io) from the repo root. Set secrets **b
 ```sh
 fly secrets import --stage < backend/.env   # values never hit shell history
 fly secrets list                            # names + digests, never values
-fly deploy --ha=false
+fly deploy
 ```
 
-**Keep `--ha=false`.** Rooms live in one process's memory. With two machines, partners could land on different machines and never find each other's room. For the same reason, `fly.toml` keeps that one machine always on.
+Production runs on **one machine** for now (enough for today's traffic; a second one would double the bill). Rooms live in memory, but the app works on several machines: the room key in the link starts with the ID of the machine that holds the room (`{machine}-{code}`), and a join that lands on another machine is sent there with Fly's `fly-replay` header. If that machine doesn't answer within 5 s (it was destroyed, say), the join gets a 503 and the browser shows "Connection lost". To add machines:
+
+```sh
+fly scale count 2   # stays at 2 across later deploys
+```
+
+`fly deploy` keeps the current machine count (Fly only creates two by default on an app's first deploy). `fly.toml` keeps every machine always on (`auto_stop_machines = 'off'`), since stopping one would end its rooms.
 
 Every deploy restarts the server and wipes all rooms, so don't deploy during a date night.
 
