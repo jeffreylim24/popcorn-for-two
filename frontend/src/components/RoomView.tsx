@@ -17,24 +17,18 @@ import { FullscreenControls } from '@/components/FullscreenControls'
 import { RoomControls } from '@/components/RoomControls'
 import { cn } from '@/lib/utils'
 
-/**
- * The video a new player starts on. On join, the server sends the room's
- * current video, if it has one, and that replaces it.
- */
-const VIDEO_ID = 'kzcI5F4tGiU'
+/** What the overlay over the player shows: two lines and maybe a button. */
+type OverlayText = {
+  title: string
+  detail: string
+  action: 'create' | 'reconnect' | null
+}
 
 /**
  * The overlay shown over the player for each socket status (null: none).
  * A `Record`, so adding a status without an entry here is a type error.
  */
-const STATUS_TEXT: Record<
-  RoomStatus,
-  {
-    title: string
-    detail: string
-    action: 'create' | 'reconnect' | null
-  } | null
-> = {
+const STATUS_TEXT: Record<RoomStatus, OverlayText | null> = {
   connecting: {
     title: 'Finding your room…',
     detail: 'Just a moment.',
@@ -56,6 +50,13 @@ const STATUS_TEXT: Record<
     detail: 'The connection to the room dropped.',
     action: 'reconnect',
   },
+}
+
+/** Shown while connected but no one has picked a video yet. */
+const NO_VIDEO_TEXT: OverlayText = {
+  title: 'Nothing playing yet',
+  detail: 'Paste a YouTube link below to start watching!',
+  action: null,
 }
 
 /**
@@ -131,7 +132,7 @@ export function RoomView({
 }: RoomViewProps) {
   const socket = useRoomSocket(code)
   const { status, reconnect } = socket
-  const { pickVideo } = useSync(socket, 'player', VIDEO_ID)
+  const { pickVideo, hasVideo } = useSync(socket, 'player')
   const videoTrack = camStream?.getVideoTracks()[0] ?? null
   const audioTrack = micStream?.getAudioTracks()[0] ?? null
   /** Can the partner hear me? Only with the button on and a mic to send. */
@@ -144,7 +145,8 @@ export function RoomView({
   )
   /** SelfView draws a box: my stream, or the "camera blocked" card. */
   const selfBoxShown = camStream !== null || cameraError === 'denied'
-  const statusText = STATUS_TEXT[status]
+  /** A socket problem wins; otherwise the placeholder until there's a video. */
+  const statusText = STATUS_TEXT[status] ?? (hasVideo ? null : NO_VIDEO_TEXT)
   /** The player and both cams: what goes fullscreen, so the cams stay on top. */
   const stageRef = useRef<HTMLDivElement | null>(null)
   const { isFullscreen, toggleFullscreen } = useFullscreen(stageRef)

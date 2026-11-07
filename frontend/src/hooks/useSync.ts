@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import {
   isNews,
   parsePlaybackMessage,
@@ -14,15 +14,16 @@ import { useYouTubePlayer } from './useYouTubePlayer'
 /**
  * Keeps this tab's player in sync with the partner's: applies incoming
  * messages and sends only real news, over the room's `socket`. Returns the
- * player ref and `pickVideo` to switch both tabs to a new link.
+ * player ref, `pickVideo` to switch both tabs to a new link, and `hasVideo`.
  */
-export function useSync(
-  socket: RoomSocket,
-  elementId: string,
-  videoId: string,
-) {
+export function useSync(socket: RoomSocket, elementId: string) {
   const { send, subscribe } = socket
   const playerRef = useRef<YT.Player | null>(null)
+  /**
+   * Has a video been loaded into the player yet? False in a new room until
+   * someone picks one; a joiner gets the room's video from the server.
+   */
+  const [hasVideo, setHasVideo] = useState(false)
   /** The last state both tabs agreed on. null until the first message. */
   const lastStateRef = useRef<AgreedState | null>(null)
   /**
@@ -44,6 +45,7 @@ export function useSync(
     }
     player.cueVideoById(id)
     lastStateRef.current = { state: 'paused', position: 0, at: Date.now() }
+    setHasVideo(true)
   }
 
   /** Applies one incoming message; ignores types that aren't for sync. */
@@ -57,7 +59,8 @@ export function useSync(
     const msg = parsePlaybackMessage(data)
     if (!msg) return
     const player = playerRef.current
-    if (!player) return
+    // No video yet: nothing to play, pause or seek.
+    if (!player || !hasVideo) return
 
     if (msg.type === 'action') {
       lastStateRef.current = {
@@ -130,11 +133,11 @@ export function useSync(
     cueVideo(id)
   }
 
-  useYouTubePlayer(playerRef, elementId, videoId, {
+  useYouTubePlayer(playerRef, elementId, {
     onLocalChange: sendAction,
     onPlayingTick: sendSync,
     onReady: cuePendingVideo,
   })
 
-  return { playerRef, pickVideo }
+  return { playerRef, pickVideo, hasVideo }
 }
