@@ -14,47 +14,6 @@ its GitHub issue when it has one; the issue holds the details. Finished
 items leave this file (they live in closed issues and PRs). Load test
 numbers are in [docs/LOADTEST.md](docs/LOADTEST.md).
 
-## To triage: user feedback (2026-11-08)
-
-Issues to file. Each one needs a priority and a bucket, and the open
-questions are still to be decided.
-
-- **Bring a cam to the front.** Both cams are `z-10`, and the partner cam
-  renders after yours, so your own cam always hides behind your
-  partner's. Idea: bring a cam to the front when you click or touch it,
-  like desktop windows.
-  - To be decided: `bug` or `enhancement`? Double-click or plain click?
-    If layouts sync (#5), does the stacking order sync too?
-- **Resize a cam from all four corners.** Today only the bottom-right
-  corner resizes (so `x, y` stay put). From any other corner, the
-  opposite corner stays fixed, so `x` and/or `y` move during a resize.
-  Same file as the layering item (`DraggableCam`); touches the bounds
-  logic behind #1.
-- **Floating emotes, with a mute toggle.** Replaces the old "Emoji
-  reactions" row. Emotes float up over the video, like Instagram Live;
-  a local toggle hides the partner's emotes on your screen. Rides the
-  room socket, so it makes "Relay message size/rate limit" (Later) more
-  relevant.
-- **More video sources.** Replaces the "non-YouTube movies" half of the
-  old "Mini-games, non-YouTube movies" row. A player behind one
-  interface, with more than one provider behind it:
-
-  | Source | Synced play / pause / seek? |
-  |---|---|
-  | Twitch, Vimeo | Yes, through their player APIs (Twitch live streams can't seek) |
-  | Direct files (`.mp4`, HLS) | Yes, with a plain `<video>` |
-  | Any other website | No: a page can't control another site's player. Screen share (#35) covers it; TwoSeven-style control needs a browser extension |
-
-  - To be decided: one umbrella issue, or one per provider?
-- **Background cutout ("greenscreen").** Replaces the old "Background
-  blur / replace" row. Only the face and body show, with no frame. A
-  segmentation model (e.g. MediaPipe) finds the person pixels each
-  frame. WebRTC video has no transparency, so the *receiver* cuts out the
-  partner's video; the sender only says "cut me out" over the socket.
-  CPU-heavy on every frame.
-  - To be decided: cutout only, or one "background effects" issue
-    (blur, replace, cutout)?
-
 ## Now
 
 - **Synced drags: the same cam layout on both screens**
@@ -97,6 +56,26 @@ Features
   ([#35](https://github.com/jeffreylim24/popcorn-for-two/issues/35)).
   Watch things that aren't on YouTube. A new track on the call
   (renegotiation), and screen video through TURN is paid bandwidth.
+- **Bring a cam to the front** (issue to file). Both cams are `z-10`, and
+  the partner cam renders after yours, so your own cam always hides
+  behind your partner's. Idea: bring a cam to the front when you click
+  or touch it, like desktop windows.
+  - To be decided: double-click or plain click? If layouts sync (#5),
+    does the stacking order sync too?
+- **Floating emotes, with a mute toggle** (issue to file). Emotes float
+  up over the video, like Instagram Live; a local toggle hides the
+  partner's emotes on your screen. Cheap over the existing socket, and
+  it makes "Relay message size/rate limit" (Later) more relevant.
+- **More video sources** (issue to file). One player interface with
+  more than one provider behind it:
+
+  | Source | Synced play / pause / seek? |
+  |---|---|
+  | Twitch, Vimeo | Yes, through their player APIs (Twitch live streams can't seek) |
+  | Direct files (`.mp4`, HLS) | Yes, with a plain `<video>` |
+  | Any other website | No: a page can't control another site's player. Screen share (#35) covers it; TwoSeven-style control needs a browser extension |
+
+  - To be decided: one umbrella issue, or one per provider?
 
 ## Later
 
@@ -124,6 +103,18 @@ S1 (sticky routing, #32) and S2 (load tests, cap of 1000 per machine,
 
 ### LOW
 
+- **Resize a cam from all four corners** (issue to file). Today only the
+  bottom-right corner resizes (so `x, y` stay put). From any other
+  corner, the opposite corner stays fixed, so `x` and/or `y` move during
+  a resize. Same file as "Bring a cam to the front" (`DraggableCam`);
+  touches the bounds logic behind #1.
+- **Background cutout ("greenscreen")** (issue to file). Only the face
+  and body show, with no frame. A segmentation model (e.g. MediaPipe)
+  finds the person pixels each frame. WebRTC video has no transparency,
+  so the *receiver* cuts out the partner's video; the sender only says
+  "cut me out" over the socket. CPU-heavy on every frame.
+  - To be decided: cutout only, or one "background effects" issue
+    (blur, replace, cutout)?
 - **Shorter TURN TTL + refresh while seated.** Limits how long a leaked
   credential works: Go re-sends `ice-servers`, the browser applies it
   with `pc.setConfiguration()`. Doesn't stop someone who keeps the seat
