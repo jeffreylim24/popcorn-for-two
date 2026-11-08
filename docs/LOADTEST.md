@@ -77,7 +77,7 @@ the path. Machine restarted before each run.
   --env COUPLES=1250 grafana/k6:2.3.0 -- run -q --no-color /scripts/couples.js`.
   Destroy both apps afterwards.
 
-## Several machines (#37, session 48)
+## Several machines (#37)
 
 Same script and VM as #21 (30 s ramp, 60 s hold, k6 on a Fly
 performance-2x 4 GB machine in `yyz`), on the S1 code. Reports in

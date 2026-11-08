@@ -1,8 +1,9 @@
 # Roadmap
 
-What's planned next for Popcorn for Two. The MVP (two people on a video
-call watching a YouTube video in sync) shipped in session 38; everything
-here builds on it.
+What's planned next for Popcorn for Two. The current release is
+[v1.1.0](https://github.com/jeffreylim24/popcorn-for-two/releases/tag/v1.1.0);
+see the [releases](https://github.com/jeffreylim24/popcorn-for-two/releases)
+for what has shipped so far.
 
 - **Now:** HIGH priority, or in progress.
 - **Next:** MEDIUM priority.
