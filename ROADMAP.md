@@ -1,896 +1,188 @@
 # Roadmap
 
-MVP: two people on a video call watch a YouTube video in sync.
+What's planned next for Popcorn for Two. The MVP (two people on a video
+call watching a YouTube video in sync) shipped in session 38; everything
+here builds on it.
 
-Approach: build each piece when the previous one makes me need it.
-Every milestone ends in something I can demo and commit.
+- **Now:** HIGH priority, or in progress.
+- **Next:** MEDIUM priority.
+- **Later:** LOW and VERY LOW, plus work that needs more design first.
 
-**MVP done (session 38):** M1–M10 shipped and tested live. Everything
-else is a future enhancement, tracked as GitHub issues.
+Priorities change as real date nights show what matters. Each item links
+its GitHub issue when it has one; the issue holds the details. Finished
+items leave this file (they live in closed issues and PRs). Load test
+numbers are in [docs/LOADTEST.md](docs/LOADTEST.md).
 
-## Milestones
+## To triage: user feedback (2026-11-08)
 
-- [x] **M1: YouTube player (solo)**
-  - Done when: my own Play / Pause / Jump buttons control an embedded
-    YouTube video on the page.
-  - Why next: it's the heart of the app, and it runs on one machine
-    with no server.
-  - Decided: raw IFrame API, no React wrapper (sync needs direct
-    control of player calls and events); API loaded by a static
-    `<script>` in `index.html`; player
-    created when `YT.Player` exists, else via `onYouTubeIframeAPIReady`.
-  - Decided: player held in a `useRef` so code outside the effect can
-    call it (M3's message handler will too); cleanup destroys it, then
-    empties the ref so nothing calls a dead player.
+Issues to file. Each one needs a priority and a bucket, and the open
+questions are still to be decided.
 
-- [x] **M2: Rooms**
-  - Done when: two browser tabs join the same room, and a message sent
-    from one shows up in the other, relayed by the Go server.
-  - Why next: after M1, pausing only affects my own screen. I need a
-    way to get a message to my partner.
-  - Decided: the server generates a random 6-character room code
-    (`POST /api/rooms`), regenerating while the code is already taken;
-    the server is the one place that knows every room.
-  - Decided: max 2 people per room (a stranger who guesses a code gets
-    "room full").
-  - Decided: a "Copy link" button gives `…/room/CODE`; opening the link
-    joins the room. Typing a code isn't needed.
-  - Decided: dead connections are found by WebSocket ping/pong: ping
-    every 15s, close and free the slot after 30s of silence. A clean
-    tab close is noticed at once; the heartbeat covers silent deaths
-    (battery, sleep, Wi-Fi drop).
-  - Decided: WebSocket library is `coder/websocket` (actively
-    maintained; writes are safe from any goroutine, which relaying
-    needs; `Ping(ctx)` covers the heartbeat). Trade-off: fewer
-    tutorials than gorilla/websocket.
-  - Decided: unknown or full rooms are rejected *after* `Accept` with an
-    app close code (4000–4999), so the frontend can read the reason
-    (`statusRoomNotFound` = 4004, `statusRoomFull` = 4005). Rejecting
-    before `Accept` hides the HTTP status from JS.
-  - Decided: each room stores a set of its connections
-    (`map[string]map[*websocket.Conn]bool`): count = full check,
-    loop = relay, `delete` = leave.
-  - Decided: `joinRoom` returns sentinel errors (`errRoomNotFound`,
-    `errRoomFull`); the handler matches them with `errors.Is` and
-    closes anything else with 1011.
-  - Decided: `defer leaveRoom` goes after a successful join, so a
-    rejected client never "leaves". Empty rooms are kept (a refresh
-    before the partner joins must not kill the room); expiry is Later.
-  - Done so far: `POST /api/rooms` creates a room. `GET
-    /api/rooms/{code}/ws` joins under one lock, rejects unknown (4004)
-    and full (4005) rooms, reads until the client leaves, then frees
-    the slot. Vite's `/api` proxy has `ws: true`.
-  - Decided: relay looks up the partner per message (`getPartnerConn`,
-    under the lock) and writes outside the lock. Each `Write` gets a 5s
-    timeout ctx from `r.Context()`, cancelled right after (not
-    deferred: the loop outlives each message). A failed write is logged
-    and the sender stays connected; messages sent while alone are
-    dropped (M3 handles state for a late joiner).
-  - Done: a message from one tab shows up in the other, not in the
-    sender's own tab.
+- **Bring a cam to the front.** Both cams are `z-10`, and the partner cam
+  renders after yours, so your own cam always hides behind your
+  partner's. Idea: bring a cam to the front when you click or touch it,
+  like desktop windows.
+  - To be decided: `bug` or `enhancement`? Double-click or plain click?
+    If layouts sync (#5), does the stacking order sync too?
+- **Resize a cam from all four corners.** Today only the bottom-right
+  corner resizes (so `x, y` stay put). From any other corner, the
+  opposite corner stays fixed, so `x` and/or `y` move during a resize.
+  Same file as the layering item (`DraggableCam`); touches the bounds
+  logic behind #1.
+- **Floating emotes, with a mute toggle.** Replaces the old "Emoji
+  reactions" row. Emotes float up over the video, like Instagram Live;
+  a local toggle hides the partner's emotes on your screen. Rides the
+  room socket, so it makes "Relay message size/rate limit" (Later) more
+  relevant.
+- **More video sources.** Replaces the "non-YouTube movies" half of the
+  old "Mini-games, non-YouTube movies" row. A player behind one
+  interface, with more than one provider behind it:
 
-- [x] **M3: Sync**
-  - Done when: play, pause, or seek in either tab, and the other tab's
-    video follows within about a second, with no echo loop.
-  - Why next: messages arrive after M2, but the player ignores them.
-  - Known from M1: `seekTo` keeps the play/pause state (paused stays
-    paused), except before the first play, when it starts the video.
-  - Decided: message contract is `{ type: "action" | "sync", position,
-    state }` (state = playing / paused). Every message carries the full
-    state, so one message is enough to catch up. `play`/`pause`/`seek`
-    are one `action` type: the receiver does the same thing for all of
-    them, and `state` already says which.
-  - Decided: no `sentAt` / latency compensation. Two machines' clocks
-    can't be compared (skew gives negative or inflated delays), and
-    travel time (~0.2 s) is well inside the 1 s target. A round-trip
-    estimate wouldn't catch a one-off slow message anyway.
-  - Decided: `action` always sets the state; `seekTo` only if the gap
-    is over 1 s (avoids a visible twitch for tiny travel-time gaps).
-  - Decided: while playing, each side sends a `sync` every 2 s. The
-    receiver seeks only if the received position is **ahead** by more
-    than 1 s. "Ahead wins" is the tie-break both sides agree on with
-    no host; without it, crossed syncs swap positions forever. Worst
-    case after a freeze: out of sync for up to one tick (2 s).
-  - Decided: echo guard is "only send news". `lastStateRef` holds the
-    last state the room agreed on (`{ state, position, at }`), written
-    on every real send and every applied `action`. `sendAction` skips
-    when the state matches and the position is within
-    `SEEK_THRESHOLD_S` of the expected one (`position`, plus elapsed
-    seconds since `at` while playing). Why: both echo paths
-    (`onStateChange` and the paused-check timer) go through
-    `sendAction`, so one check covers both. Nothing has to be
-    "consumed", so no stale note can swallow a real action. Rejected:
-    a consume-once note in `onStateChange` (misses the timer echo;
-    goes stale on no-op calls), a quiet time window (guessed length,
-    drops real clicks), and no guard (a late echo undoes a newer
-    action).
-  - Known limit: if buffering after a remote play takes over 1 s, the
-    projection runs ahead and one echo still goes out. Harmless (the
-    gap rule ends it); the `sync` tick covers drift.
-  - Found: a seek while paused fires no `onStateChange` (state stays
-    paused; buffering only happens on the next play). Seeking while
-    playing fires buffering → playing, so it already sends.
-  - Decided: keep YouTube's own controls. Familiar, and personal
-    controls (subtitles, quality, volume, fullscreen) come free; speed
-    is reported by `onPlaybackRateChange`. Custom controls would mostly
-    be visual work. The page can't see clicks inside the cross-origin
-    iframe, so paused seeks are detected by checking the position while
-    paused. That also covers the dev-only Skip button (no send of its
-    own).
-  - Later: playback speed; send a `sync` right when buffering ends
-    instead of waiting for the next tick.
-  - Decided: the room code is segment 2 of `window.location.pathname`
-    (`/room/CODE`); no code means no socket. The socket lives in
-    `socketRef`, opened and closed by its own effect.
-  - Decided: keep StrictMode. Its dev-only mount → cleanup → mount
-    opens a second socket; a correct cleanup (close + `null`) is the
-    fix, not turning StrictMode off.
-  - Decided: messages are typed as `SyncMessage` (now in `sync.ts`).
-    `onStateChange` reads the position from `e.target` (the event's
-    own player) and the socket from `socketRef.current` at fire time.
-  - Done so far: each tab connects on load; play/pause/seek in one tab
-    sends an `action`, and the other tab applies it (seek first, then
-    play/pause, because of the M1 `seekTo` quirk). Paused seeks are
-    caught by a 500 ms position check while paused (`timerRef`;
-    `stopTimer()` runs first on every state change and on unmount).
-  - Done: echo guard. Verified in DevTools (Network → WS → Messages):
-    the receiver sends nothing back for play, pause, a paused seek, or
-    a playing seek.
-  - Decided: `sync` and `lastStateRef`. Every send and every apply
-    writes the note: a sent `sync` writes `{ 'playing', currentTime,
-    now }`, and an applied `sync` (partner ahead by over 1 s) writes
-    `{ 'playing', msg.position, now }`. An ignored `sync` (we're
-    ahead) leaves it alone. Why: the apply's seek fires buffering →
-    playing, which would otherwise go out as an `action`. Re-anchoring
-    on each sent `sync` keeps the note's projection within one tick
-    of the real video, so small buffer stalls can't add up past 1 s
-    and trigger a stray `action`. Cost: one object write per tick.
-    Each tab has its own note; it is not shared truth, and the two can
-    briefly differ.
-  - Decided: `sync` is sent by its own `sendSync`, not `sendAction`.
-    The echo guard would drop nearly every `sync` (while playing, the
-    projected position matches), and a `sync` is a routine report, not
-    news.
-  - Decided: a tab ignores incoming `sync`s unless it is playing
-    (`getPlayerState() === PLAYING`). Why: a `sync` can cross a pause
-    `action` on the wire. Applying it would make the paused video jump
-    forward and the paused check would send a stray `action`. A `sync`
-    only describes playback; only an `action` changes state.
-  - Decided: `SYNC_INTERVAL_MS = 2000`, tune after watching real
-    drift. The interval is the longest a drift goes unnoticed. Faster
-    adds little: the 1 s threshold means drift must build up first,
-    and more ticks mean more `sync`s crossing an in-flight `action`.
-    Buffering (the main drift cause) gets its own `sync` later, so the
-    tick is a safety net. Chrome caps hidden-tab timers at 1/s, and
-    its 1/min throttling skips pages playing audio, so 2 s still holds
-    in a background tab.
-  - Done: `sync` tick. `sendSync` every `SYNC_INTERVAL_MS` while
-    playing (reuses `timerRef`; `stopTimer()` ends it on any state
-    change). Receiver applies only while playing and only if the
-    partner is over 1 s ahead. Verified with tab B at 1.25x speed: A
-    jumps forward every few seconds, and DevTools shows no `action`
-    after a jump. M3's "done when" is met; the cleanup below is left.
-  - Not designed yet: late-join catch-up. A tab that hasn't pressed
-    play ignores `sync`s, so a late joiner waits for a click. Check
-    Chrome's autoplay rules before designing it.
-  - Found: Chrome's autoplay policy blocks `playVideo()` from a
-    received `action` in a tab nobody has clicked yet; the message
-    arrives but the video stays unstarted. One click anywhere on the
-    page unblocks it (confirmed: reload, no click → stuck; one click on
-    blank page → follows). Feeds the late-join design.
-  - End of M3 cleanup (from the code review), in this order:
-    1. Done: removed the Vite demo leftovers.
-    2. Done: sync decisions are pure functions in `src/sync.ts`, with
-       `SyncMessage`, `AgreedState`, and `SEEK_THRESHOLD_S`:
-       `expectedPosition(last, nowMs)` (exhaustive `switch` with a
-       `never` default), `isNews(last, state, position, nowMs)` (echo
-       guard), `shouldCatchUp(isPlaying, myPosition, partnerPosition)`
-       (applying a `sync`). Time comes in as `nowMs` and YouTube state
-       as a boolean, so `sync.ts` never touches the clock or `YT` and
-       tests need no fakes. Tested in `src/sync.test.ts` (17 tests).
-    3. Done: split `App.tsx` into custom hooks, one file each in
-       `src/hooks/`. Decided: 4 hooks. `useHealth`;
-       `useRoomSocket(code, onMessage)` returns a stable `send`, knows
-       nothing about YouTube (deals in strings only, `JSON.parse`
-       stays with the caller; `onMessage` via `useEffectEvent`, `send`
-       via `useCallback` reading `socketRef` at call time);
-       `useYouTubePlayer(playerRef, elementId, videoId,
-       {onLocalChange, onPlayingTick})` returns nothing, owns the
-       timers, knows nothing about sockets;
-       `useSync(code, elementId, videoId)` owns `playerRef`,
-       `lastStateRef` and the `isNews`/`shouldCatchUp` policy, composes
-       the other two, returns `playerRef` for App's dev buttons.
-       Callbacks reach the once-only effects through `useEffectEvent`
-       (React 19.2+). Rejected: 2 hooks passing refs to each other.
-       Verified with the two-tab check after the split.
-  - Decided: `useSync` creates `playerRef` and passes it into
-    `useYouTubePlayer` (option A). Why: the socket handler needs the
-    player and the player callbacks need `send`, so with the player
-    hook returning its own ref, either call order used something
-    before it was declared. Creating the ref above both calls means
-    every line uses only things above it, lint-clean, and the two
-    hooks never see each other. Cost: the player hook doesn't fully
-    own its ref. Rejected: a late-bound "holder" ref filled after both
-    calls (a ref write during render, which lint flags; easy to
-    forget), one combined player + socket hook (undoes the split), and
-    returning player controls referenced before their declaration
-    (lint: "accessed before it is declared").
-  - Decided: `useSync(code, elementId, videoId)`, not `useSync(code)`.
-    Why: the page decides which element and video; sync logic doesn't
-    care. When choosing a video arrives, only App changes.
-  - Decided: Vitest for frontend tests (`bun run test` = `vitest run`).
-    Reuses the Vite config, the standard runner for Vite projects, and
-    fits later hook/component tests. Rejected: `bun test` (no install,
-    but separate config and less common for React tests).
-  - Before deploy (M4): wrap `JSON.parse` in `try/catch` and check the
-    message shape (done). `WebSocket.send()` throws while the socket is still
-    connecting (`sendAction` and `sendSync`); check `readyState` first.
+  | Source | Synced play / pause / seek? |
+  |---|---|
+  | Twitch, Vimeo | Yes, through their player APIs (Twitch live streams can't seek) |
+  | Direct files (`.mp4`, HLS) | Yes, with a plain `<video>` |
+  | Any other website | No: a page can't control another site's player. Screen share (#35) covers it; TwoSeven-style control needs a browser extension |
 
-- [x] **M4: First deploy (by hand)**
-  - Done when: the app runs on a public HTTPS URL, and two devices on
-    separate networks watch a video in sync. (Was "my partner and I";
-    changed in session 25, since a VPN test covers HTTPS, real lag and
-    two independent browsers. Routers only matter once WebRTC arrives.)
-  - Why next: two tabs on one laptop hide real lag, HTTPS, and home
-    routers. Also: first real date night.
-  - Decided: Fly.io, one always-on machine in `yyz` (Toronto, between
-    Montreal and Toronto), 256 MB, ~$2.19/mo. Why: WebSockets last a
-    whole movie and rooms live in memory, so it must be one long-running
-    process. Rejected: Vercel (serverless; sockets pinned per instance
-    and time-capped), Render free (sleeps, may restart any time),
-    Railway (works, but deploy-on-push skips the by-hand step), a VPS
-    (too much for a first deploy).
-  - Decided: `fly.toml` has `auto_stop_machines = 'off'`,
-    `min_machines_running = 1`, and deploys use `--ha=false` (one
-    machine = one `rooms` map). Auto-stop may be fine (open sockets
-    count as traffic) but is unverified; revisit for cost later.
-  - Decided: one origin. Go serves `frontend/dist` with an SPA fallback
-    (unknown path → `index.html`); the frontend's relative URLs need no
-    change and there's no CORS code. Rejected for now: separate
-    frontend hosting. Its real upside is that frontend deploys don't
-    restart Go (every deploy wipes live rooms), so don't deploy during
-    a date night. Switching later is about an afternoon.
-  - Decided: multi-stage `Dockerfile` (Bun build → Go static build with
-    `CGO_ENABLED=0` → `alpine:3.24`). The final image mirrors the repo
-    (`/app/backend/server`, `/app/frontend/dist`) so `../frontend/dist`
-    works in dev and prod. Fly's generated GitHub deploy workflow was
-    deleted (CI/CD comes later).
-  - Decided: `parseSyncMessage` in `sync.ts` (try/catch + shape check,
-    `position >= 0`), with allowed values as `as const` arrays and the
-    types derived from them. Why: version skew after a deploy.
-  - Decided: `send` drops the message if the socket isn't open
-    (`readyState` check); the position check catches up.
-  - Decided: "Create room" button on the home page does a full page
-    load to `/room/CODE`. Why: `App` reads the code from the URL at
-    render, so `pushState` wouldn't re-render; a router can come when
-    there are real pages. Skipped: a "Copy link" button (the address
-    bar does it).
-  - Done so far: live at https://popcorn-for-two.fly.dev (deploy v2);
-    phone on cellular + laptop on school wifi sync.
-  - Done: root `README.md` (what it is, run locally, how sync works,
-    checks, deploy with why `--ha=false`, limits); the Vite template
-    README is gone. Go tests for room join / full / leave / partner
-    lookup (`backend/main_test.go`).
-  - Decided: tests before splitting `main.go`. Why: tests passing
-    before and after prove the move changed nothing. Done: split into
-    `rooms.go`, `handlers.go`, `spa.go`, short `main.go` (same package);
-    tests renamed to `rooms_test.go`.
-  - Done (session 25): passed a VPN test on the deployed app.
-  - Decided: Tailwind v4 (Vite plugin) + shadcn/ui (Radix, Nova style).
-    `@/` alias uses `paths` without `baseUrl` (TS 6 rejects it). Lint's
-    fast-refresh rule is off for `components/ui` (CLI-generated files).
-  - Done: cozy restyle. Home page has a pixel font (Pixelify Sans), a
-    cream/terracotta theme and an animated isometric room
-    (`CozyRoom.tsx`, written by Claude at the user's request). Room page
-    has a framed 16:9 player; the debug Play/Pause/Skip buttons are gone
-    (YouTube's controls drive sync).
-  - Still to come: the first real date night with my partner (Montreal ↔
-    Toronto). Not a blocker for M5.
+  - To be decided: one umbrella issue, or one per provider?
+- **Background cutout ("greenscreen").** Replaces the old "Background
+  blur / replace" row. Only the face and body show, with no frame. A
+  segmentation model (e.g. MediaPipe) finds the person pixels each
+  frame. WebRTC video has no transparency, so the *receiver* cuts out the
+  partner's video; the sender only says "cut me out" over the socket.
+  CPU-heavy on every frame.
+  - To be decided: cutout only, or one "background effects" issue
+    (blur, replace, cutout)?
 
-- [x] **M5: Pages and routing**
-  - Done when: `/` shows the home page, `/room/CODE` shows the room,
-    and any other URL shows a "page not found" page (no more
-    `/banana` → home or `/x/y` → room "y").
-  - Why next: (reordered in session 26, before the camera) the app
-    gives no feedback on screen, and every later page (lobby, room
-    errors) needs real routing first.
-  - Decided: keep the SPA (one `index.html`, JS picks the page). The
-    bad behavior comes from two loose checks, not from the SPA: Go's
-    fallback serves `index.html` for any non-file path, and `App`
-    reads `pathname.split('/')[2]`. Fix: match `/` and `/room/{code}`
-    exactly; everything else → not found. Rejected: dropping the SPA
-    (rebuilds page serving for nothing this fix doesn't give).
-  - Decided: split `App` into `HomePage` and `RoomPage`. Why: hooks
-    can't be called conditionally, so today each hook takes `code` and
-    checks it inside. With `RoomPage` only rendered for a room, hooks
-    need no check, and leaving the room = unmount = cleanup runs.
-  - Decided: match the path by hand (a small function in `App`), no
-    router library yet. Why: two flat routes, and a full reload on
-    entering a room is fine. Games or other video sources live inside
-    a room (room state, not new URLs). Revisit with accounts and
-    persistent rooms (`/login`, `/rooms`, auth redirects, shared
-    layouts): then swap the matcher for React Router. The page split
-    keeps that a one-file change.
-  - Decided: "page not found" is frontend only; Go keeps serving
-    `index.html` with `200` for unknown paths (a "soft 404"). Why: the
-    frontend check is needed anyway (Vite's dev server falls back the
-    same way), and a Go `404` means keeping the page list in two places
-    that can drift. The only page crawlers should index is `/`; room
-    URLs are short-lived and shouldn't be indexed. Revisit when the app
-    has more public pages (landing pages, accounts) where correct
-    statuses matter for search engines and link checkers.
-  - Done (session 27): `src/pages/` holds `HomePage`, `RoomPage`,
-    `NotFoundPage`; `App` splits the path and checks part count and
-    every part (`/room/ABC/` with a trailing slash → not found, on
-    purpose). Hooks now take `code: string` with no guard.
+## Now
 
-- [x] **M6: Room status feedback**
-  - Done when: the room page shows connecting / connected / room not
-    found / room full / disconnected, instead of only the console.
-  - Why next: Go already closes with 4004 / 4005, but
-    `useRoomSocket` has no `onclose`, so the page never says why.
-  - Decided (s. 28):
-    - `useRoomSocket` owns the status and returns `{ send, status }`;
-      `useSync` passes it up to `RoomPage`. The status lives next to
-      the socket that produces it.
-    - Room not found / room full: a message card plus a "Create a new
-      room" button (same `POST /api/rooms` as the home page). The URL
-      is a dead end, so offer a way forward.
-    - Disconnected: a "Reconnect" button, no auto-retry. Auto-retry
-      needs backoff, a way to tell a blip from a dead room, and it
-      can hit 4005 while the server still holds the old seat.
-    - Reconnect bumps an `attempt` counter in the effect's deps, so
-      the old socket is cleaned up like on unmount.
-    - The overlay is drawn over the player, never instead of it:
-      YouTube holds `#player`, and a remount would leave it empty.
-  - Found: cleanup must detach `onclose` before `close()`, or the
-    old socket's async close event reports a false "disconnected"
-    (StrictMode's mount → cleanup → mount shows it on every load).
-  - Later: close codes are duplicated in Go and TS (shared constants);
-    auto-retry with backoff.
+- **Synced drags: the same cam layout on both screens**
+  ([#5](https://github.com/jeffreylim24/popcorn-for-two/issues/5), HIGH).
+  The end goal of the call milestone. Needs a design for seats, clashing
+  drags, and different screen shapes.
 
-- [x] **M7: Camera (lobby + self-view)**
-  - Done when: a Zoom-style lobby shows my webcam before I enter the
-    room, and in the room my facecam sits over the video, locally and
-    on the live site.
-  - Why next: the call still lives in another app. First step to
-    bringing it in: see my own face here.
-  - Decisions (session 26, before the reorder):
-    - Self-view sits over the video in a top corner. YouTube's
-      controls live inside the iframe, so anything on top of the
-      video hides them; the top corners keep the control bar clear.
-      The two facecams start in opposite top corners so they never
-      overlap at the start: room creator top-left, partner top-right,
-      the same on both screens. M9 needs the server to tell each tab
-      which seat it holds (and what "creator" means after a refresh).
-    - Permission denied: the video still works and the self-view box
-      says how to unblock (address bar; Chrome won't re-prompt after
-      Block, so no retry button). No camera: no box at all.
-    - Video only. The mic comes with M9.
-    - The camera turns on by itself (no "start camera" click); a
-      button turns it off and on again.
-  - Decisions (session 29):
-    - The lobby is a view at the same URL (`/room/CODE`), not its own
-      page: a `joined` state in `RoomPage` swaps lobby for room. There's
-      no router, so changing URL is a full page load, which kills the
-      stream. The socket opens only after Join, so a lobby tab takes no
-      seat.
-    - No handoff: `useCamera` runs in `RoomPage`, the parent of both
-      views, and passes `stream` down. Its owner never unmounts, so the
-      camera stays on across Join.
-    - Toggle is a dep: `useCamera(enabled)`. Off → cleanup stops the
-      tracks; on → the effect runs again. Same pattern as `attempt`.
-  - Found: a first `useCamera` (effect + `getUserMedia`) worked but
-    was deleted for the reorder. Lesson for the redo: cleanup can run
-    *before* `getUserMedia` resolves (StrictMode, or leaving fast), so
-    the effect needs a `cancelled` flag and must stop a late stream's
-    tracks. Leaving via the logo is a full page load, which hides the
-    leak (Chrome frees the camera on unload).
-    - Toggle in both the lobby and the room header; both flip the same
-      `cameraOn` in `RoomPage`.
-    - Toggle off hides the blocked box too: the error belongs to one
-      effect run, so cleanup clears it (outside `if (ownStream)`, which
-      is always null when blocked). Toggle on re-asks and the box
-      returns.
-  - Found (session 29): both ends of the `await` need the `cancelled`
-    check: success stops the late stream; failure skips `setError`.
-    Putting the check in cleanup does nothing (cleanup sets the flag).
+## Next
 
-- [x] **M8: Pick a video**
-  - Done when: either of us pastes a YouTube link, both tabs switch to
-    it, and play/pause/seek still sync. Someone who joins or refreshes
-    later gets the same video. Locally and on the live site.
-  - Why next: the room plays a hard-coded dummy video.
-  - Decisions (session 29):
-    - The server remembers the room's video: Go stores the ID on the
-      room, sends it right after a join, and relays changes. A relay
-      alone leaves a late joiner or a refresh on the default video.
-    - The server validates the ID (11 chars of `A-Z a-z 0-9 _ -`)
-      before storing it: it's a public server, so never store an
-      arbitrary string from the wire. The client turns links into IDs.
-    - Switch with the player API (`cueVideoById`), not by re-creating
-      the player: one `YT.Player`, handlers and timers stay attached.
-    - A new video starts paused at 0 on both tabs; whoever presses play
-      sends a normal action, so no new race.
-  - Built (session 30):
-    - Go: `room` struct (`map[string]*room`, conns + videoID); the read
-      loop peeks at each message's `type` with `json.Unmarshal`, drops
-      non-JSON, and drops a bad video ID instead of relaying it.
-    - Client: `VideoMessage` has its own parser (not a third
-      `PlaybackMessage` type: different shape). `SyncMessage` renamed
-      `PlaybackMessage`, since it covers `action` and `sync`.
-    - The player ref is set only in `onReady`: before that, `YT.Player`
-      is a shell with no methods. A video that arrives first (the join
-      message usually does) waits in `pendingVideoRef`.
-    - Copy link button in the room header.
+Reliability
+- **Ghost seat after editing the URL in a room tab**
+  ([#6](https://github.com/jeffreylim24/popcorn-for-two/issues/6), bug,
+  MEDIUM). The bfcache keeps the old socket alive, so the room says
+  "full"; the heartbeat can't catch it.
+- **Reconnect the room socket automatically, with backoff**
+  ([#7](https://github.com/jeffreylim24/popcorn-for-two/issues/7)). A
+  blip needs a manual Reconnect today. ICE restart and S3's "a machine
+  died" both build on it.
+- **Call status indicator: connecting / reconnecting / failed**
+  ([#11](https://github.com/jeffreylim24/popcorn-for-two/issues/11)). A
+  failed call is mostly silent today.
+- **Tests for `joinRoomHandler`** (no issue yet). The harness exists
+  (`startJoinServer`, fake TURN) and covers join and ICE. Still
+  untested: relay, partner notices, room video.
 
-- [x] **M9: Drag and resize**
-  - Done when: I can drag and resize my facecam anywhere over the
-    video, without affecting my partner's layout.
-  - Why next: a fixed camera box covers part of the video.
-  - Known: the iframe swallows mouse events while the pointer is over
-    it, so a drag that crosses the video loses its moves. Look at
-    pointer capture. A facecam over YouTube's controls hides them.
-  - Decisions (session 31):
-    - Pointer events + `setPointerCapture`: once captured, every move
-      goes to the box, even over the iframe. Touch comes free, and
-      there are no global listeners to clean up.
-    - The box's position and size live in `RoomView`, not `SelfView`:
-      `SelfView` unmounts when the camera is off, which would reset
-      them. The lobby keeps a plain, fixed `SelfView`.
-    - Bounded by the whole window, not the player: there's free space
-      around the video, so don't force the camera to cover it. The box
-      is `position: fixed`, kept fully inside the window, and leaves
-      the player wrapper (its `overflow-hidden` would clip it).
-    - Stored as fractions of the window, not pixels, so a resize keeps
-      its spot on the screen. It can drift relative to the video;
-      accepted.
-    - Covering YouTube's controls is fine: you can move, shrink or turn
-      off the box. A click on the box is always for the box.
-    - Resize from the bottom-right corner only: `x, y` stay put and
-      only `width` changes. Min width 0.1 of the window.
-  - Built (session 31):
-    - `camBox = { x, y, width }` state in `RoomView`; no height (16:9).
-      A fixed wrapper div holds the handlers; `SelfView` stays plain.
-    - Drag: pointerdown saves the pointer's and the cam's start in a
-      ref (`null` = not dragging, so hover moves do nothing); each move
-      adds the change since pointerdown to the *start*, so moves don't
-      compound. Clamped per axis in px, then turned into fractions.
-    - Resize: a handle inside the wrapper calls `stopPropagation` so no
-      drag starts. Max width = min(room to the right, room below × 16/9).
-      Hover-only corner bracket.
-    - Known: a height-only window resize can push the cam off the
-      bottom (see Backlog, #1).
+Security
+- **Harden room codes against guessing**
+  ([#9](https://github.com/jeffreylim24/popcorn-for-two/issues/9)). The
+  code is the only gate to a partner's camera. Reuse `limiter.go`, count
+  every attempt (including not found), and tune it with #7's backoff.
 
-- [x] **M10: Call**
-  - Done when: my partner and I see and hear each other in the app on
-    the live site, both facecams can be dragged and resized, and we no
-    longer need FaceTime.
-  - Why next: I can only see my own face.
-  - Scope (session 31): the call plus a **mic toggle** in the lobby and
-    the room, like the camera's. Device choice etc. is M11.
-  - Decided (session 32):
-    - Signalling: over the existing room WebSocket. Go already relays
-      any JSON to the partner; it adds join/leave notices ("partner
-      present" to the newcomer, "partner joined" / "partner left" to
-      the other). `coder/websocket` reads at most 32 KB per message:
-      check a real offer's size in DevTools.
-    - Who offers: the newcomer. `joinRoom` holds the lock, so one side
-      is always first. On "partner left", close the old connection;
-      a refresh or Reconnect is a fresh call.
-    - Network: Google STUN first. Cloudflare TURN (1,000 GB/month free,
-      then $0.05/GB) as the last M10 step, with short-lived credentials
-      that Go fetches using a secret. Why: many couples, and some
-      networks block direct calls. Big apps (Discord, Meet, Zoom) put
-      an SFU in the media path instead; Zoom's 2-person P2P mode is the
-      closest match to ours. Media is always encrypted (DTLS-SRTP);
-      direct calls only show each partner the other's IP.
-    - Cams: no shared stage for now. Self top-left, partner top-right,
-      and each screen keeps its own layout. **End goal: drags sync on
-      both screens** (a key priority); design it after M10 (seats,
-      clashing drags, different screen shapes).
-    - Mic: mute (`track.enabled = false`). Camera: stop it, as now,
-      so the light goes off. Create both audio and video slots up
-      front, then `replaceTrack(track | null)`: no renegotiation.
-    - Camera off: tell the partner over the socket
-      (`{type: 'camera', on}`), and send the current state on "partner
-      joined".
-    - Socket plumbing: `RoomView` owns `useRoomSocket`; `useSync` and
-      `useCall` get the socket and plug in with `subscribe`. Passing a
-      handler in instead loops (`react-hooks/immutability`).
-  - Progress (session 32): join/leave notices (Go), offer/answer, and
-    ICE candidates are done; two tabs reach `connected`. Testing two tabs on one Mac needs Chrome's Local Network
-    permission (System Settings → Privacy & Security), or `.local`
-    candidates can't be resolved and the call fails.
-  - Progress + decisions (session 33): media flows both ways.
-    - Mic: its own `useMic` in `RoomPage` (not `{ video, audio }` in
-      one stream): camera and mic fail and toggle independently, and
-      the self-view never holds your voice. No `enabled`: asked once,
-      stopped only on unmount.
-    - `RoomView` gets both streams; `useCall(socket, videoTrack,
-      audioTrack)` gets tracks, since `replaceTrack` takes a track.
-    - `putTracks` finds each slot's kind from `receiver.track` (the
-      sender's is null until filled). Called after `addTransceiver`
-      (offerer) and after `setRemoteDescription` (answerer), plus an
-      effect on track changes that skips when there's no phone.
-    - Partner stream: state (the screen depends on it), built in
-      `ontrack` with the updater form; cleared in `closePhone`.
-      `PartnerView` is unmuted and not mirrored, fixed top-right.
-    - Hang up on unmount: its own `[]` effect, not the subscribe one.
-    - Mic toggle step: lobby likely gets `micOn` / `onToggleMic` /
-      `micError` (not the stream); rename `error` → `cameraError`.
-  - Progress + decisions (session 34): partner cam drags/resizes,
-    camera-off message, hide-cams toggle.
-    - Drag reuse: a controlled `DraggableCam` wrapper (`box`,
-      `onBoxChange`, `showHandle`, `children`); refs + handlers inside,
-      each box's state in `RoomView`. Why: shares logic *and* markup,
-      and the state sits where synced drags will need it. Partner
-      starts at `x: 0.78` (top-right).
-    - Camera off: `{type: 'camera', on}` sent from `useCall` when
-      `videoTrack` changes (if there's a phone) and on both
-      `partner-joined` and `partner-present`. "On" is worked out as
-      `videoTrack !== null`, no new param, no buffered ref.
-      `partnerCameraOn` starts `false` (a moment of "camera off" beats
-      a black box) and resets in `closePhone`.
-    - `PartnerView` hides the `<video>` (keeps it mounted, so the voice
-      plays) under a "Your partner's camera is off" box. Kept the box
-      over hiding the cam: no box looks like a dropped call.
-    - Hide cams: a local `camsHidden` toggle in the header; both
-      wrappers stay mounted under `<div hidden>`. Nothing sent.
-  - Progress + decisions (session 35, Claude wrote, user reviewed):
-    mic toggle and headphones note done.
-    - Mute: `micOn` in `RoomPage` (survives Join); `useMic(on)` sets
-      `track.enabled` in an effect on `[stream, on]`, so a mute pressed
-      before the mic is ready still holds. No `replaceTrack`: the same
-      track stays in the slot and carries silence.
-    - No socket message for mute: the silence travels in the audio. A
-      "partner is muted" badge would need `{type: 'mic', on}`; not
-      done (optional).
-    - Mic button disabled on `micError`; `micLabel` in `src/mic.ts`,
-      tested. `error` renamed `cameraError` in `Lobby` and `RoomView`.
-    - Headphones note: one line in the lobby only (said once, where
-      you get ready). Echo test on two devices with speakers: not yet.
-    - Next: echo test, Cloudflare TURN, deploy + live test.
-  - Echo: show a note that headphones are recommended, or the movie
-    may echo. Echo test (session 36, two devices on speakers, separate
-    rooms): voice no echo; partner's movie leaks faintly (heard only
-    with your own player muted); normal listening fine, since your own
-    synced copy masks it. **The note is enough for the MVP.**
-  - Progress + decisions (session 36, Claude wrote, user reviewed):
-    UI touch-ups; TURN moved to next session.
-    - Muted badge: `{type: 'mic', on}` sent like `camera` (both join
-      cases + an effect). `micLive = micOn && audioTrack !== null`,
-      worked out once in `RoomView` and passed to `useCall`, the strip,
-      the fullscreen bar and my badge. `partnerMicOn` starts `true`
-      (a wrong "muted" is worse) and only `on === false` mutes.
-    - Drags released outside the window: end on `e.buttons === 0` in
-      the move handlers, plus `onLostPointerCapture`.
-    - Fullscreen: YouTube's (`fs: 0`) fullscreens only the iframe, so
-      the cams vanished. `useFullscreen` fullscreens our own "stage"
-      (player + cams); state follows `fullscreenchange` (Esc too).
-      In fullscreen, a chevron drops down icon controls (hand-made:
-      shadcn's dropdown portals into `document.body`, outside it).
-    - Room layout: a cocoa control strip under the player (mic +
-      camera left, fill terracotta when off; cams + fullscreen right).
-      Header: room chip + Copy link. "Waiting for your partner" line
-      only while alone.
-    - Frontend JSDoc/comment pass; `useHealth` deleted.
-    - Next: Cloudflare TURN, deploy + live test → M10 done.
-  - Progress + decisions (session 37): TURN done locally; deploy left.
-    - Missing `TURN_KEY_ID` / `TURN_KEY_API` → `log.Fatal` at startup
-      (fail fast), even though TURN is only a fallback: a forgotten
-      secret shows up as a failed deploy, not as silent call failures.
-      So the secrets must be set **before** the deploy.
-    - `GET /api/ice-servers`: Go POSTs to Cloudflare's
-      `generate-ice-servers` (expects **201**) with `ttl` 14400 (4 h,
-      longer than a long movie), 5 s timeout from `r.Context()`; any
-      failure → log + 502. Returns `{"iceServers": [...]}`.
-    - Dev: `backend/.env` (gitignored), loaded with
-      `set -a; source .env; set +a; go run .`.
-    - Frontend: all routes (STUN + TURN) are gathered once, when the
-      phone is made, so the list must be ready **before** `newPhone()`.
-      Fetch on Join into `iceServersRef` (starts as Google STUN, kept on
-      failure) + `iceReadyRef` (a promise that never rejects). The
-      newcomer awaits it before `newPhone()` (safe: the partner holds a
-      phone ready for the offer); the one here first can't wait (the
-      offer may arrive any moment), so it uses whatever list is ready.
-    - Bug found: that `await` let a `camera` message land before
-      `newPhone()`, whose `closePhone()` reset it to "off". Rule:
-      `newPhone()` forgets only what came from the old phone (pc,
-      stream); camera/mic state came over the socket and is cleared
-      only on `partner-left` and unmount. Also fixes an older,
-      rarer version of the same race.
-    - "Room full" in dev: StrictMode's throwaway socket took the last
-      seat. `useRoomSocket` opens the socket one tick later
-      (`setTimeout` 0, cleared in the cleanup).
-  - Done (session 38): deployed with the secrets set first
-    (`fly secrets import --stage < backend/.env`: no values in shell
-    history, no pointless restart). Live test, laptop on Wi-Fi + phone
-    on mobile data: see + hear each other, drags, toggles all work.
-    `chrome://webrtc-internals` showed a `relay` pair and Cloudflare's
-    dashboard showed traffic: mobile carriers' shared NAT often blocks
-    direct routes, so expect many calls with a phone on mobile data to
-    use TURN (~1–2 GB per 2-hour call; 1,000 GB/month free).
+Features
+- **Pick camera, mic and speakers; balance partner voice vs the movie**
+  ([#12](https://github.com/jeffreylim24/popcorn-for-two/issues/12)).
+  Volume balance is the likely first slice.
+- **Text chat in the room**
+  ([#34](https://github.com/jeffreylim24/popcorn-for-two/issues/34)). A
+  fallback when a mic fails. Rides the room socket.
+- **Screen share**
+  ([#35](https://github.com/jeffreylim24/popcorn-for-two/issues/35)).
+  Watch things that aren't on YouTube. A new track on the call
+  (renegotiation), and screen video through TURN is paid bandwidth.
 
-## Scaling out (planned 2026-11-03)
+## Later
 
-Goal: run on several Fly machines and measure the gain. Today one
-256 MB machine holds ~1250 couples before an out-of-memory kill (#21,
-"Load test results" below), and memory grows with connections, so more
-capacity means more machines.
+### Scaling: S3, grow and shrink the machine pool (needs more design)
 
-Decisions (planned, not built):
-- **Sticky routing, no Redis.** A room is always two people, so it never
-  needs to span machines. Each room lives on one machine, which keeps
-  its own map, mutex, sweeper and cap unchanged. Redis pub/sub was
-  rejected: it costs per command (a k6 run could use up a free tier),
-  adds a shared store, and saves almost no memory (the rooms map is
-  tiny; the cost is per connection).
-- **The room code carries the owner's machine ID** (`FLY_MACHINE_ID`),
-  so the link itself routes the joiner. No lookup table and no central
-  router (that would be a single point of failure and the next
-  bottleneck); Fly's proxy does the redirecting.
-- **Check before the WebSocket upgrade.** `fly-replay` is an HTTP
-  response, so a machine must decide "mine or not" before
-  `websocket.Accept`; Fly's docs say the replaying machine must not
-  upgrade.
-- **The cap is per machine.** It bounds memory, and memory is per
-  machine. A global cap would need shared state again. The pool size
-  bounds the total, and that is the cost guard.
+S1 (sticky routing, #32) and S2 (load tests, cap of 1000 per machine,
+#37) are done. Prod runs 1 machine by choice.
 
-- [x] **S1. Several machines, one room map each** ([#32](https://github.com/jeffreylim24/popcorn-for-two/issues/32))
-  - Built (session 46, steps 1–4): the machine that gets
-    `POST /api/rooms` hosts the room and returns the **key**
-    `{machineID}-{code}`; the `rooms` map key is only the 6-char
-    **code** (unique per machine is enough; the prefix makes keys
-    unique across the fleet). `parseRoomKey` splits on the last `-`.
-  - The machine ID is passed in from `main` (like `getICE`), not a
-    package variable, so tests can act as machine A or B in parallel.
-    Off Fly (`FLY_APP_NAME` empty) it is `"local"`; on Fly without
-    `FLY_MACHINE_ID` the server refuses to start. Nothing below `main`
-    knows about dev.
-  - Join: another machine's key → `fly-replay: instance=<id>` + 421,
-    no upgrade; malformed → upgrade, then close 4004 (a browser can't
-    read a refused upgrade's status); own → existing join by code.
-  - Tested on Fly (2 machines): the forced cross-machine join replays
-    and connects. Junk machine IDs get an instant 400 from Fly's proxy;
-    a destroyed machine's ID hung (30 s+).
-  - Fix (session 47, step 4b): the replay sends
-    `timeout=5s;fallback=force_self`; Fly then hands an unreachable
-    join back with a `fly-replay-failed` request header, answered with
-    **503, no upgrade** (checked first, before the replay check: a
-    fallback can't replay again). Not 4004: Fly only says
-    `reason=timeout` (seen on Fly for a destroyed machine), the same as
-    for a slow live one, so "not found" could be a lie; the browser
-    shows "Connection lost". Upgrade-then-close `1013` was tried first
-    and dropped: the room flashed before the close.
-  - The frontend still carries the full key (the socket URL needs it);
-    only the room chips show the 6-char code (`roomCode` in `rooms.ts`).
-  - Verified on the load app with 2 machines: a browser join across
-    machines (call + sync work) and the destroyed-machine 503 after
-    ~5 s. **Prod stays on 1 machine** (cost; no traffic needs more):
-    `fly deploy`, and `fly scale count N` when it does.
-- [x] **S2. Load test a fixed pool, then set the real cap** ([#37](https://github.com/jeffreylim24/popcorn-for-two/issues/37), session 48)
-  - k6 (`loadtest/couples.js`) against 1, 2 and 4 machines: capacity is
-    **linear** (~1000 → ~2000 → ~4000 couples at full quality), because
-    each machine has its own memory. Results in "Load test results (#37)"
-    below.
-  - The proxy balances creates by **connections**, not memory (default
-    `soft_limit` 20, no `hard_limit`), and the split **can be uneven**:
-    in one 4-machine run two peaked at ~200 MB, two at ~170 MB (another
-    run was even). Nothing stops it
-    feeding a nearly full machine, so headroom per machine matters more
-    with several machines, not less.
-  - `maxRooms` 5000 → **1000 per machine**: 1250/machine sits at
-    ~201 MB of ~207 and **1300 OOM-killed 2 of 4 machines** with no
-    latency warning first (p95 stayed ~5 ms). The wall is sharp and
-    silent, so the cap needs margin for a skewed split; refusing couple
-    #1001 beats a kill that ends every date on the machine.
-    Verified on a real VM: 1100 couples → exactly 100 refused (503), no
-    OOM. The number holds only for the 256 MB VM; re-measure if the VM
-    size changes. A refused create shows a toast since #19.
-  - Skipped: replay caching / `fly-force-instance-id` to skip the
-    random first hop on joins (browsers can't set WebSocket headers; a
-    replay cache is per path prefix and "an optimization, not a
-    guarantee"). It costs only 0.1–0.5 s once per join; relay latency is
-    unaffected.
-- [ ] **S3. Grow and shrink the pool** (needs more design)
-  - Fly never creates machines; autostart only wakes stopped ones from
-    a pool you made (`fly scale count`). Stopped machines cost only
-    disk ($0.15/GB per 30 days).
-  - **Autostop must stay off** (`auto_stop_machines = "off"`,
-    `auto_start_machines = true`): Fly's proxy may stop a machine that
-    still has open WebSockets, which would end live dates. The app shuts
-    itself down instead, since only it knows its rooms.
-  - Fill-first on the way up comes from `soft_limit` (~80% of capacity):
-    a second machine wakes only when the first is over it.
-  - Open: draining on the way down. Under `soft_limit` the proxy spreads
-    creates over every running machine, so no map ever empties. Needs a
-    rule for which machine drains and how it refuses creates (likely
-    `fly-replay` with `elsewhere=true`). Also a race: "map is empty →
-    exit" while a create lands on it.
-- Later: Prometheus metrics + Grafana, and #7 (reconnect with backoff),
-  which "what happens when a machine dies" depends on.
+- Fly never creates machines; autostart only wakes stopped ones from a
+  pool you made (`fly scale count`). Stopped machines cost only disk
+  ($0.15/GB per 30 days).
+- **Autostop must stay off** (`auto_stop_machines = "off"`,
+  `auto_start_machines = true`): Fly's proxy may stop a machine that
+  still has open WebSockets, which would end live dates. The app shuts
+  itself down instead, since only it knows its rooms.
+- Fill-first on the way up comes from `soft_limit` (~80% of capacity):
+  a second machine wakes only when the first is over it.
+- Open: draining on the way down. Under `soft_limit` the proxy spreads
+  creates over every running machine, so no map ever empties. Needs a
+  rule for which machine drains and how it refuses creates (likely
+  `fly-replay` with `elsewhere=true`). Also a race: "map is empty →
+  exit" while a create lands on it.
+- Also later: Prometheus metrics + Grafana. Depends on #7 for "what
+  happens when a machine dies".
 
-## Backlog
+### LOW
 
-Everything after the MVP, by priority (session 38; re-ranked after the
-2026-10-19 codebase review). Rows with an issue
-link are tracked there; the issue holds the details. Priorities change
-as real date nights show what matters.
+- **Shorter TURN TTL + refresh while seated.** Limits how long a leaked
+  credential works: Go re-sends `ice-servers`, the browser applies it
+  with `pc.setConfiguration()`. Doesn't stop someone who keeps the seat
+  (#8/#9 and a usage alert cover that).
+- **Relay message size/rate limit.** The server relays anything, so one
+  client could flood its partner.
+- **Unknown `GET /api/...` returns `index.html` with 200.** Should be a
+  404; confusing when debugging.
+- **Server hardening:** `http.Server` timeouts (`ListenAndServe` has
+  none: slowloris), and no `/assets/` directory listing.
+- **Container:** non-root user; keep room codes out of logs (codes are
+  secrets).
+- **Send a `sync` right when buffering ends.** Small sync-quality gain.
+- **ICE restart on a network change.** Keeps the call instead of
+  starting fresh. A renegotiation, so it needs a rule for who restarts.
+  Needs #7 first.
+- **Auto-switch devices on unplug** (`devicechange`). Belongs with #12.
+- **"Hide my IP" (relay-only) toggle.** `iceTransportPolicy: 'relay'`,
+  like WhatsApp and Signal. Costs TURN bandwidth.
+- **More motion:** partner's cam springs in, cams fade on show/hide, lift
+  while dragging, lobby preview fades in. Animate opacity/scale on the
+  cams only, never position (`DraggableCam` owns it).
+- **Search YouTube in-app.** Pasting a link works. Needs a YouTube Data
+  API key kept server-side (a secret, plus quota).
+- **Mini-games.** Big; needs its own brainstorm.
+- **Other browsers**, including iPhone (every browser there is Safari
+  underneath). Matters if a partner is on an iPhone. Debug iPhone pages
+  with Safari's Web Inspector (iPhone Settings → Apps → Safari →
+  Advanced, plus Chrome's own switch).
+- **Logging / uptime alerts** (`slog`, a Fly health check on
+  `/api/health`). Otherwise outages are reported by your partner.
 
-| # | Item | Priority | Why |
-|---|---|---|---|
-| [#4](https://github.com/jeffreylim24/popcorn-for-two/issues/4) | ✅ WebSocket heartbeat (PR #17 merged 2026-10-20) | done | `keepAlive` pings every 15 s and closes on a missed pong (15 s), so a sleeping laptop or dropped Wi-Fi frees its seat within about 30 s. Tested: `TestJoin_SilentClientLosesSeat` |
-| [#5](https://github.com/jeffreylim24/popcorn-for-two/issues/5) | Synced drags (same cam layout on both screens) | HIGH | The M10 end goal; a key priority |
-| [#6](https://github.com/jeffreylim24/popcorn-for-two/issues/6) | Ghost seat after editing the URL (bfcache) | MEDIUM | Same "room full" symptom; the heartbeat won't catch it (socket alive) |
-| [#7](https://github.com/jeffreylim24/popcorn-for-two/issues/7) | Socket auto-retry with backoff | MEDIUM | A blip needs a manual Reconnect; ICE restart builds on it |
-| [#8](https://github.com/jeffreylim24/popcorn-for-two/issues/8) | ✅ Room expiry + rate-limit room creation (PR merged, deployed 2026-10-20) | done | Rooms empty for 10 min are swept (1-min tick; never-joined rooms too); creation is 10/IP/10 min → 429, and 5000 rooms total → 503 (1000 per machine since #37). Checked live: sweep on prod, 429 on mobile data |
-| [#19](https://github.com/jeffreylim24/popcorn-for-two/issues/19) | ✅ Say so when room creation is refused (PR #44 merged 2026-11-08) | done | `createAndJoinRoom` shows a Sonner toast: `createRoomErrorMessage(status)` (429 / 503 / fallback, Vitest table) for a refused create, a fixed "can't reach the server" for a rejected `fetch`. One shared toast id, so repeats replace instead of stacking. Covers both Create buttons (home + room overlay). Note: when our server is down, a proxy (Vite in dev, Fly in prod) answers with a status, so users see the fallback, not the offline message |
-| [#9](https://github.com/jeffreylim24/popcorn-for-two/issues/9) | Room-code hardening (rate-limit joins) | MEDIUM | The code is the only gate to a partner's camera. Reuse `limiter.go`; count every attempt (incl. not found); tune with #7's backoff |
-| | Tests for `joinRoomHandler` (`httptest` + `websocket.Dial`) | MEDIUM | Harness exists since #14 (`startJoinServer`, fake TURN); join/ICE covered. Still untested: relay, partner notices, room video. #4 and #8 both change it |
-| [#16](https://github.com/jeffreylim24/popcorn-for-two/issues/16) | ✅ Revoke TURN credentials when the seat is freed (deployed 2026-10-20) | done | The leave defer revokes the seat's username after `partner-left`, with its own 5 s context; a failed revoke is only logged (no retry: the leftover is a credential living out its TTL). Checked live: after leaving, Trickle ICE gets no relay candidate with the copied credential |
-| | Shorter TURN TTL + refresh while seated | LOW | Bounds a leaked credential's life; Go re-sends `ice-servers`, browser applies it with `pc.setConfiguration()`. Doesn't stop someone who keeps the seat (that's bounded by #8/#9 + a usage alert) |
-| [#10](https://github.com/jeffreylim24/popcorn-for-two/issues/10) | ✅ CI: run the checks on every PR (PR #22 merged 2026-10-25) | done | `.github/workflows/ci.yml`: two parallel jobs on every PR and every push to `main`. frontend: lint, format:check, test, build (Bun pinned to the Dockerfile's); backend: gofmt (fails if it lists a file), vet, test (Go from `go.mod`). Checked: a broken Go test turned only backend red, a broken Vitest test only frontend |
-| | ~~CD: deploy to Fly from `main` after CI passes~~ | dropped | Session 41: a deploy restarts the only machine and drops live rooms, so deploys stay manual to pick the moment. Option if wanted later: a manual "Run workflow" deploy button (`workflow_dispatch`) |
-| [#21](https://github.com/jeffreylim24/popcorn-for-two/issues/21) | ✅ Load test: how many concurrent rooms the server really handles (PR #28 merged 2026-10-26; #27 was a duplicate) | done | Production's VM holds **~1250 couples** at once; 1500 is an out-of-memory kill. Memory is the wall, not CPU. Plan on ~1000 with a margin; more needs a bigger VM. See "Load test results" below |
-| [#32](https://github.com/jeffreylim24/popcorn-for-two/issues/32) | ✅ Route each room to the machine that hosts it (S1, session 47) | done | First step of "Scaling out" above; lifts the one-machine limit. Prod stays on 1 machine by choice |
-| [#11](https://github.com/jeffreylim24/popcorn-for-two/issues/11) | Call status indicator | MEDIUM | A failed call is mostly silent today |
-| [#12](https://github.com/jeffreylim24/popcorn-for-two/issues/12) | Devices: pick cam/mic/speakers, voice vs movie volume (was M11) | MEDIUM | Wait for real use; volume balance is the likely first slice |
-| [#34](https://github.com/jeffreylim24/popcorn-for-two/issues/34) | Text chat in the room | MEDIUM | A fallback when a mic fails (and for quick notes). Rides the room socket; makes the relay size/rate limit row more relevant |
-| [#35](https://github.com/jeffreylim24/popcorn-for-two/issues/35) | Screen share | MEDIUM | Watch things that aren't on YouTube. Biggest of the new three: a new track on the call (renegotiation), and screen video through TURN is paid bandwidth |
-| [#24](https://github.com/jeffreylim24/popcorn-for-two/issues/24) | ✅ Lobby and room layout on phones (PR #25 merged, deployed 2026-10-26) | done | Under 640px (Tailwind `sm:`): lobby buttons in two rows, header on one line (room badge hidden), resize handle always shown on touch (`pointer-coarse:`), 16px link input (no iOS zoom). Cams start side by side: 24px margins matching the player, 8px gap, read once when the room opens. Checked on a real phone |
-| [#13](https://github.com/jeffreylim24/popcorn-for-two/issues/13) | ✅ Phone: fullscreen button does nothing (PR #26 merged, deployed 2026-10-26) | done | Cause: every iPhone browser is WebKit, which has no `requestFullscreen` on elements, so the call threw a TypeError (before any Promise, so `.catch` never logged). Fix: feature-check the stage; where the method is missing, `toggleFullscreen` flips `isFullscreen` itself and the stage is pinned with `fixed inset-0`. Real fullscreen kept wherever it exists (its "Esc to exit" hint can't be removed; accepted). Checked on a laptop and an iPhone |
-| [#30](https://github.com/jeffreylim24/popcorn-for-two/issues/30) | ✅ Animations and pixel cursors (session 44) | done | Motion (`motion/react`), not CSS only: exits of things React removes (status overlay, messages, icon swaps) need `AnimatePresence`. `MotionConfig reducedMotion="user"` wraps the app. Shipped: home page staged entrance, button press + `SwapIcon`, status overlay fade, messages open/close (height to auto), fullscreen bar drop-down, pixel-art cursors as inline SVG (Chrome blurs enlarged PNG cursors) with a hotspot "dip" on press. Dropped: "lights down" on Join (didn't feel right), React Bits Shuffle logo (GSAP as a 2nd library). Gotcha: never transform an ancestor of the cams: their `position: fixed` then measures from it |
-| | More motion: partner's cam springs in, cams fade on show/hide, lift while dragging, lobby preview fades in | LOW | Left over from #30. Animate opacity/scale on the cams only, never position (DraggableCam owns it) |
-| | Relay message size/rate limit | LOW | The server relays anything; one client could flood its partner |
-| | Unknown `GET /api/...` returns `index.html` with 200 | LOW | Should be a 404; confusing when debugging |
-| | Server hardening: `http.Server` timeouts, no `/assets/` dir listing | LOW | `ListenAndServe` has no timeouts (slowloris); `FileServer` lists directories |
-| | ✅ Don't relay server-only message types | done | The relay drops client-sent `ice-servers` and `partner-*` (`serverOnlyTypes` in `handlers.go`), so a partner can't fake a hang-up or reroute the call. Tested: `TestIsServerOnlyType` |
-| | Container: non-root user; keep room codes out of logs | LOW | Defense in depth; codes are secrets |
-| | Send a `sync` right when buffering ends | LOW | Small sync-quality gain |
-| | ICE restart on a network change | LOW | Reconnect works; needs #7 first |
-| | Auto-switch devices on unplug (`devicechange`) | LOW | Belongs with #12 |
-| | "Hide my IP" (relay-only) toggle | LOW | Privacy nicety; costs TURN bandwidth |
-| [#36](https://github.com/jeffreylim24/popcorn-for-two/issues/36) | ✅ Placeholder instead of the default video (PR #41 merged 2026-11-06) | done | `VIDEO_ID` is gone: the player starts empty and `useSync` returns `hasVideo` (true once a video is cued, by a pick or the server's join message). Until then the status overlay shows "Nothing playing yet"; a socket problem's text wins. Playback messages are ignored while there's no video. Backend unchanged (it already stored `""`) |
-| | Search YouTube in-app | LOW | Pasting a link works; needs an API key + quota |
-| | Emoji reactions | LOW | Fun, cheap over the existing socket |
-| | Mini-games, non-YouTube movies | LOW | Big; needs its own brainstorm |
-| | Other browsers (incl. iPhone: every browser there is Safari underneath) | LOW | Matters if a partner is on an iPhone. #13 was the first real WebKit gap; debug iPhone pages with Safari's Web Inspector (iPhone Settings → Apps → Safari → Advanced, plus Chrome's own switch) |
-| | Logging / uptime alerts (`slog`, Fly health check on `/api/health`) | LOW | Otherwise outages are reported by your partner |
-| [#1](https://github.com/jeffreylim24/popcorn-for-two/issues/1) | Facecam off-screen after a height-only resize | VERY LOW | The next drag fixes it |
-| | Phone made for a partner who already left | VERY LOW | Harmless today; see notes |
-| | "Starting mic…" label mismatch | VERY LOW | Brief cosmetic glitch |
-| | Font flash on slow networks | VERY LOW | Cosmetic |
-| | `bun audit` (`braces` via shadcn CLI, dev-only) | VERY LOW | Not in the bundle; `bun audit fix` |
-| | Shared close codes (Go ↔ TS) | VERY LOW | Two numbers that rarely change |
-| | Refactors: `useCamera`/`useMic` helper, `useCall` send duplication, `VIDEO_ID` name clash, `joinRoomHandler` vs `sendJSON` | VERY LOW | Readability only |
-| | Playback speed sync | VERY LOW | Rarely used on date nights |
-| | Accounts / login | VERY LOW | Links work fine for two people |
-| | Background blur / replace | VERY LOW | Needs a per-frame ML model (CPU heavy) |
+### VERY LOW
 
-### Load test results (#21)
-
-`loadtest/couples.js` (k6): one VU = one couple for the whole run. It
-creates a room, both partners join, and each sends a `sync` every 2 s
-(the app's real rate) with a `sentAt` timestamp. 30 s ramp, 60 s hold.
-The server runs with `LOAD_TEST=1` (fake TURN, per-IP limits off;
-refused on the production app). Target: p95 relay under 100 ms, no lost
-messages, every couple paired.
-
-**Local, 2026-10-26.** A Mac with `GOMAXPROCS=1 GOMEMLIMIT=200MiB` (about
-a Fly `shared-cpu-1x`, 256 MB), k6 on the same Mac:
-
-| Couples | relay p95 | relay p99 | relay max | Live heap | Stacks | GC CPU | Process memory |
-|---|---|---|---|---|---|---|---|
-| 50 | 2 ms | n/a | 4 ms | | | | |
-| 500 | 2 ms | n/a | 6 ms | | | | |
-| 1000 | 2 ms | 3 ms | 11 ms | | | | |
-| 2000 | 3 ms | 5 ms | 18 ms | 85 MB | 20 MB | 0% | 192 MB |
-| 3000 | 7 ms | 11 ms | 62 ms | 127 MB | 31 MB | 16% | 244 MB |
-
-Every run: 100% paired, 0 lost.
-
-- **Memory is the wall, not CPU.** One core relays ~1600 msgs/s at 2000
-  couples with flat latency. Memory grows in a straight line: about
-  53 KB live (heap + stacks) and about 80 KB of process memory per couple.
-- **At 3000 the GC thrashes**: the heap goal equals the live heap, so Go
-  collects back to back, latency bends, and the process passes the soft
-  limit. On Fly (~200 MB usable) that is likely an out-of-memory kill.
-- Local estimate for the Fly VM was 2000–3000 couples. Fly measured
-  lower (below): it missed the ~55 MB the VM uses before the server
-  starts. `GOMEMLIMIT` is soft, so nothing crashes locally.
-
-**Fly, 2026-10-26.** Server: a separate `popcorn-for-two-load` app
-(`fly.load.toml`: production's VM, 256 MB `shared-cpu-1x`, plus
-`LOAD_TEST=1`). k6 on a Fly machine in the same region (`yyz`, 2
-performance CPUs, 4 GB) through the public URL, so Fly's proxy stays in
-the path. Machine restarted before each run.
-
-| Couples | Result | relay p95 / p99 | lost | dropped sockets | Memory |
-|---|---|---|---|---|---|
-| 1000 | ✓ | 4 / 6 ms | 0 | 0 | peak ~165 MB |
-| 1250 | ✓ | 6 / 14 ms | 0 | 0 | peak ~197 MB of 207 |
-| 1500 | ✗ | 14 / 51 ms | 5097 | 3000 of 3000 | out-of-memory kill |
-| 2000 | ✗ | 38 ms before the kill | 6549 | 3643 | out-of-memory kill |
-| 2000, `GOMEMLIMIT=180MiB` | ✗ | | | | out-of-memory kill |
-
-- **Ceiling: ~1250 couples**, with almost no memory left; plan on
-  ~1000. The VM has ~207 MB, ~55 MB of it used at idle (kernel, Fly's
-  init, SSH), leaving ~150 MB for the server.
-- **CPU and latency are never the limit:** p95 stays under 15 ms right up
-  to the kill. A kill shows as `exit_code=137, oom_killed=true` in
-  `fly machine status`, and every room is lost on the restart.
-- **`GOMEMLIMIT` doesn't help here:** it only makes Go give back spare
-  memory; at 2000 couples the live data alone doesn't fit. More capacity
-  means a bigger VM (512 MB roughly doubles it).
-- **Run k6 next to the server.** From a home laptop, 1000 couples
-  "failed" (p95 6.67 s, sockets dropped by the heartbeat) because the
-  home network / internet path choked; from a Fly machine in `yyz` the
-  same run was 4 ms.
-- Reproduce: `fly deploy --config fly.load.toml --ha=false`, then
-  `fly machine run --app popcorn-for-two-k6 --region yyz --rm
-  --vm-cpu-kind performance --vm-cpus 2 --vm-memory 4096 --file-local
-  /scripts/couples.js=loadtest/couples.js --env BASE_URL=https://popcorn-for-two-load.fly.dev
-  --env COUPLES=1250 grafana/k6:2.3.0 -- run -q --no-color /scripts/couples.js`.
-  Destroy both apps afterwards.
-
-### Load test results (#37): several machines
-
-Same script and VM as #21 (30 s ramp, 60 s hold, k6 on a Fly
-performance-2x 4 GB machine in `yyz`), on the S1 code. Reports in
-`loadtest/results/multiple-machines/s2/` (local only, gitignored).
-
-| Run | Machines | Couples | Result | relay p95 / p99 | Peak memory per machine |
-|---|---|---|---|---|---|
-| 1 | 1 | 1000 | ✓ | 3 / 6 ms | 169 MB |
-| 2 | 2 | 2000 | ✓ | 3 / 5 ms | 177, 169 MB |
-| 3 | 2 | 2500, one k6 machine | ✓ (tail bends) | 62 / 268 ms | 201, 197 MB |
-| 4 | 4 | 4000, **one** k6 machine | ✗ 53% paired | 975 ms / 1.95 s | 115–119 MB |
-| 4b | 4 | 4000, **two** k6 machines × 2000 | ✓ | 5–6 / 46–51 ms | 201, 197, 170, 170 MB |
-| 5 | 4 | 5001, three k6 × 1667 | ✓ | 2–7 / 4–47 ms | 202, 201, 200, 200 MB |
-| 7 | 4 | 5202, three k6 × 1734 | ✗ 2 of 4 OOM-killed | 4–5 ms (survivors) | ~206 MB, then killed |
-| cap | 1 | 1100, `maxRooms` 1000 | 1000 ✓ / 100 refused | 3 / 6 ms | 169 MB |
-
-- **Capacity is linear in machines.** Server CPU stayed under 25%.
-  The wall is ~1250–1300 couples per 256 MB machine: run 7 (1300)
-  dropped 3928 sockets and lost 7438 messages after two OOM kills, while
-  the survivors' p95 stayed ~5 ms. No latency warning before the cliff.
-- **Run 3's bent tail was mostly k6, not the servers:** run 5 had the
-  same 1250 per server and the same memory, but three k6 machines, and
-  p99 was 4–47 ms instead of 268 ms. Keep each k6 machine at ≤ ~2000
-  couples.
-- **Run 4 failed in the test, not the app.** 474 creates got `EOF`
-  (Fly's proxy hung up with no response), sockets took 2.5 s to open,
-  while the servers sat at ~115 MB and 11% CPU and k6 at 67% CPU,
-  2.2 GiB. The same load from two k6 machines passed. So one source
-  (one k6 machine, maybe one IP) hit a limit; real couples come from
-  many.
-- **pair_time grows with machines** (p95 52 ms on 1 → 136–515 ms on 2–4):
-  joins that land on the wrong machine take an extra replay hop. Once
-  per join only.
-- Debug tip: `save_k6`'s summary filter drops k6's warnings; count them
-  with `perl -ne 'print "$1\n" if /error="((?:[^"\\]|\\.){0,200})/'`
-  over `fly logs -a popcorn-for-two-k6 --no-tail -m <id>`. The log
-  buffer keeps only recent lines.
-
-### Notes for untracked rows
-
-- **ICE restart:** keeps the call instead of starting fresh; a
-  renegotiation, so it needs a rule for who restarts.
-- **"Hide my IP":** `iceTransportPolicy: 'relay'`, like WhatsApp and
-  Signal.
-- **Search YouTube:** the YouTube Data API key stays server-side (a
-  secret, plus quota).
-- **Phone made for a partner who already left:** the newcomer pauses on
+- **Facecam partly off-screen after the window gets shorter**
+  ([#1](https://github.com/jeffreylim24/popcorn-for-two/issues/1), bug).
+  The next drag fixes it.
+- **Phone made for a partner who already left.** The newcomer pauses on
   `await iceReadyRef` (~200 ms); if `partner-left` lands in that pause,
   it makes a phone + offer for nobody. Harmless today (Go drops it; the
   next `newPhone()` closes it). **Fix first if** the server ever queues
   messages for absent partners, something reads "has a phone" as "in a
   call", or longer awaits join this path (#7, #12). Fix: remember
   "partner here" in a ref, re-check after the await.
-- **"Starting mic…" label:** while the mic starts, the button says
-  "Mic on" next to a crossed-out icon (`micLabel` reads the toggle, the
-  icon reads `micLive`).
-- **Font flash:** Pixelify Sans downloads only once text using it
-  renders. Fix: `<link rel="preload">` the .woff2 in `index.html`.
+- **"Starting mic…" label.** While the mic starts, the button says "Mic
+  on" next to a crossed-out icon (`micLabel` reads the toggle, the icon
+  reads `micLive`).
+- **Font flash on slow networks.** Pixelify Sans downloads only once
+  text using it renders. Fix: `<link rel="preload">` the .woff2 in
+  `index.html`.
+- **`bun audit`** (`braces` via the shadcn CLI, dev-only). Not in the
+  bundle; `bun audit fix`.
+- **Shared close codes (Go ↔ TS).** Two numbers that rarely change.
+- **Refactors:** a `useCamera`/`useMic` helper, `useCall` send
+  duplication, `joinRoomHandler` vs `sendJSON`. Readability only.
+- **Playback speed sync.** Rarely used on date nights.
+- **Accounts / login.** Links work fine for two people.
+
+## Docs to write
+
+- **Feature list / user guide** (`docs/`): what the app does today and
+  how to use it. Takes over the "what exists" job that finished
+  milestones used to do here.

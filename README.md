@@ -4,7 +4,7 @@ Date night for long-distance couples: a video call and a YouTube video, perfectl
 
 **Live:** https://popcorn-for-two.fly.dev (Chrome)
 
-**Status:** MVP done. Synced playback plus an in-app video call with draggable, resizable facecams. Future work lives in [GitHub issues](https://github.com/jeffreylim24/popcorn-for-two/issues) and the backlog table in [ROADMAP.md](ROADMAP.md).
+**Status:** MVP done. Synced playback plus an in-app video call with draggable, resizable facecams. Future work lives in [GitHub issues](https://github.com/jeffreylim24/popcorn-for-two/issues) and the plan in [ROADMAP.md](ROADMAP.md).
 
 ## How to use it
 
@@ -68,7 +68,7 @@ To try the production setup instead, run `bun run build` in `frontend/` and `go 
 - **Routes:** when someone takes a seat, Go asks Cloudflare for TURN credentials that expire in 4 hours and sends them as the first message on the room socket (`ice-servers`). Only a seat holder gets them, the long-term key never leaves the server, and clients can't fake server-only messages. If Cloudflare fails, the call falls back to Google STUN only.
   - Most calls connect directly. When a network blocks that (common on mobile data), media goes through Cloudflare's TURN relay. Either way it's encrypted end to end (DTLS-SRTP).
 
-The reasoning behind each choice (and what was rejected) lives in [ROADMAP.md](ROADMAP.md).
+The reasoning behind each choice (and what was rejected) is in the [closed issues](https://github.com/jeffreylim24/popcorn-for-two/issues?q=is%3Aissue+is%3Aclosed) and their pull requests.
 
 ### Project layout
 
@@ -113,7 +113,7 @@ cd backend && LOAD_TEST=1 go run .
 k6 run -e COUPLES=500 loadtest/couples.js
 ```
 
-**Result on production's VM (256 MB, 1 shared CPU):** about 1250 couples at once, with relay p95 under 15 ms. 1500 couples runs out of memory and the machine restarts. Memory is the limit, not CPU, so plan on ~1000 couples; more needs a bigger VM. The full numbers, and how to run it on Fly, are in [ROADMAP.md](ROADMAP.md) under "Load test results".
+**Result on production's VM (256 MB, 1 shared CPU):** about 1250 couples at once, with relay p95 under 15 ms. 1500 couples runs out of memory and the machine restarts. Memory is the limit, not CPU, so plan on ~1000 couples; more needs a bigger VM. The full numbers, and how to run it on Fly, are in [docs/LOADTEST.md](docs/LOADTEST.md).
 
 ## Contributing workflow
 
