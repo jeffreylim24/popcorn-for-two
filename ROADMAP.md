@@ -688,7 +688,7 @@ Decisions (planned, not built):
     #1001 beats a kill that ends every date on the machine.
     Verified on a real VM: 1100 couples → exactly 100 refused (503), no
     OOM. The number holds only for the 256 MB VM; re-measure if the VM
-    size changes. A refused create still shows nothing (#19).
+    size changes. A refused create shows a toast since #19.
   - Skipped: replay caching / `fly-force-instance-id` to skip the
     random first hop on joins (browsers can't set WebSocket headers; a
     replay cache is per path prefix and "an optimization, not a
@@ -726,7 +726,7 @@ as real date nights show what matters.
 | [#6](https://github.com/jeffreylim24/popcorn-for-two/issues/6) | Ghost seat after editing the URL (bfcache) | MEDIUM | Same "room full" symptom; the heartbeat won't catch it (socket alive) |
 | [#7](https://github.com/jeffreylim24/popcorn-for-two/issues/7) | Socket auto-retry with backoff | MEDIUM | A blip needs a manual Reconnect; ICE restart builds on it |
 | [#8](https://github.com/jeffreylim24/popcorn-for-two/issues/8) | ✅ Room expiry + rate-limit room creation (PR merged, deployed 2026-10-20) | done | Rooms empty for 10 min are swept (1-min tick; never-joined rooms too); creation is 10/IP/10 min → 429, and 5000 rooms total → 503 (1000 per machine since #37). Checked live: sweep on prod, 429 on mobile data |
-| [#19](https://github.com/jeffreylim24/popcorn-for-two/issues/19) | Say so when room creation is refused (429 / 503) | MEDIUM | `createAndJoinRoom` only logs the status, so a rate-limited user clicks Create and nothing happens. Needs a visible message on the home page ("too many rooms, try again in a few minutes" / "server is full"). Frontend only |
+| [#19](https://github.com/jeffreylim24/popcorn-for-two/issues/19) | ✅ Say so when room creation is refused (PR #44 merged 2026-11-08) | done | `createAndJoinRoom` shows a Sonner toast: `createRoomErrorMessage(status)` (429 / 503 / fallback, Vitest table) for a refused create, a fixed "can't reach the server" for a rejected `fetch`. One shared toast id, so repeats replace instead of stacking. Covers both Create buttons (home + room overlay). Note: when our server is down, a proxy (Vite in dev, Fly in prod) answers with a status, so users see the fallback, not the offline message |
 | [#9](https://github.com/jeffreylim24/popcorn-for-two/issues/9) | Room-code hardening (rate-limit joins) | MEDIUM | The code is the only gate to a partner's camera. Reuse `limiter.go`; count every attempt (incl. not found); tune with #7's backoff |
 | | Tests for `joinRoomHandler` (`httptest` + `websocket.Dial`) | MEDIUM | Harness exists since #14 (`startJoinServer`, fake TURN); join/ICE covered. Still untested: relay, partner notices, room video. #4 and #8 both change it |
 | [#16](https://github.com/jeffreylim24/popcorn-for-two/issues/16) | ✅ Revoke TURN credentials when the seat is freed (deployed 2026-10-20) | done | The leave defer revokes the seat's username after `partner-left`, with its own 5 s context; a failed revoke is only logged (no retry: the leftover is a credential living out its TTL). Checked live: after leaving, Trickle ICE gets no relay candidate with the copied credential |
