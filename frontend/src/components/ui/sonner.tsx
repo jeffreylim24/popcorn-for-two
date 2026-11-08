@@ -36,7 +36,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         // `!` (Tailwind important): Sonner's own `[data-sonner-toast]` rules win otherwise.
         classNames: {
-          toast: 'cn-toast border-2! shadow-lg! font-heading! text-base! gap-3!',
+          toast:
+            'cn-toast border-2! shadow-lg! font-heading! text-base! gap-3!',
           icon: 'text-primary!',
         },
       }}
