@@ -5,9 +5,12 @@ What's planned next for Popcorn for Two. The current release is
 see the [releases](https://github.com/jeffreylim24/popcorn-for-two/releases)
 for what has shipped so far.
 
-- **Now:** HIGH priority, or in progress.
-- **Next:** MEDIUM priority.
-- **Later:** LOW and VERY LOW, plus work that needs more design first.
+- **Now:** `priority: high`, or in progress.
+- **Next:** `priority: medium`.
+- **Later:** `priority: low` and `priority: someday`, plus work that needs
+  more design first.
+
+What the labels mean (type, severity, priority, size): [docs/LABELS.md](docs/LABELS.md).
 
 Priorities change as real date nights show what matters. Each item links
 its GitHub issue, which holds the details. Finished
@@ -147,7 +150,7 @@ S1 (sticky routing, #32) and S2 (load tests, cap of 1000 per machine,
 - **Logging / uptime alerts** ([#66](https://github.com/jeffreylim24/popcorn-for-two/issues/66)) (`slog`, a Fly health check on
   `/api/health`). Otherwise outages are reported by your partner.
 
-### VERY LOW
+### Someday
 
 - **Facecam partly off-screen after the window gets shorter**
   ([#1](https://github.com/jeffreylim24/popcorn-for-two/issues/1), bug).

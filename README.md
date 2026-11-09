@@ -117,7 +117,7 @@ k6 run -e COUPLES=500 loadtest/couples.js
 
 ## Contributing workflow
 
-Every code change starts from a GitHub issue, goes on its own branch (`feat/…`, `fix/…`) off an up-to-date `main`, and lands through a pull request that says `Closes #N`. Deploy from `main` after merging.
+Every code change starts from a GitHub issue, goes on its own branch (`feat/…`, `fix/…`) off an up-to-date `main`, and lands through a pull request that says `Closes #N`. Issue labels (type, severity, priority, size) are explained in [docs/LABELS.md](docs/LABELS.md). Deploy from `main` after merging.
 
 ## Deploy
 
