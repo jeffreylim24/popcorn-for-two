@@ -6,6 +6,8 @@ How every GitHub issue is labelled, and what each level means.
 
 - Every issue gets exactly **one type, one priority and one size**.
 - Bugs also get **one severity**.
+- Exception: an issue closed as `duplicate` gets no size (no work happened
+  under it); it keeps the priority of the issue it duplicates.
 - Labels go on when the issue is filed. Priority is re-checked when a
   session wraps up; severity and size change only if the facts change
   (e.g. a bug turns out to be worse, or the work turns out bigger).
