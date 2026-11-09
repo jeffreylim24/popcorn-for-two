@@ -14,6 +14,8 @@ Date night for long-distance couples: a video call and a YouTube video, perfectl
 4. Paste a YouTube link. Either of you can play, pause, or seek, and the other's video follows within about a second. No host, no special controls: use YouTube's own player.
 5. Drag and resize the facecams anywhere on your screen. Each screen keeps its own layout.
 
+The full feature list, every control, and what to do when something goes wrong: [docs/USER_GUIDE.md](docs/USER_GUIDE.md).
+
 ## Run it locally
 
 You need [Go](https://go.dev/dl/) 1.27+, [Bun](https://bun.sh/), and a [Cloudflare TURN key](https://developers.cloudflare.com/realtime/turn/) (free tier).

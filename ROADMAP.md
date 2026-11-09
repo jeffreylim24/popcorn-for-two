@@ -175,9 +175,3 @@ S1 (sticky routing, #32) and S2 (load tests, cap of 1000 per machine,
   duplication, `joinRoomHandler` vs `sendJSON`. Readability only.
 - **Playback speed sync.** ([#73](https://github.com/jeffreylim24/popcorn-for-two/issues/73)) Rarely used on date nights.
 - **Accounts / login.** ([#74](https://github.com/jeffreylim24/popcorn-for-two/issues/74)) Links work fine for two people.
-
-## Docs to write
-
-- **Feature list / user guide** (`docs/`): what the app does today and
-  how to use it. Takes over the "what exists" job that finished
-  milestones used to do here.
