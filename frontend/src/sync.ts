@@ -168,10 +168,7 @@ export function parsePlaybackRateMessage(
   if (v.type !== 'playbackRate') return null
   if (typeof v.playbackRate !== 'number') return null
   // Also rejects Infinity, which JSON.parse gives for e.g. 1e999.
-  if (
-    v.playbackRate < MIN_PLAYBACK_RATE ||
-    v.playbackRate > MAX_PLAYBACK_RATE
-  )
+  if (v.playbackRate < MIN_PLAYBACK_RATE || v.playbackRate > MAX_PLAYBACK_RATE)
     return null
 
   return v as PlaybackRateMessage

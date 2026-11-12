@@ -121,7 +121,12 @@ export function useSync(socket: RoomSocket, elementId: string) {
     if (!isNews(lastStateRef.current, state, position, Date.now())) return
     const msg: PlaybackMessage = { type: 'action', position, state }
     send(JSON.stringify(msg))
-    lastStateRef.current = { state, position, at: Date.now(), rate: agreedRate() }
+    lastStateRef.current = {
+      state,
+      position,
+      at: Date.now(),
+      rate: agreedRate(),
+    }
   }
 
   /** Sends our position while playing, so a tab that fell behind catches up. */
@@ -145,7 +150,10 @@ export function useSync(socket: RoomSocket, elementId: string) {
     const last = lastStateRef.current
     // No video yet: nothing to speed up.
     if (!last || rate === last.rate) return
-    const msg: PlaybackRateMessage = { type: 'playbackRate', playbackRate: rate }
+    const msg: PlaybackRateMessage = {
+      type: 'playbackRate',
+      playbackRate: rate,
+    }
     send(JSON.stringify(msg))
     // Restart the prediction from here: the old rate applied until now.
     lastStateRef.current = {
