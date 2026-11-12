@@ -179,3 +179,8 @@ S1 (sticky routing, #32) and S2 (load tests, cap of 1000 per machine,
 - **Refactors:** ([#72](https://github.com/jeffreylim24/popcorn-for-two/issues/72)) a `useCamera`/`useMic` helper, `useCall` send
   duplication, `joinRoomHandler` vs `sendJSON`. Readability only.
 - **Accounts / login.** ([#74](https://github.com/jeffreylim24/popcorn-for-two/issues/74)) Links work fine for two people.
+- **Portrait phone cams cropped.** ([#77](https://github.com/jeffreylim24/popcorn-for-two/issues/77)) A portrait phone's tall stream in
+  a fixed 16:9 `object-cover` box shows only the middle third. Out of scope:
+  the app is landscape/desktop first (a watch party).
+- **Fullscreen cam mode.** ([#78](https://github.com/jeffreylim24/popcorn-for-two/issues/78)) Partner's face fills the screen, like
+  WhatsApp. Needs #77 first; the YouTube player must stay ≥200×200.
