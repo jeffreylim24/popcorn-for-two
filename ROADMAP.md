@@ -19,6 +19,11 @@ numbers are in [docs/LOADTEST.md](docs/LOADTEST.md).
 
 ## Now
 
+- **Rejoining loses the playback state**
+  ([#75](https://github.com/jeffreylim24/popcorn-for-two/issues/75), HIGH, bug).
+  A joiner lands at 0:00, paused, at 1×; pressing play rewinds the
+  partner too. First decide who sends the state: the server or the
+  partner already in the room.
 - **Synced drags: the same cam layout on both screens**
   ([#5](https://github.com/jeffreylim24/popcorn-for-two/issues/5), HIGH).
   The end goal of the call milestone. Needs a design for seats, clashing
@@ -173,5 +178,4 @@ S1 (sticky routing, #32) and S2 (load tests, cap of 1000 per machine,
 - **Shared close codes (Go ↔ TS).** ([#71](https://github.com/jeffreylim24/popcorn-for-two/issues/71)) Two numbers that rarely change.
 - **Refactors:** ([#72](https://github.com/jeffreylim24/popcorn-for-two/issues/72)) a `useCamera`/`useMic` helper, `useCall` send
   duplication, `joinRoomHandler` vs `sendJSON`. Readability only.
-- **Playback speed sync.** ([#73](https://github.com/jeffreylim24/popcorn-for-two/issues/73)) Rarely used on date nights.
 - **Accounts / login.** ([#74](https://github.com/jeffreylim24/popcorn-for-two/issues/74)) Links work fine for two people.
