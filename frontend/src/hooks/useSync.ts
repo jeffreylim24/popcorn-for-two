@@ -65,12 +65,13 @@ export function useSync(socket: RoomSocket, elementId: string) {
       return
     }
     player.cueVideoById(id)
-    // cueVideoById also resets the player's rate to 1.
+    // The player keeps its rate across videos (despite the docs), so the
+    // agreed rate carries over. If it does reset, the change event sends it.
     lastStateRef.current = {
       state: 'paused',
       position: 0,
       at: Date.now(),
-      rate: 1,
+      rate: agreedRate(),
     }
     setHasVideo(true)
   }
