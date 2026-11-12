@@ -39,11 +39,14 @@ export type PlaybackRateMessage = { type: 'playbackRate'; playbackRate: number }
 /**
  * The last playback state both tabs agreed on. `at` is when, in ms
  * (`Date.now()`), so a playing position can be worked out for any later time.
+ * `rate` is the playback speed (1 = normal): at 2× the video moves 2 s per
+ * real second, so the prediction needs it.
  */
 export type AgreedState = {
   state: PlaybackMessage['state']
   position: number
   at: number
+  rate: number
 }
 
 /**
@@ -72,13 +75,14 @@ export function parsePlaybackMessage(data: string): PlaybackMessage | null {
 
 /**
  * Where the video should be now (in seconds), given the last state both
- * tabs agreed on. While playing, it moves forward with real time.
+ * tabs agreed on. While playing, it moves forward with real time, scaled by
+ * the playback rate.
  * @param nowMs Current time in ms (e.g. `Date.now()`).
  */
 export function expectedPosition(last: AgreedState, nowMs: number): number {
   switch (last.state) {
     case 'playing':
-      return last.position + (nowMs - last.at) / 1000
+      return last.position + ((nowMs - last.at) / 1000) * last.rate
     case 'paused':
       return last.position
     default: {
