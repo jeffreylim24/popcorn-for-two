@@ -2,6 +2,7 @@ import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import {
   isNews,
   parsePlaybackMessage,
+  parsePlaybackRateMessage,
   parseVideoMessage,
   SEEK_THRESHOLD_S,
   shouldCatchUp,
@@ -15,6 +16,13 @@ import type {
 import { parseVideoId } from '../youtube'
 import type { RoomSocket } from './useRoomSocket'
 import { useYouTubePlayer } from './useYouTubePlayer'
+
+/**
+ * How long the rate must stay unchanged before we tell the partner. Dragging
+ * YouTube's speed slider fires a change per step; sending each one lets late
+ * echoes of old steps bounce back and forth, so only the final rate is sent.
+ */
+const RATE_DEBOUNCE_MS = 150
 
 /**
  * Keeps this tab's player in sync with the partner's: applies incoming
@@ -36,6 +44,8 @@ export function useSync(socket: RoomSocket, elementId: string) {
    * player is ready. It waits here until `onReady`.
    */
   const pendingVideoRef = useRef<string | null>(null)
+  /** The pending debounced rate send, if any (see `RATE_DEBOUNCE_MS`). */
+  const rateTimerRef = useRef<number | null>(null)
 
   /**
    * The agreed playback rate. Plays, pauses and seeks don't change the rate,
@@ -73,9 +83,25 @@ export function useSync(socket: RoomSocket, elementId: string) {
       return
     }
 
+    const player = playerRef.current
+
+    const rateMsg = parsePlaybackRateMessage(data)
+    if (rateMsg) {
+      const last = lastStateRef.current
+      if (!player || !hasVideo || !last) return
+
+      lastStateRef.current = {
+        state: last.state,
+        position: player.getCurrentTime(),
+        at: Date.now(),
+        rate: rateMsg.playbackRate,
+      }
+      player.setPlaybackRate(rateMsg.playbackRate)
+      return
+    }
+
     const msg = parsePlaybackMessage(data)
     if (!msg) return
-    const player = playerRef.current
     // No video yet: nothing to play, pause or seek.
     if (!player || !hasVideo) return
 
@@ -116,6 +142,14 @@ export function useSync(socket: RoomSocket, elementId: string) {
   // Plug into the socket; the cleanup unplugs on unmount.
   useEffect(() => subscribe((data) => handleMessage(data)), [subscribe])
 
+  // A rate send still pending on unmount would fire on a dead room.
+  useEffect(() => {
+    const timerRef = rateTimerRef
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [])
+
   /** Tells the partner about a play, pause or seek, if it's news to them. */
   const sendAction = (position: number, state: PlaybackMessage['state']) => {
     if (!isNews(lastStateRef.current, state, position, Date.now())) return
@@ -142,26 +176,33 @@ export function useSync(socket: RoomSocket, elementId: string) {
   }
 
   /**
-   * Tells the partner our new playback rate, unless it's the one we already
-   * agreed on: applying the partner's rate fires the same event, and that
-   * echo mustn't bounce back.
+   * Tells the partner our playback rate once it has settled (see
+   * `RATE_DEBOUNCE_MS`), unless it's the rate we already agreed on: applying
+   * the partner's rate fires the same event, and that echo mustn't bounce back.
    */
-  const sendRate = (rate: number, position: number) => {
-    const last = lastStateRef.current
-    // No video yet: nothing to speed up.
-    if (!last || rate === last.rate) return
-    const msg: PlaybackRateMessage = {
-      type: 'playbackRate',
-      playbackRate: rate,
-    }
-    send(JSON.stringify(msg))
-    // Restart the prediction from here: the old rate applied until now.
-    lastStateRef.current = {
-      state: last.state,
-      position,
-      at: Date.now(),
-      rate,
-    }
+  const sendRateDebounced = () => {
+    if (rateTimerRef.current) clearTimeout(rateTimerRef.current)
+    rateTimerRef.current = window.setTimeout(() => {
+      rateTimerRef.current = null
+      const player = playerRef.current
+      const last = lastStateRef.current
+
+      if (!player || !last) return
+      const rate = player.getPlaybackRate()
+      if (rate === last.rate) return
+
+      const msg: PlaybackRateMessage = {
+        type: 'playbackRate',
+        playbackRate: rate,
+      }
+      send(JSON.stringify(msg))
+      lastStateRef.current = {
+        state: last.state,
+        position: player.getCurrentTime(),
+        at: Date.now(),
+        rate,
+      }
+    }, RATE_DEBOUNCE_MS)
   }
 
   /**
@@ -188,7 +229,7 @@ export function useSync(socket: RoomSocket, elementId: string) {
   useYouTubePlayer(playerRef, elementId, {
     onLocalChange: sendAction,
     onPlayingTick: sendSync,
-    onRateChange: sendRate,
+    onRateChange: sendRateDebounced,
     onReady: cuePendingVideo,
   })
 

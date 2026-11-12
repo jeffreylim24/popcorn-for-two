@@ -27,7 +27,7 @@ export function useYouTubePlayer(
   callbacks: {
     onLocalChange: (position: number, state: PlaybackMessage['state']) => void
     onPlayingTick: (position: number) => void
-    onRateChange: (rate: number, position: number) => void
+    onRateChange: () => void
     onReady: () => void
   },
 ) {
@@ -61,9 +61,7 @@ export function useYouTubePlayer(
             playerRef.current = player
             onReady()
           },
-          onPlaybackRateChange: (e) => {
-            onRateChange(e.data, e.target.getCurrentTime())
-          },
+          onPlaybackRateChange: () => onRateChange(),
           onStateChange: (e) => {
             // Each state starts its own timer, if any: drop the last one.
             stopTimer()
