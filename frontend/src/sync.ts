@@ -3,6 +3,11 @@ import { VIDEO_ID } from './youtube'
 /** Positions further apart than this (seconds) count as a seek, and get corrected. */
 export const SEEK_THRESHOLD_S = 1
 
+/** Slowest playback rate YouTube offers; a partner's rate below it is rejected. */
+export const MIN_PLAYBACK_RATE = 0.25
+/** Fastest playback rate free YouTube offers (3× is Premium only). */
+export const MAX_PLAYBACK_RATE = 2
+
 /**
  * Allowed playback message types. The values live once, as a runtime array,
  * and the type is derived from it, so the parser's checks and the type can't
@@ -27,6 +32,9 @@ export type PlaybackMessage = {
 
 /** Switches both tabs to a new video. */
 export type VideoMessage = { type: 'video'; videoId: string }
+
+/** Sets the partner's playback speed (1 = normal). */
+export type PlaybackRateMessage = { type: 'playbackRate'; playbackRate: number }
 
 /**
  * The last playback state both tabs agreed on. `at` is when, in ms
@@ -133,4 +141,34 @@ export function parseVideoMessage(data: string): VideoMessage | null {
   if (!VIDEO_ID.test(v.videoId)) return null
 
   return v as VideoMessage
+}
+
+/**
+ * Turns raw socket text into a `PlaybackRateMessage`, or `null` if it isn't
+ * one. The rate goes straight into `setPlaybackRate`, so anything outside the
+ * range YouTube offers is rejected rather than left to YouTube's rounding.
+ */
+export function parsePlaybackRateMessage(
+  data: string,
+): PlaybackRateMessage | null {
+  let value: unknown
+
+  try {
+    value = JSON.parse(data)
+  } catch {
+    return null
+  }
+
+  if (typeof value !== 'object' || value === null) return null
+  const v = value as Record<string, unknown>
+  if (v.type !== 'playbackRate') return null
+  if (typeof v.playbackRate !== 'number') return null
+  // Also rejects Infinity, which JSON.parse gives for e.g. 1e999.
+  if (
+    v.playbackRate < MIN_PLAYBACK_RATE ||
+    v.playbackRate > MAX_PLAYBACK_RATE
+  )
+    return null
+
+  return v as PlaybackRateMessage
 }

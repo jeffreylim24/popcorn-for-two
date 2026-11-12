@@ -2,7 +2,10 @@ import { describe, expect, test } from 'vitest'
 import {
   expectedPosition,
   isNews,
+  MAX_PLAYBACK_RATE,
+  MIN_PLAYBACK_RATE,
   parsePlaybackMessage,
+  parsePlaybackRateMessage,
   parseVideoMessage,
   shouldCatchUp,
 } from './sync'
@@ -141,5 +144,33 @@ describe('parseVideoMessage', () => {
     ],
   ])('%s: returns null', (_reason, data) => {
     expect(parseVideoMessage(data)).toBeNull()
+  })
+})
+
+describe('parsePlaybackRateMessage', () => {
+  // A valid message with some fields swapped out, as in parsePlaybackMessage.
+  const message = (fields: Record<string, unknown> = {}) =>
+    JSON.stringify({ type: 'playbackRate', playbackRate: 1.5, ...fields })
+
+  test.each([
+    ['valid message', message()],
+    ['rate is exactly the minimum', message({ playbackRate: MIN_PLAYBACK_RATE })],
+    ['rate is exactly the maximum', message({ playbackRate: MAX_PLAYBACK_RATE })],
+  ])('%s: returns PlaybackRateMessage', (_reason, data) => {
+    expect(parsePlaybackRateMessage(data)).toEqual(JSON.parse(data))
+  })
+
+  test.each([
+    ['invalid JSON', '{ invalid json }'],
+    ['not an object', '1.5'],
+    ['invalid type', message({ type: 'video' })],
+    ['missing rate', message({ playbackRate: undefined })],
+    ['rate is a string', message({ playbackRate: '1.5' })],
+    ['rate is below the minimum', message({ playbackRate: 0.1 })],
+    ['rate is 0', message({ playbackRate: 0 })],
+    ['rate is above the maximum', message({ playbackRate: 3 })],
+    ['rate is Infinity', '{"type":"playbackRate","playbackRate":1e999}'],
+  ])('%s: returns null', (_reason, data) => {
+    expect(parsePlaybackRateMessage(data)).toBeNull()
   })
 })
