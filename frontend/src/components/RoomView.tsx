@@ -166,6 +166,11 @@ export function RoomView({
   const [partnerBox, setPartnerBox] = useState<CamBox>(
     () => startBoxes().partner,
   )
+  /**
+   * Which cam is drawn above the other: the last one pressed. Starts as the
+   * partner, which is what the render order gave before. Local to this screen.
+   */
+  const [topCam, setTopCam] = useState<'self' | 'partner'>('partner')
 
   return (
     <main className="mx-auto flex min-h-svh max-w-5xl flex-col px-6 py-8">
@@ -254,6 +259,8 @@ export function RoomView({
               <DraggableCam
                 box={selfBox}
                 onBoxChange={setSelfBox}
+                isOnTop={topCam === 'self'}
+                onPress={() => setTopCam('self')}
                 // Only when there's a box to resize (SelfView draws nothing otherwise).
                 showHandle={selfBoxShown}
               >
@@ -267,6 +274,8 @@ export function RoomView({
               <DraggableCam
                 box={partnerBox}
                 onBoxChange={setPartnerBox}
+                isOnTop={topCam === 'partner'}
+                onPress={() => setTopCam('partner')}
                 // PartnerView draws nothing until the partner's stream arrives.
                 showHandle={partnerStream !== null}
               >
