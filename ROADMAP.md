@@ -64,12 +64,6 @@ Features
   ([#35](https://github.com/jeffreylim24/popcorn-for-two/issues/35)).
   Watch things that aren't on YouTube. A new track on the call
   (renegotiation), and screen video through TURN is paid bandwidth.
-- **Bring a cam to the front** ([#46](https://github.com/jeffreylim24/popcorn-for-two/issues/46)). Both cams are `z-10`, and
-  the partner cam renders after yours, so your own cam always hides
-  behind your partner's. Idea: bring a cam to the front when you click
-  or touch it, like desktop windows.
-  - To be decided: double-click or plain click? If layouts sync (#5),
-    does the stacking order sync too?
 - **Floating emotes, with a mute toggle** ([#47](https://github.com/jeffreylim24/popcorn-for-two/issues/47)). Emotes float
   up over the video, like Instagram Live; a local toggle hides the
   partner's emotes on your screen. Cheap over the existing socket, and
