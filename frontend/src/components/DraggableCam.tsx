@@ -1,4 +1,5 @@
 import { useRef, type PointerEvent, type ReactNode } from 'react'
+import { cn } from '@/lib/utils'
 
 /**
  * The cam box as fractions of the window: x and y are its top-left corner.
@@ -21,6 +22,13 @@ type DraggableCamProps = {
   box: CamBox
   /** Called with the whole new box on every drag or resize move. */
   onBoxChange: (box: CamBox) => void
+  /** Draw this cam above the other one. */
+  isOnTop: boolean
+  /**
+   * Called on any press on the cam (drag or resize), so the parent can bring
+   * it to the front.
+   */
+  onPress: () => void
   /** Show the resize handle only when the child actually draws a box. */
   showHandle: boolean
   /** The cam itself, e.g. SelfView or PartnerView. */
@@ -34,6 +42,8 @@ type DraggableCamProps = {
 export function DraggableCam({
   box,
   onBoxChange,
+  isOnTop,
+  onPress,
   showHandle,
   children,
 }: DraggableCamProps) {
@@ -49,6 +59,7 @@ export function DraggableCam({
   } | null>(null)
 
   const handlePointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    onPress()
     // Every move goes to this box until release, even over the YouTube iframe.
     e.currentTarget.setPointerCapture(e.pointerId)
     dragRef.current = {
@@ -91,6 +102,8 @@ export function DraggableCam({
   const handleResizeDown = (e: PointerEvent<HTMLDivElement>) => {
     // Stop here, or the wrapper's handlePointerDown starts a drag too.
     e.stopPropagation()
+    // So the wrapper never hears this press: bring the cam forward here too.
+    onPress()
     e.currentTarget.setPointerCapture(e.pointerId)
     resizeRef.current = { pointerX: e.clientX, boxWidth: box.width }
   }
@@ -120,7 +133,10 @@ export function DraggableCam({
 
   return (
     <div
-      className="group fixed z-10 cursor-(--cursor-grab) touch-none select-none active:cursor-(--cursor-grabbing)"
+      className={cn(
+        'group fixed cursor-(--cursor-grab) touch-none select-none active:cursor-(--cursor-grabbing)',
+        isOnTop ? 'z-20' : 'z-10',
+      )}
       style={{
         left: `${box.x * 100}vw`,
         top: `${box.y * 100}vh`,
