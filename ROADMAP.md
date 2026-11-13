@@ -129,8 +129,6 @@ S1 (sticky routing, #32) and S2 (load tests, cap of 1000 per machine,
   (#8/#9 and a usage alert cover that).
 - **Relay message size/rate limit.** ([#54](https://github.com/jeffreylim24/popcorn-for-two/issues/54)) The server relays anything, so one
   client could flood its partner.
-- **Unknown `GET /api/...` returns `index.html` with 200.** ([#55](https://github.com/jeffreylim24/popcorn-for-two/issues/55)) Should be a
-  404; confusing when debugging.
 - **Server hardening:** ([#56](https://github.com/jeffreylim24/popcorn-for-two/issues/56)) `http.Server` timeouts (`ListenAndServe` has
   none: slowloris), and no `/assets/` directory listing.
 - **Container:** ([#57](https://github.com/jeffreylim24/popcorn-for-two/issues/57)) non-root user; keep room codes out of logs (codes are
@@ -167,12 +165,6 @@ S1 (sticky routing, #32) and S2 (load tests, cap of 1000 per machine,
   messages for absent partners, something reads "has a phone" as "in a
   call", or longer awaits join this path (#7, #12). Fix: remember
   "partner here" in a ref, re-check after the await.
-- **"Starting mic…" label.** ([#68](https://github.com/jeffreylim24/popcorn-for-two/issues/68)) While the mic starts, the button says "Mic
-  on" next to a crossed-out icon (`micLabel` reads the toggle, the icon
-  reads `micLive`).
-- **Font flash on slow networks.** ([#69](https://github.com/jeffreylim24/popcorn-for-two/issues/69)) Pixelify Sans downloads only once
-  text using it renders. Fix: `<link rel="preload">` the .woff2 in
-  `index.html`.
 - **`bun audit`** ([#70](https://github.com/jeffreylim24/popcorn-for-two/issues/70)) (`braces` via the shadcn CLI, dev-only). Not in the
   bundle; `bun audit fix`.
 - **Shared close codes (Go ↔ TS).** ([#71](https://github.com/jeffreylim24/popcorn-for-two/issues/71)) Two numbers that rarely change.
