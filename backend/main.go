@@ -127,6 +127,9 @@ func main() {
 	http.HandleFunc("GET /api/health", healthHandler)
 	http.Handle("POST /api/rooms", createRoomHandler(createLimit, machineID))
 	http.Handle("GET /api/rooms/{key}/ws", joinRoomHandler(getICE, revokeICE, turnLimit, hb, machineID))
+	// Any other /api/ path is a typo or a missing route: answer 404, not the
+	// SPA's index.html with a 200 (#55).
+	http.HandleFunc("GET /api/", http.NotFound)
 	// "GET /" is the catch-all: the more specific /api/ patterns win. The
 	// path is relative to the working directory, which is backend/ both in
 	// dev and in the Docker image.
