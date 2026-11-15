@@ -17,7 +17,8 @@ const SYNC_INTERVAL_MS = 2000
 /**
  * Creates an empty YouTube player (no video until the caller cues one) in the
  * element with id `elementId` and reports what the user does: `onLocalChange`
- * on play, pause or a seek, `onPlayingTick` every few seconds while
+ * on play, pause or a seek, `onBuffering` when the player starts buffering
+ * (a stall, or a seek to a part that isn't loaded), `onPlayingTick` every few seconds while
  * playing, and `onRateChange` when the playback speed changes (whether the
  * user or our code changed it). `playerRef` holds the player once it's ready, and null before.
  */
@@ -26,6 +27,7 @@ export function useYouTubePlayer(
   elementId: string,
   callbacks: {
     onLocalChange: (position: number, state: PlaybackMessage['state']) => void
+    onBuffering: (position: number) => void
     onPlayingTick: (position: number) => void
     onRateChange: () => void
     onReady: () => void
@@ -34,6 +36,7 @@ export function useYouTubePlayer(
   /** The interval for the current state: seek checks or sync ticks. */
   const timerRef = useRef<number | null>(null)
   const onLocalChange = useEffectEvent(callbacks.onLocalChange)
+  const onBuffering = useEffectEvent(callbacks.onBuffering)
   const onPlayingTick = useEffectEvent(callbacks.onPlayingTick)
   const onRateChange = useEffectEvent(callbacks.onRateChange)
   const onReady = useEffectEvent(callbacks.onReady)
@@ -65,6 +68,10 @@ export function useYouTubePlayer(
           onStateChange: (e) => {
             // Each state starts its own timer, if any: drop the last one.
             stopTimer()
+            if (e.data === YT.PlayerState.BUFFERING) {
+              onBuffering(e.target.getCurrentTime())
+              return
+            }
             if (
               e.data !== YT.PlayerState.PLAYING &&
               e.data !== YT.PlayerState.PAUSED
