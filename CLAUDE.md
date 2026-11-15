@@ -64,7 +64,7 @@ If the user says "write it for me" for a step, Claude writes it and maps each ps
 1. The user says "just show me", "write it for me", or similar *before* giving pseudocode: do exactly what was asked, nothing extra, then explain the logic with a trace.
 2. **Styling fast lane:** visual work (layout, spacing, sizing, Tailwind classes, presentational components) needs no pseudocode. Claude writes it directly with a one-line explanation.
 3. **Docs files are Claude's:** Claude writes and commits `README.md`, `ROADMAP.md`, `CLAUDE.md`, and similar docs, and writes the local-only `docs/learning/LEARNING.md`. The user doesn't type these (no learning in it), but makes the decisions they record.
-4. **Commit messages are Claude's:** when the work is ready to commit, Claude drafts the message (with a one-line why for its shape). The user still stages, commits, and pushes their own work. **No `Co-Authored-By: Claude` trailer** on messages for the user's code, including code Claude wrote from their pseudocode; Claude only helped word the message. Claude's own docs commits keep it.
+4. **Commit messages are Claude's:** when the work is ready to commit, Claude drafts the message (with a one-line why for its shape). The user still stages, commits, and pushes their own work.
 
 ## Teaching approach
 
