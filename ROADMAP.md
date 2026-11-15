@@ -127,7 +127,9 @@ S1 (sticky routing, #32) and S2 (load tests, cap of 1000 per machine,
   none: slowloris), and no `/assets/` directory listing.
 - **Container:** ([#57](https://github.com/jeffreylim24/popcorn-for-two/issues/57)) non-root user; keep room codes out of logs (codes are
   secrets).
-- **Send a `sync` right when buffering ends.** ([#58](https://github.com/jeffreylim24/popcorn-for-two/issues/58)) Small sync-quality gain.
+- **Wait for your partner while they buffer.** ([#82](https://github.com/jeffreylim24/popcorn-for-two/issues/82)) Since #58 a stalled
+  tab catches up, but on a very slow connection it leapfrogs (jumps
+  ahead, stalls again). Pause both over a threshold, resume together.
 - **ICE restart on a network change.** ([#59](https://github.com/jeffreylim24/popcorn-for-two/issues/59)) Keeps the call instead of
   starting fresh. A renegotiation, so it needs a rule for who restarts.
   Needs #7 first.
