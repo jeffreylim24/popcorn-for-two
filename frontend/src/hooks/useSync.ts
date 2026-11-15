@@ -44,6 +44,13 @@ export function useSync(socket: RoomSocket, elementId: string) {
    * player is ready. It waits here until `onReady`.
    */
   const pendingVideoRef = useRef<string | null>(null)
+  /**
+   * Did the current buffering start where the agreed state predicts (a
+   * stall: the network fell behind), rather than at a jump (a seek)? A
+   * stall's end isn't news: the partner is ahead, and their next `sync`
+   * pulls us forward ("ahead wins"). Sending an action would rewind them.
+   */
+  const stalledRef = useRef(false)
   /** The pending debounced rate send, if any (see `RATE_DEBOUNCE_MS`). */
   const rateTimerRef = useRef<number | null>(null)
 
@@ -153,6 +160,10 @@ export function useSync(socket: RoomSocket, elementId: string) {
 
   /** Tells the partner about a play, pause or seek, if it's news to them. */
   const sendAction = (position: number, state: PlaybackMessage['state']) => {
+    // A stall only matters for the PLAYING right after it; a pause clears it.
+    const isStallEnd = stalledRef.current && state === 'playing'
+    stalledRef.current = false
+    if (isStallEnd) return
     if (!isNews(lastStateRef.current, state, position, Date.now())) return
     const msg: PlaybackMessage = { type: 'action', position, state }
     send(JSON.stringify(msg))
@@ -162,6 +173,16 @@ export function useSync(socket: RoomSocket, elementId: string) {
       at: Date.now(),
       rate: agreedRate(),
     }
+  }
+
+  /** Notes whether buffering at `position` is a stall (see `stalledRef`). */
+  const noteBuffering = (position: number) => {
+    stalledRef.current = !isNews(
+      lastStateRef.current,
+      'playing',
+      position,
+      Date.now(),
+    )
   }
 
   /** Sends our position while playing, so a tab that fell behind catches up. */
@@ -229,6 +250,7 @@ export function useSync(socket: RoomSocket, elementId: string) {
 
   useYouTubePlayer(playerRef, elementId, {
     onLocalChange: sendAction,
+    onBuffering: noteBuffering,
     onPlayingTick: sendSync,
     onRateChange: sendRateDebounced,
     onReady: cuePendingVideo,
