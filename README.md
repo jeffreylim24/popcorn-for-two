@@ -20,11 +20,10 @@ The full feature list, every control, and what to do when something goes wrong: 
 
 You need [Go](https://go.dev/dl/) 1.27+, [Bun](https://bun.sh/), and a [Cloudflare TURN key](https://developers.cloudflare.com/realtime/turn/) (free tier).
 
-The server refuses to start without the TURN key. Put it in `backend/.env` (gitignored, never commit it):
+The server refuses to start without the TURN key. Copy the template and fill it in (`backend/.env` is gitignored, never commit it):
 
 ```sh
-TURN_KEY_ID=...
-TURN_KEY_API=...
+cp backend/.env.example backend/.env
 ```
 
 ```sh
@@ -55,7 +54,7 @@ To try the production setup instead, run `bun run build` in `frontend/` and `go 
 ```
 
 **Rooms**
-- `POST /api/rooms` creates a random 6-character code. Each browser joins over `GET /api/rooms/{code}/ws`. A room holds at most 2 people, and the server keeps rooms in memory.
+- `POST /api/rooms` creates a random 6-character code and returns the room's key, `{machine}-{code}` (the machine part says which server holds the room, see [Deploy](#deploy)). Each browser joins over `GET /api/rooms/{key}/ws`. A room holds at most 2 people, and the server keeps rooms in memory.
 - The server doesn't understand video or calls. It forwards each message to the other person in the room. It only reads two things: the current video (so a late joiner gets it) and joins/leaves (it sends `partner-present`, `partner-joined`, `partner-left`).
 
 **Sync**

@@ -4,7 +4,9 @@
 // when they join, and serves the built frontend.
 //
 // It refuses to start unless TURN_KEY_ID and TURN_KEY_API are set. Rooms
-// live in memory, so it must run as a single instance.
+// live in memory on the machine that created them. With several machines,
+// each room key starts with its machine's ID, and a join that lands on the
+// wrong machine is replayed to the right one (see joinRoomHandler).
 //
 // LOAD_TEST=1 starts it in load-test mode (see loadTestMode): no TURN keys
 // needed, a fake STUN-only list instead of Cloudflare, and per-IP limits
