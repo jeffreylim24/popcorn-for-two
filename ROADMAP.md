@@ -172,3 +172,8 @@ S1 (sticky routing, #32) and S2 (load tests, cap of 1000 per machine,
   the app is landscape/desktop first (a watch party).
 - **Fullscreen cam mode.** ([#78](https://github.com/jeffreylim24/popcorn-for-two/issues/78)) Partner's face fills the screen, like
   WhatsApp. Needs #77 first; the YouTube player must stay ≥200×200.
+- **Crossed play/pause actions leave the tabs split**
+  ([#83](https://github.com/jeffreylim24/popcorn-for-two/issues/83), bug).
+  Both people acting within ~100 ms (one double-toggles) can end with one
+  tab playing, one paused. Not reproduced by hand; any click fixes it.
+  Needs a way for both tabs to agree on an order for crossed messages.
