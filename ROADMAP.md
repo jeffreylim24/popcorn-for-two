@@ -177,3 +177,9 @@ S1 (sticky routing, #32) and S2 (load tests, cap of 1000 per machine,
   Both people acting within ~100 ms (one double-toggles) can end with one
   tab playing, one paused. Not reproduced by hand; any click fixes it.
   Needs a way for both tabs to agree on an order for crossed messages.
+- **A playing seek relies on YouTube firing BUFFERING**
+  ([#84](https://github.com/jeffreylim24/popcorn-for-two/issues/84), bug).
+  Holds today (every seek fired BUFFERING → PLAYING, even 0.2 s back at
+  144p), but the API doesn't promise it. If it stopped, a rewind while
+  playing would be undone by the partner's `sync`. Record the assumption,
+  or add a guard like the paused poll.
